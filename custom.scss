@@ -416,16 +416,18 @@ body {
   max-width: 100%;
   padding: 0;
 }
-
-/* ===== 네비게이션 로고 ===== */
-.navbar-logo img {
-  height: 36px !important;
-  max-width: none !important;
-  width: auto !important;
+/* ===== 네비게이션 로고 텍스트 ===== */
+.navbar-brand {
+  font-size: 1.6rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.5px !important;
+  color: #185FA5 !important;
+  text-decoration: none !important;
 }
 
-.navbar-brand img {
-  height: 36px !important;
-  max-width: none !important;
-  width: auto !important;
+.navbar-brand::after {
+  content: 'AI';
+  color: #F97316;
+  font-size: 1.6rem;
+  font-weight: 900;
 }

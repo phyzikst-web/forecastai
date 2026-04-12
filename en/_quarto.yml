@@ -3,12 +3,12 @@ project:
   output-dir: _site
 
 website:
-  title: "ForecastAI"
+  title: "Forecast"
   description: "AI & Data Science Forecasting Research Blog | Prof. Shin"
   favicon: ../favicon.ico
 
   navbar:
-    title: false
+
     left:
       - text: "HOME"
         href: index.qmd
@@ -43,7 +43,6 @@ format:
     highlight-style: github
     mainfont: "Noto Sans KR"
     monofont: "JetBrains Mono"
-    include-after-body: ../navbar-logo.html
 
 execute:
   freeze: auto
