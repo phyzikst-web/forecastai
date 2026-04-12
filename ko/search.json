@@ -1,0 +1,23 @@
+[
+  {
+    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html",
+    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html",
+    "title": "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측",
+    "section": "",
+    "text": "Transfer Entropy(TE)는 정보이론 기반의 비선형 인과성 측도입니다.\nimport numpy as np\n\ndef transfer_entropy(X, Y, k=1, bins=10):\n    X_d = np.digitize(X, np.histogram_bin_edges(X, bins=bins))\n    Y_d = np.digitize(Y, np.histogram_bin_edges(Y, bins=bins))\n    # TE 계산 로직\n    return te"
+  },
+  {
+    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html#개요",
+    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html#개요",
+    "title": "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측",
+    "section": "",
+    "text": "Transfer Entropy(TE)는 정보이론 기반의 비선형 인과성 측도입니다.\nimport numpy as np\n\ndef transfer_entropy(X, Y, k=1, bins=10):\n    X_d = np.digitize(X, np.histogram_bin_edges(X, bins=bins))\n    Y_d = np.digitize(Y, np.histogram_bin_edges(Y, bins=bins))\n    # TE 계산 로직\n    return te"
+  },
+  {
+    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html#실험-결과",
+    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html#실험-결과",
+    "title": "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측",
+    "section": "실험 결과",
+    "text": "실험 결과\n\n\n\n모델\nRMSE\nR²\n\n\n\n\nVanilla LSTM\n0.124\n0.821\n\n\nTE-IMV-LSTM\n0.091\n0.901"
+  }
+]

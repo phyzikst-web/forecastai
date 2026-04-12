@@ -1,0 +1,23 @@
+[
+  {
+    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html",
+    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html",
+    "title": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM",
+    "section": "",
+    "text": "Transfer Entropy (TE) is a nonlinear causality measure based on information theory.\nimport numpy as np\n\ndef transfer_entropy(X, Y, k=1, bins=10):\n    X_d = np.digitize(X, np.histogram_bin_edges(X, bins=bins))\n    Y_d = np.digitize(Y, np.histogram_bin_edges(Y, bins=bins))\n    # TE computation logic\n    return te"
+  },
+  {
+    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html#overview",
+    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html#overview",
+    "title": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM",
+    "section": "",
+    "text": "Transfer Entropy (TE) is a nonlinear causality measure based on information theory.\nimport numpy as np\n\ndef transfer_entropy(X, Y, k=1, bins=10):\n    X_d = np.digitize(X, np.histogram_bin_edges(X, bins=bins))\n    Y_d = np.digitize(Y, np.histogram_bin_edges(Y, bins=bins))\n    # TE computation logic\n    return te"
+  },
+  {
+    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html#results",
+    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html#results",
+    "title": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM",
+    "section": "Results",
+    "text": "Results\n\n\n\nModel\nRMSE\nR²\n\n\n\n\nVanilla LSTM\n0.124\n0.821\n\n\nTE-IMV-LSTM\n0.091\n0.901"
+  }
+]
