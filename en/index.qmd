@@ -1,0 +1,161 @@
+---
+title: ""
+page-layout: custom
+listing:
+  id: post-listing
+  contents: posts
+  sort: "date desc"
+  type: default
+  fields: [image, date, title, author, description, categories, reading-time]
+  categories: true
+  sort-ui: false
+  filter-ui: false
+  page-size: 10
+  feed: true
+---
+
+```{=html}
+<div class="site-header">
+  <div class="site-logo">
+    <span class="logo-ai">AI</span><span class="logo-dot">·</span><span class="logo-data">DATA</span><span class="logo-lab"> LAB</span>
+  </div>
+  <div class="site-tagline">AI & Data Science news and tutorials contributed by Prof. Shin</div>
+</div>
+
+<div class="main-layout">
+  <div class="posts-area">
+```
+
+::: {#post-listing}
+:::
+
+```{=html}
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-widget search-widget">
+      <input type="text" id="search-input" placeholder="Search AI·DATA LAB.." autocomplete="off" />
+      <button id="search-btn">Go</button>
+      <div id="search-results" class="search-dropdown" style="display:none;"></div>
+    </div>
+
+    <div class="sidebar-widget subscribe-widget">
+      <input type="email" id="email-input" placeholder="Your e-mail here" />
+      <button onclick="doSubscribe()">Subscribe</button>
+      <p class="subscribe-note">Get notified when new posts are published.</p>
+    </div>
+
+    <div class="sidebar-widget popular-widget">
+      <h4>Most viewed posts (weekly)</h4>
+      <ul>
+        <li><a href="#">Causal Inference with Transfer Entropy</a></li>
+        <li><a href="#">Time Series Forecasting with IMV-LSTM</a></li>
+        <li><a href="#">PCMCI for Climate Data Causal Discovery</a></li>
+        <li><a href="#">Transformer for Multivariate Time Series</a></li>
+        <li><a href="#">FLUXNET CH₄ Data Preprocessing Guide</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-widget categories-widget">
+      <h4>Categories</h4>
+      <ul id="category-list">
+        <li style="color:#aaa;font-size:0.85rem;">Loading...</li>
+      </ul>
+    </div>
+
+    <div class="sidebar-widget profile-widget">
+      <img src="../profile.jpg" alt="Prof. Shin" class="profile-img" onerror="this.style.display='none'" />
+      <p><strong>Prof. Shin (phyzik)</strong></p>
+      <p>Assistant Professor of AI<br/>PhD in Physics | Atmospheric AI Research</p>
+      <a href="about.html" class="profile-link">About Me →</a>
+    </div>
+  </aside>
+</div>
+
+<script>
+let searchIndex = [];
+
+async function loadSearchIndex() {
+  try {
+    const res = await fetch('./search.json');
+    if (!res.ok) throw new Error('not found');
+    const data = await res.json();
+    searchIndex = data.docs || data || [];
+    buildCategories();
+  } catch(e) {
+    buildCategoriesFallback();
+  }
+}
+
+function doSearch() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  if (!q) return;
+  if (searchIndex.length === 0) {
+    showDropdown([{ title: 'Search available after quarto render.', text: '', href: '#' }]);
+    return;
+  }
+  const results = searchIndex.filter(doc => {
+    return (doc.title||'').toLowerCase().includes(q) || (doc.text||'').toLowerCase().includes(q);
+  }).slice(0, 6);
+  showDropdown(results.length ? results : [{ title: `No results for "${q}"`, text: '', href: '#' }]);
+}
+
+function showDropdown(results) {
+  const box = document.getElementById('search-results');
+  box.innerHTML = results.map(r => `
+    <div class="search-item" onclick="location.href='${r.href||'#'}'">
+      <div class="search-item-title">${r.title||'(Untitled)'}</div>
+      ${r.text ? `<div class="search-item-snippet">${r.text.substring(0,80)}…</div>` : ''}
+    </div>`).join('');
+  box.style.display = 'block';
+}
+
+function hideDropdown() {
+  setTimeout(() => { document.getElementById('search-results').style.display = 'none'; }, 200);
+}
+
+document.getElementById('search-btn').addEventListener('click', doSearch);
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+  if (e.key === 'Escape') hideDropdown();
+});
+document.getElementById('search-input').addEventListener('input', function() {
+  if (this.value.trim().length >= 2) doSearch(); else hideDropdown();
+});
+document.getElementById('search-input').addEventListener('blur', hideDropdown);
+
+function buildCategories() {
+  const catCount = {}, catLinks = {};
+  searchIndex.forEach(doc => {
+    (doc.categories||[]).forEach(cat => {
+      catCount[cat] = (catCount[cat]||0) + 1;
+      if (!catLinks[cat]) catLinks[cat] = `index.html#category=${encodeURIComponent(cat)}`;
+    });
+  });
+  renderCategories(catCount, catLinks);
+}
+
+function buildCategoriesFallback() {
+  setTimeout(() => {
+    const catCount = {}, catLinks = {};
+    document.querySelectorAll('.quarto-post .categories a, .listing-category').forEach(el => {
+      const cat = el.textContent.trim();
+      if (cat) { catCount[cat] = (catCount[cat]||0) + 1; catLinks[cat] = el.href||'#'; }
+    });
+    renderCategories(catCount, catLinks);
+  }, 800);
+}
+
+function renderCategories(catCount, catLinks) {
+  const ul = document.getElementById('category-list');
+  const sorted = Object.entries(catCount).sort((a,b) => b[1]-a[1]);
+  ul.innerHTML = sorted.length
+    ? sorted.map(([cat, count]) => `<li><a href="${catLinks[cat]||'#'}">${cat}</a><span class="count">${count}</span></li>`).join('')
+    : '<li style="color:#aaa;font-size:0.85rem;">No categories</li>';
+}
+
+function doSubscribe() { alert('Subscribe feature coming soon!'); }
+
+loadSearchIndex();
+</script>
+```

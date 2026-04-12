@@ -1,0 +1,46 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "AI·DATA LAB"
+  description: "AI 및 데이터 사이언스 연구 블로그 | Prof. Shin"
+  favicon: ../favicon.ico
+
+  navbar:
+    left:
+      - text: "HOME"
+        href: index.qmd
+      - text: "ABOUT"
+        href: about.qmd
+      - text: "CATEGORIES"
+        href: categories.qmd
+      - text: "RESEARCH"
+        href: research.qmd
+      - text: "CONTACT"
+        href: contact.qmd
+    right:
+      - text: "🇺🇸 English"
+        href: "../en/"
+      - icon: github
+        href: https://github.com/phyzik
+
+  page-footer:
+    left: "© 2026 Prof. Shin · AI·DATA LAB"
+    right: "Powered by [Quarto](https://quarto.org)"
+
+  search: true
+
+format:
+  html:
+    theme: [flatly, ../custom.scss]
+    lang: ko
+    toc: false
+    code-fold: true
+    code-tools: true
+    highlight-style: github
+    mainfont: "Noto Sans KR"
+    monofont: "JetBrains Mono"
+
+execute:
+  freeze: auto

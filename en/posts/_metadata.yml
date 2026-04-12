@@ -1,0 +1,8 @@
+author: "Prof. Shin (phyzik)"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+freeze: auto

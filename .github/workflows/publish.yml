@@ -1,0 +1,58 @@
+on:
+  push:
+    branches: main
+
+name: Render and Publish
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install jupyter matplotlib numpy pandas
+
+      # 한글 사이트 빌드
+      - name: Render Korean site
+        run: |
+          cd ko
+          quarto render
+          cd ..
+
+      # 영문 사이트 빌드
+      - name: Render English site
+        run: |
+          cd en
+          quarto render
+          cd ..
+
+      # 전체 _site 폴더 구성
+      # 루트 index.html + ko/_site → site/ko/ + en/_site → site/en/
+      - name: Assemble site
+        run: |
+          mkdir -p _deploy/ko
+          mkdir -p _deploy/en
+          cp index.html _deploy/index.html
+          cp -r ko/_site/. _deploy/ko/
+          cp -r en/_site/. _deploy/en/
+
+      # GitHub Pages 배포
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_deploy
+          publish_branch: gh-pages

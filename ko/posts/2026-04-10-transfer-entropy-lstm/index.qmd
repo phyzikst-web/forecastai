@@ -1,0 +1,31 @@
+---
+title: "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측"
+date: "2026-04-10"
+author: "Prof. Shin (phyzik)"
+categories: [인과추론, 딥러닝, 시계열, Python]
+image: "thumbnail.png"
+description: |
+  Transfer Entropy를 변수 선택 기준으로 활용하여 IMV-LSTM 아키텍처에 통합하는 방법을 소개합니다.
+  FLUXNET CH₄ 데이터에 적용하여 인과 구조 기반 예측 성능을 검증합니다.
+---
+
+## 개요
+
+Transfer Entropy(TE)는 정보이론 기반의 비선형 인과성 측도입니다.
+
+```python
+import numpy as np
+
+def transfer_entropy(X, Y, k=1, bins=10):
+    X_d = np.digitize(X, np.histogram_bin_edges(X, bins=bins))
+    Y_d = np.digitize(Y, np.histogram_bin_edges(Y, bins=bins))
+    # TE 계산 로직
+    return te
+```
+
+## 실험 결과
+
+| 모델 | RMSE | R² |
+|------|------|-----|
+| Vanilla LSTM | 0.124 | 0.821 |
+| **TE-IMV-LSTM** | **0.091** | **0.901** |
