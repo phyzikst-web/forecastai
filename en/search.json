@@ -1,5 +1,131 @@
 [
   {
+    "objectID": "contact.html",
+    "href": "contact.html",
+    "title": "Contact",
+    "section": "",
+    "text": "Email: phyzik@example.ac.kr\nGitHub: github.com/phyzik\n\nFeel free to reach out via email for any inquiries."
+  },
+  {
+    "objectID": "contact.html#contact",
+    "href": "contact.html#contact",
+    "title": "Contact",
+    "section": "",
+    "text": "Email: phyzik@example.ac.kr\nGitHub: github.com/phyzik\n\nFeel free to reach out via email for any inquiries."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\n🎓 PhD in Physics, Pukyong National University\n🏫 Assistant Professor, Department of Artificial Intelligence\n🔬 AI-based atmospheric and environmental prediction modeling\n✏️ Mechanical pencil engraved: Prof.Shin"
+  },
+  {
+    "objectID": "about.html#prof.-shin-phyzik",
+    "href": "about.html#prof.-shin-phyzik",
+    "title": "About",
+    "section": "",
+    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\n🎓 PhD in Physics, Pukyong National University\n🏫 Assistant Professor, Department of Artificial Intelligence\n🔬 AI-based atmospheric and environmental prediction modeling\n✏️ Mechanical pencil engraved: Prof.Shin"
+  },
+  {
+    "objectID": "about.html#research-areas",
+    "href": "about.html#research-areas",
+    "title": "About",
+    "section": "Research Areas",
+    "text": "Research Areas\n\nCausal Inference: Transfer Entropy, PCMCI, IMV-LSTM\nTime Series Deep Learning: Transformer, LSTM, CNN-based forecasting\nAtmospheric & Environmental AI: FLUXNET CH₄ flux prediction, meteorological data analysis\nXAI: Explainable AI for environmental prediction"
+  },
+  {
+    "objectID": "about.html#about-this-blog",
+    "href": "about.html#about-this-blog",
+    "title": "About",
+    "section": "About This Blog",
+    "text": "About This Blog\nThis blog shares research and tutorials on AI, data science, and time series analysis."
+  },
+  {
+    "objectID": "about.html#contact",
+    "href": "about.html#contact",
+    "title": "About",
+    "section": "Contact",
+    "text": "Contact\n\nGitHub: github.com/phyzik\nEmail: phyzik@example.ac.kr"
+  },
+  {
+    "objectID": "research.html",
+    "href": "research.html",
+    "title": "Research",
+    "section": "",
+    "text": "Development of causal structure learning-based time series deep learning prediction framework\n\n\n\n\nTransfer Entropy + IMV-LSTM\nPCMCI-based causal graph learning\nFLUXNET atmospheric/environmental data AI prediction"
+  },
+  {
+    "objectID": "research.html#ongoing-research",
+    "href": "research.html#ongoing-research",
+    "title": "Research",
+    "section": "",
+    "text": "Development of causal structure learning-based time series deep learning prediction framework\n\n\n\n\nTransfer Entropy + IMV-LSTM\nPCMCI-based causal graph learning\nFLUXNET atmospheric/environmental data AI prediction"
+  },
+  {
+    "objectID": "privacy-policy.html",
+    "href": "privacy-policy.html",
+    "title": "Privacy Policy",
+    "section": "",
+    "text": "This Privacy Policy describes how AI·DATA LAB (“this site”) collects and uses information."
+  },
+  {
+    "objectID": "privacy-policy.html#information-we-collect",
+    "href": "privacy-policy.html#information-we-collect",
+    "title": "Privacy Policy",
+    "section": "Information We Collect",
+    "text": "Information We Collect\nThis site may collect the following information.\n\nVisitor statistics (anonymous data via Google Analytics)\nEmail address provided when subscribing to newsletters"
+  },
+  {
+    "objectID": "privacy-policy.html#google-analytics",
+    "href": "privacy-policy.html#google-analytics",
+    "title": "Privacy Policy",
+    "section": "Google Analytics",
+    "text": "Google Analytics\nThis site uses Google Analytics to collect visitor statistics. Google Analytics uses cookies, and collected data is processed anonymously. You can review Google’s Privacy Policy here."
+  },
+  {
+    "objectID": "privacy-policy.html#google-adsense",
+    "href": "privacy-policy.html#google-adsense",
+    "title": "Privacy Policy",
+    "section": "Google AdSense",
+    "text": "Google AdSense\nThis site displays advertisements through Google AdSense. Google may use cookies to show ads based on your interests. To opt out of personalized advertising, visit Google Ad Settings."
+  },
+  {
+    "objectID": "privacy-policy.html#cookies",
+    "href": "privacy-policy.html#cookies",
+    "title": "Privacy Policy",
+    "section": "Cookies",
+    "text": "Cookies\nThis site uses cookies to enhance user experience. You may disable cookies in your browser settings, though some features may be limited."
+  },
+  {
+    "objectID": "privacy-policy.html#third-party-links",
+    "href": "privacy-policy.html#third-party-links",
+    "title": "Privacy Policy",
+    "section": "Third-Party Links",
+    "text": "Third-Party Links\nThis site may contain links to external websites. We are not responsible for the privacy practices of those sites."
+  },
+  {
+    "objectID": "privacy-policy.html#changes-to-this-policy",
+    "href": "privacy-policy.html#changes-to-this-policy",
+    "title": "Privacy Policy",
+    "section": "Changes to This Policy",
+    "text": "Changes to This Policy\nThis policy may be updated as needed. Any changes will be reflected on this page."
+  },
+  {
+    "objectID": "privacy-policy.html#contact",
+    "href": "privacy-policy.html#contact",
+    "title": "Privacy Policy",
+    "section": "Contact",
+    "text": "Contact\nFor any privacy-related inquiries, please contact us at:\n\nEmail: phyzik@example.ac.kr\n\nLast updated: April 2026"
+  },
+  {
+    "objectID": "categories.html",
+    "href": "categories.html",
+    "title": "Categories",
+    "section": "",
+    "text": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM\n\n\n\nCausal Inference\n\nDeep Learning\n\nTime Series\n\nPython\n\n\n\nWe introduce a TE-IMV-LSTM framework that integrates Transfer Entropy as a variable selection criterion into the IMV-LSTM architecture, validated on FLUXNET CH₄ data.\n\n\n\n\n\nApr 10, 2026\n\n\nProf. Shin (phyzik)\n\n\n\n\n\nNo matching items"
+  },
+  {
     "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html",
     "href": "posts/2026-04-10-transfer-entropy-lstm/index.html",
     "title": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM",
