@@ -17,9 +17,9 @@ listing:
 ```{=html}
 <div class="site-header">
   <div class="site-logo">
-    <span class="logo-ai">AI</span><span class="logo-dot">·</span><span class="logo-data">DATA</span><span class="logo-lab"> LAB</span>
+    <span class="logo-forecast">Forecast</span><span class="logo-ai">AI</span>
   </div>
-  <div class="site-tagline">AI & Data Science news and tutorials contributed by Prof. Shin</div>
+  <div class="site-tagline">AI &amp; Data Science forecasting research by Prof. Shin</div>
 </div>
 
 <div class="main-layout">
@@ -46,13 +46,9 @@ listing:
     </div>
 
     <div class="sidebar-widget popular-widget">
-      <h4>Most viewed posts (weekly)</h4>
-      <ul>
-        <li><a href="#">Causal Inference with Transfer Entropy</a></li>
-        <li><a href="#">Time Series Forecasting with IMV-LSTM</a></li>
-        <li><a href="#">PCMCI for Climate Data Causal Discovery</a></li>
-        <li><a href="#">Transformer for Multivariate Time Series</a></li>
-        <li><a href="#">FLUXNET CH₄ Data Preprocessing Guide</a></li>
+      <h4>Recent Posts</h4>
+      <ul id="recent-posts-list">
+        <li style="color:#aaa;font-size:0.85rem;">Loading...</li>
       </ul>
     </div>
 
@@ -82,9 +78,24 @@ async function loadSearchIndex() {
     const data = await res.json();
     searchIndex = data.docs || data || [];
     buildCategories();
+    buildRecentPosts();
   } catch(e) {
     buildCategoriesFallback();
   }
+}
+
+function buildRecentPosts() {
+  const ul = document.getElementById('recent-posts-list');
+  const posts = searchIndex
+    .filter(doc => doc.href && !doc.href.includes('index.html'))
+    .slice(0, 5);
+  if (posts.length === 0) {
+    ul.innerHTML = '<li style="color:#aaa;font-size:0.85rem;">No posts yet.</li>';
+    return;
+  }
+  ul.innerHTML = posts.map(p => `
+    <li><a href="${p.href}">${p.title||'(Untitled)'}</a></li>
+  `).join('');
 }
 
 function doSearch() {
