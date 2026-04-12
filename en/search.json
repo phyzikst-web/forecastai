@@ -18,14 +18,14 @@
     "href": "about.html",
     "title": "About",
     "section": "",
-    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\n🎓 PhD in Physics, Pukyong National University\n🏫 Assistant Professor, Department of Artificial Intelligence\n🔬 AI-based atmospheric and environmental prediction modeling\n✏️ Mechanical pencil engraved: Prof.Shin"
+    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\nPhD in Physics, Pukyong National University\nAssistant Professor, Department of Artificial Intelligence at Yuhan University\nAI-based atmospheric and environmental prediction modeling"
   },
   {
     "objectID": "about.html#prof.-shin-phyzik",
     "href": "about.html#prof.-shin-phyzik",
     "title": "About",
     "section": "",
-    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\n🎓 PhD in Physics, Pukyong National University\n🏫 Assistant Professor, Department of Artificial Intelligence\n🔬 AI-based atmospheric and environmental prediction modeling\n✏️ Mechanical pencil engraved: Prof.Shin"
+    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\nPhD in Physics, Pukyong National University\nAssistant Professor, Department of Artificial Intelligence at Yuhan University\nAI-based atmospheric and environmental prediction modeling"
   },
   {
     "objectID": "about.html#research-areas",
@@ -46,21 +46,7 @@
     "href": "about.html#contact",
     "title": "About",
     "section": "Contact",
-    "text": "Contact\n\nGitHub: github.com/phyzik\nEmail: phyzik@example.ac.kr"
-  },
-  {
-    "objectID": "research.html",
-    "href": "research.html",
-    "title": "Research",
-    "section": "",
-    "text": "Development of causal structure learning-based time series deep learning prediction framework\n\n\n\n\nTransfer Entropy + IMV-LSTM\nPCMCI-based causal graph learning\nFLUXNET atmospheric/environmental data AI prediction"
-  },
-  {
-    "objectID": "research.html#ongoing-research",
-    "href": "research.html#ongoing-research",
-    "title": "Research",
-    "section": "",
-    "text": "Development of causal structure learning-based time series deep learning prediction framework\n\n\n\n\nTransfer Entropy + IMV-LSTM\nPCMCI-based causal graph learning\nFLUXNET atmospheric/environmental data AI prediction"
+    "text": "Contact\n\nGitHub: github.com/phyzik\nEmail: phyzik@yuhan.ac.kr"
   },
   {
     "objectID": "privacy-policy.html",

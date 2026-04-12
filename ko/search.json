@@ -18,14 +18,14 @@
     "href": "about.html",
     "title": "소개",
     "section": "",
-    "text": "안녕하세요. AI 및 데이터 사이언스를 연구하는 신 교수(Prof. Shin)입니다.\n\n🎓 물리학 박사 (부경대학교)\n🏫 전문대학교 인공지능학과 조교수\n🔬 AI 기반 대기·환경 예측 모델링 연구\n✏️ 기계 샤프 각인: Prof.Shin"
+    "text": "안녕하세요. AI 및 데이터 사이언스를 연구하는 신 교수(Prof. Shin)입니다.\n\n물리학 박사 (부경대학교)\n유한대학교 인공지능학과 조교수\nAI 기반 대기·환경 예측 모델링 연구"
   },
   {
     "objectID": "about.html#prof.-shin-phyzik",
     "href": "about.html#prof.-shin-phyzik",
     "title": "소개",
     "section": "",
-    "text": "안녕하세요. AI 및 데이터 사이언스를 연구하는 신 교수(Prof. Shin)입니다.\n\n🎓 물리학 박사 (부경대학교)\n🏫 전문대학교 인공지능학과 조교수\n🔬 AI 기반 대기·환경 예측 모델링 연구\n✏️ 기계 샤프 각인: Prof.Shin"
+    "text": "안녕하세요. AI 및 데이터 사이언스를 연구하는 신 교수(Prof. Shin)입니다.\n\n물리학 박사 (부경대학교)\n유한대학교 인공지능학과 조교수\nAI 기반 대기·환경 예측 모델링 연구"
   },
   {
     "objectID": "about.html#연구-분야",
@@ -46,21 +46,7 @@
     "href": "about.html#연락처",
     "title": "소개",
     "section": "연락처",
-    "text": "연락처\n\nGitHub: github.com/phyzik\nEmail: phyzik@example.ac.kr"
-  },
-  {
-    "objectID": "research.html",
-    "href": "research.html",
-    "title": "연구",
-    "section": "",
-    "text": "인과구조 학습 기반 시계열 딥러닝 예측 프레임워크 개발\n\n\n\n\nTransfer Entropy + IMV-LSTM\nPCMCI 기반 인과 그래프 학습\nFLUXNET 대기·환경 데이터 AI 예측"
-  },
-  {
-    "objectID": "research.html#진행-중인-연구",
-    "href": "research.html#진행-중인-연구",
-    "title": "연구",
-    "section": "",
-    "text": "인과구조 학습 기반 시계열 딥러닝 예측 프레임워크 개발\n\n\n\n\nTransfer Entropy + IMV-LSTM\nPCMCI 기반 인과 그래프 학습\nFLUXNET 대기·환경 데이터 AI 예측"
+    "text": "연락처\n\nGitHub: github.com/phyzik\nEmail: phyzik@yuhan.ac.kr"
   },
   {
     "objectID": "privacy-policy.html",
