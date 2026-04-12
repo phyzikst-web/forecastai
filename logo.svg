@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="180" height="40" viewBox="0 0 180 40">
-  <rect width="180" height="40" fill="transparent"/>
-  <text y="30" font-family="Arial, sans-serif" font-size="28" font-weight="900" letter-spacing="-0.5">
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="40" viewBox="0 0 220 40">
+  <rect width="220" height="40" fill="transparent"/>
+  <text y="30" font-family="Arial Black, Arial, sans-serif" font-size="26" font-weight="900" letter-spacing="-0.5">
     <tspan fill="#185FA5">Forecast</tspan><tspan fill="#F97316">AI</tspan>
   </text>
 </svg>

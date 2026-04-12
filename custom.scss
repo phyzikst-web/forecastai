@@ -416,3 +416,16 @@ body {
   max-width: 100%;
   padding: 0;
 }
+
+/* ===== 네비게이션 로고 ===== */
+.navbar-logo img {
+  height: 36px !important;
+  max-width: none !important;
+  width: auto !important;
+}
+
+.navbar-brand img {
+  height: 36px !important;
+  max-width: none !important;
+  width: auto !important;
+}
