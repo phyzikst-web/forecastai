@@ -7,10 +7,9 @@ page-layout: article
 
 Hello! I am **Prof. Shin**, an assistant professor specializing in AI and data science.
 
-- 🎓 PhD in Physics, Pukyong National University
-- 🏫 Assistant Professor, Department of Artificial Intelligence
-- 🔬 AI-based atmospheric and environmental prediction modeling
-- ✏️ Mechanical pencil engraved: **Prof.Shin**
+- PhD in Physics, Pukyong National University
+- Assistant Professor, Department of Artificial Intelligence at Yuhan University
+- AI-based atmospheric and environmental prediction modeling
 
 ## Research Areas
 
@@ -26,4 +25,4 @@ This blog shares research and tutorials on AI, data science, and time series ana
 ## Contact
 
 - GitHub: [github.com/phyzik](https://github.com/phyzik)
-- Email: phyzik@example.ac.kr
+- Email: phyzik@yuhan.ac.kr

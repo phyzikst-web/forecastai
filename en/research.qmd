@@ -3,12 +3,3 @@ title: "Research"
 page-layout: article
 ---
 
-## Ongoing Research
-
-### 2026 NRF Basic Research (In preparation)
-Development of causal structure learning-based time series deep learning prediction framework
-
-### Key Research Keywords
-- Transfer Entropy + IMV-LSTM
-- PCMCI-based causal graph learning
-- FLUXNET atmospheric/environmental data AI prediction
