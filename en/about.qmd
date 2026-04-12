@@ -1,0 +1,29 @@
+---
+title: "About"
+page-layout: article
+---
+
+## Prof. Shin (phyzik)
+
+Hello! I am **Prof. Shin**, an assistant professor specializing in AI and data science.
+
+- 🎓 PhD in Physics, Pukyong National University
+- 🏫 Assistant Professor, Department of Artificial Intelligence
+- 🔬 AI-based atmospheric and environmental prediction modeling
+- ✏️ Mechanical pencil engraved: **Prof.Shin**
+
+## Research Areas
+
+- **Causal Inference**: Transfer Entropy, PCMCI, IMV-LSTM
+- **Time Series Deep Learning**: Transformer, LSTM, CNN-based forecasting
+- **Atmospheric & Environmental AI**: FLUXNET CH₄ flux prediction, meteorological data analysis
+- **XAI**: Explainable AI for environmental prediction
+
+## About This Blog
+
+This blog shares research and tutorials on AI, data science, and time series analysis.
+
+## Contact
+
+- GitHub: [github.com/phyzik](https://github.com/phyzik)
+- Email: phyzik@example.ac.kr

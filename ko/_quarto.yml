@@ -27,6 +27,7 @@ website:
 
   page-footer:
     left: "© 2026 Prof. Shin · AI·DATA LAB"
+    center: "[개인정보처리방침](privacy-policy.qmd)"
     right: "Powered by [Quarto](https://quarto.org)"
 
   search: true

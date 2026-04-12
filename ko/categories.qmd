@@ -1,0 +1,8 @@
+---
+title: "카테고리"
+listing:
+  contents: posts
+  type: default
+  categories: true
+  sort: "date desc"
+---

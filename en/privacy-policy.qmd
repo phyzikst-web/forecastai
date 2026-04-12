@@ -1,0 +1,41 @@
+---
+title: "Privacy Policy"
+page-layout: article
+---
+
+This Privacy Policy describes how AI·DATA LAB ("this site") collects and uses information.
+
+## Information We Collect
+
+This site may collect the following information.
+
+- Visitor statistics (anonymous data via Google Analytics)
+- Email address provided when subscribing to newsletters
+
+## Google Analytics
+
+This site uses Google Analytics to collect visitor statistics. Google Analytics uses cookies, and collected data is processed anonymously. You can review Google's Privacy Policy [here](https://policies.google.com/privacy).
+
+## Google AdSense
+
+This site displays advertisements through Google AdSense. Google may use cookies to show ads based on your interests. To opt out of personalized advertising, visit [Google Ad Settings](https://adssettings.google.com).
+
+## Cookies
+
+This site uses cookies to enhance user experience. You may disable cookies in your browser settings, though some features may be limited.
+
+## Third-Party Links
+
+This site may contain links to external websites. We are not responsible for the privacy practices of those sites.
+
+## Changes to This Policy
+
+This policy may be updated as needed. Any changes will be reflected on this page.
+
+## Contact
+
+For any privacy-related inquiries, please contact us at:
+
+- Email: phyzik@example.ac.kr
+
+*Last updated: April 2026*

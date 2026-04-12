@@ -1,0 +1,11 @@
+---
+title: "Contact"
+page-layout: article
+---
+
+## Contact
+
+- **Email**: phyzik@example.ac.kr
+- **GitHub**: [github.com/phyzik](https://github.com/phyzik)
+
+Feel free to reach out via email for any inquiries.

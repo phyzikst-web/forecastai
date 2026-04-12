@@ -1,0 +1,11 @@
+---
+title: "연락처"
+page-layout: article
+---
+
+## 연락처
+
+- **Email**: phyzik@example.ac.kr
+- **GitHub**: [github.com/phyzik](https://github.com/phyzik)
+
+문의 사항이 있으시면 이메일로 연락 주세요.

@@ -1,0 +1,29 @@
+---
+title: "소개"
+page-layout: article
+---
+
+## Prof. Shin (phyzik)
+
+안녕하세요. AI 및 데이터 사이언스를 연구하는 **신 교수(Prof. Shin)**입니다.
+
+- 🎓 물리학 박사 (부경대학교)
+- 🏫 전문대학교 인공지능학과 조교수
+- 🔬 AI 기반 대기·환경 예측 모델링 연구
+- ✏️ 기계 샤프 각인: **Prof.Shin**
+
+## 연구 분야
+
+- **인과 추론**: Transfer Entropy, PCMCI, IMV-LSTM
+- **시계열 딥러닝**: Transformer, LSTM, CNN 기반 예측
+- **대기·환경 AI**: FLUXNET CH₄ flux 예측, 기상 데이터 분석
+- **XAI**: 설명 가능한 AI 기반 환경 예측
+
+## 이 블로그에 대해
+
+AI, 데이터 사이언스, 시계열 분석에 관한 연구 내용과 튜토리얼을 공유하는 공간입니다.
+
+## 연락처
+
+- GitHub: [github.com/phyzik](https://github.com/phyzik)
+- Email: phyzik@example.ac.kr
