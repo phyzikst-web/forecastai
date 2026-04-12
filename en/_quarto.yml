@@ -3,11 +3,13 @@ project:
   output-dir: _site
 
 website:
-  title: "AI·DATA LAB"
-  description: "AI & Data Science Research Blog | Prof. Shin"
+  title: "ForecastAI"
+  description: "AI & Data Science Forecasting Research Blog | Prof. Shin"
   favicon: ../favicon.ico
 
   navbar:
+    logo: ../logo.svg
+    logo-href: index.qmd
     left:
       - text: "HOME"
         href: index.qmd
@@ -26,7 +28,7 @@ website:
         href: https://github.com/phyzik
 
   page-footer:
-    left: "© 2026 Prof. Shin · AI·DATA LAB"
+    left: "© 2026 Prof. Shin · ForecastAI"
     center: "[Privacy Policy](privacy-policy.qmd)"
     right: "Powered by [Quarto](https://quarto.org)"
 

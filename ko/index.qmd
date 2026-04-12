@@ -15,13 +15,6 @@ listing:
 ---
 
 ```{=html}
-<div class="site-header">
-  <div class="site-logo">
-    <span class="logo-forecast">Forecast</span><span class="logo-ai">AI</span>
-  </div>
-  <div class="site-tagline">AI &amp; Data Science 예측 연구 블로그 | Prof. Shin</div>
-</div>
-
 <div class="main-layout">
   <div class="posts-area">
 ```
