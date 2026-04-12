@@ -1,0 +1,18 @@
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const navbar = document.querySelector('.navbar-brand, .navbar-logo');
+  if (navbar) {
+    navbar.innerHTML = '<span style="font-size:1.5rem;font-weight:900;letter-spacing:-0.5px;"><span style="color:#185FA5;">Forecast</span><span style="color:#F97316;">AI</span></span>';
+  } else {
+    // navbar-brand 없으면 새로 삽입
+    const navbarContainer = document.querySelector('.navbar-container, .navbar > .container-fluid, nav.navbar');
+    if (navbarContainer) {
+      const logo = document.createElement('a');
+      logo.href = 'index.html';
+      logo.className = 'navbar-brand';
+      logo.innerHTML = '<span style="font-size:1.5rem;font-weight:900;letter-spacing:-0.5px;"><span style="color:#185FA5;">Forecast</span><span style="color:#F97316;">AI</span></span>';
+      navbarContainer.insertBefore(logo, navbarContainer.firstChild);
+    }
+  }
+});
+</script>
