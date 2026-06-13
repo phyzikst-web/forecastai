@@ -102,28 +102,28 @@
     "href": "about.html",
     "title": "About",
     "section": "",
-    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\nPhD in Physics, Pukyong National University\nAssistant Professor, Department of Artificial Intelligence at Yuhan University\nAI-based atmospheric and environmental prediction modeling"
+    "text": "ForecastAI is a technical blog sharing core concepts, recent research, and hands-on tutorials in artificial intelligence and data science."
   },
   {
-    "objectID": "about.html#prof.-shin-phyzik",
-    "href": "about.html#prof.-shin-phyzik",
+    "objectID": "about.html#forecastai",
+    "href": "about.html#forecastai",
     "title": "About",
     "section": "",
-    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\nPhD in Physics, Pukyong National University\nAssistant Professor, Department of Artificial Intelligence at Yuhan University\nAI-based atmospheric and environmental prediction modeling"
+    "text": "ForecastAI is a technical blog sharing core concepts, recent research, and hands-on tutorials in artificial intelligence and data science."
   },
   {
-    "objectID": "about.html#research-areas",
-    "href": "about.html#research-areas",
+    "objectID": "about.html#topics-we-cover",
+    "href": "about.html#topics-we-cover",
     "title": "About",
-    "section": "Research Areas",
-    "text": "Research Areas\n\nCausal Inference: Transfer Entropy, PCMCI, IMV-LSTM\nTime Series Deep Learning: Transformer, LSTM, CNN-based forecasting\nAtmospheric & Environmental AI: FLUXNET CH₄ flux prediction, meteorological data analysis\nXAI: Explainable AI for environmental prediction"
+    "section": "Topics We Cover",
+    "text": "Topics We Cover\n\nTime Series Forecasting — LSTM, Transformer, and statistical model-based analysis and prediction\nCausal Inference — Data-driven causal analysis using Transfer Entropy, Granger Causality, PCMCI, and more\nDeep Learning & Machine Learning — Model architecture, training strategies, and hyperparameter tuning\nExplainable AI (XAI) — Techniques for model interpretability and trustworthiness\nData Analysis — Exploratory data analysis, preprocessing, and visualization"
   },
   {
-    "objectID": "about.html#about-this-blog",
-    "href": "about.html#about-this-blog",
+    "objectID": "about.html#our-goals",
+    "href": "about.html#our-goals",
     "title": "About",
-    "section": "About This Blog",
-    "text": "About This Blog\nThis blog shares research and tutorials on AI, data science, and time series analysis."
+    "section": "Our Goals",
+    "text": "Our Goals\n\nExplain papers and theory with executable code.\nProvide practical, actionable content for students and practitioners in data science and AI.\nCover each topic in depth while keeping it concise and to the point."
   },
   {
     "objectID": "about.html#contact",
