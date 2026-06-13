@@ -1,59 +1,10 @@
 [
   {
-    "objectID": "contact.html",
-    "href": "contact.html",
-    "title": "연락처",
-    "section": "",
-    "text": "Email: phyzik@yuhan.ac.kr\nGitHub: github.com/phyzik\n\n문의 사항이 있으시면 이메일로 연락 주세요."
-  },
-  {
-    "objectID": "contact.html#연락처",
-    "href": "contact.html#연락처",
-    "title": "연락처",
-    "section": "",
-    "text": "Email: phyzik@yuhan.ac.kr\nGitHub: github.com/phyzik\n\n문의 사항이 있으시면 이메일로 연락 주세요."
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "소개",
-    "section": "",
-    "text": "안녕하세요. AI 및 데이터 사이언스를 연구하는 신 교수(Prof. Shin)입니다.\n\n물리학 박사 (부경대학교)\n유한대학교 인공지능학과 조교수\nAI 기반 대기·환경 예측 모델링 연구"
-  },
-  {
-    "objectID": "about.html#prof.-shin-phyzik",
-    "href": "about.html#prof.-shin-phyzik",
-    "title": "소개",
-    "section": "",
-    "text": "안녕하세요. AI 및 데이터 사이언스를 연구하는 신 교수(Prof. Shin)입니다.\n\n물리학 박사 (부경대학교)\n유한대학교 인공지능학과 조교수\nAI 기반 대기·환경 예측 모델링 연구"
-  },
-  {
-    "objectID": "about.html#연구-분야",
-    "href": "about.html#연구-분야",
-    "title": "소개",
-    "section": "연구 분야",
-    "text": "연구 분야\n\n인과 추론: Transfer Entropy, PCMCI, IMV-LSTM\n시계열 딥러닝: Transformer, LSTM, CNN 기반 예측\n대기·환경 AI: FLUXNET CH₄ flux 예측, 기상 데이터 분석\nXAI: 설명 가능한 AI 기반 환경 예측"
-  },
-  {
-    "objectID": "about.html#이-블로그에-대해",
-    "href": "about.html#이-블로그에-대해",
-    "title": "소개",
-    "section": "이 블로그에 대해",
-    "text": "이 블로그에 대해\nAI, 데이터 사이언스, 시계열 분석에 관한 연구 내용과 튜토리얼을 공유하는 공간입니다."
-  },
-  {
-    "objectID": "about.html#연락처",
-    "href": "about.html#연락처",
-    "title": "소개",
-    "section": "연락처",
-    "text": "연락처\n\nGitHub: github.com/phyzik\nEmail: phyzik@yuhan.ac.kr"
-  },
-  {
     "objectID": "privacy-policy.html",
     "href": "privacy-policy.html",
     "title": "개인정보처리방침",
     "section": "",
-    "text": "본 개인정보처리방침은 AI·DATA LAB(이하 “본 사이트”)이 수집하는 정보와 그 사용 방법을 설명합니다."
+    "text": "본 개인정보처리방침은 ForecastAI(이하 “본 사이트”)이 수집하는 정보와 그 사용 방법을 설명합니다."
   },
   {
     "objectID": "privacy-policy.html#수집하는-정보",
@@ -102,14 +53,7 @@
     "href": "privacy-policy.html#문의",
     "title": "개인정보처리방침",
     "section": "문의",
-    "text": "문의\n개인정보 관련 문의사항은 아래로 연락해주세요.\n\nEmail: phyzik@example.ac.kr\n\n최종 업데이트: 2026년 4월"
-  },
-  {
-    "objectID": "categories.html",
-    "href": "categories.html",
-    "title": "카테고리",
-    "section": "",
-    "text": "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측\n\n\n\n인과추론\n\n딥러닝\n\n시계열\n\nPython\n\n\n\nTransfer Entropy를 변수 선택 기준으로 활용하여 IMV-LSTM 아키텍처에 통합하는 방법을 소개합니다. FLUXNET CH₄ 데이터에 적용하여 인과 구조 기반 예측 성능을 검증합니다.\n\n\n\n\n\n\n\n10.\n\n\n\n\nProf. Shin (phyzik)\n\n\n:::\n:::\n:::\n일치 없음\n:::\n:::"
+    "text": "문의\n최종 업데이트: 2026년 4월"
   },
   {
     "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html",
@@ -131,5 +75,61 @@
     "title": "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측",
     "section": "실험 결과",
     "text": "실험 결과\n\n\n\n모델\nRMSE\nR²\n\n\n\n\nVanilla LSTM\n0.124\n0.821\n\n\nTE-IMV-LSTM\n0.091\n0.901"
+  },
+  {
+    "objectID": "categories.html",
+    "href": "categories.html",
+    "title": "카테고리",
+    "section": "",
+    "text": "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측\n\n\n\n인과추론\n\n딥러닝\n\n시계열\n\nPython\n\n\n\nTransfer Entropy를 변수 선택 기준으로 활용하여 IMV-LSTM 아키텍처에 통합하는 방법을 소개합니다. FLUXNET CH₄ 데이터에 적용하여 인과 구조 기반 예측 성능을 검증합니다.\n\n\n\n\n\n\n\n10.\n\n\n\n\nProf. Shin (phyzik)\n\n\n:::\n:::\n:::\n일치 없음\n:::\n:::"
+  },
+  {
+    "objectID": "contact.html",
+    "href": "contact.html",
+    "title": "연락처",
+    "section": "",
+    "text": "GitHub: github.com/phyzikst-web\n\n문의 사항이 있으시면 이메일로 연락 주세요."
+  },
+  {
+    "objectID": "contact.html#연락처",
+    "href": "contact.html#연락처",
+    "title": "연락처",
+    "section": "",
+    "text": "GitHub: github.com/phyzikst-web\n\n문의 사항이 있으시면 이메일로 연락 주세요."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "소개",
+    "section": "",
+    "text": "안녕하세요. AI 및 데이터 사이언스를 연구하는 신 교수(Prof. Shin)입니다.\n\n물리학 박사 (부경대학교)\n유한대학교 인공지능학과 조교수\nAI 기반 대기·환경 예측 모델링 연구"
+  },
+  {
+    "objectID": "about.html#prof.-shin-phyzik",
+    "href": "about.html#prof.-shin-phyzik",
+    "title": "소개",
+    "section": "",
+    "text": "안녕하세요. AI 및 데이터 사이언스를 연구하는 신 교수(Prof. Shin)입니다.\n\n물리학 박사 (부경대학교)\n유한대학교 인공지능학과 조교수\nAI 기반 대기·환경 예측 모델링 연구"
+  },
+  {
+    "objectID": "about.html#연구-분야",
+    "href": "about.html#연구-분야",
+    "title": "소개",
+    "section": "연구 분야",
+    "text": "연구 분야\n\n인과 추론: Transfer Entropy, PCMCI, IMV-LSTM\n시계열 딥러닝: Transformer, LSTM, CNN 기반 예측\n대기·환경 AI: FLUXNET CH₄ flux 예측, 기상 데이터 분석\nXAI: 설명 가능한 AI 기반 환경 예측"
+  },
+  {
+    "objectID": "about.html#이-블로그에-대해",
+    "href": "about.html#이-블로그에-대해",
+    "title": "소개",
+    "section": "이 블로그에 대해",
+    "text": "이 블로그에 대해\nAI, 데이터 사이언스, 시계열 분석에 관한 연구 내용과 튜토리얼을 공유하는 공간입니다."
+  },
+  {
+    "objectID": "about.html#연락처",
+    "href": "about.html#연락처",
+    "title": "소개",
+    "section": "연락처",
+    "text": "연락처\n\nGitHub: github.com/phyzikst-web"
   }
 ]

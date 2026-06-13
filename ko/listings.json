@@ -1,12 +1,12 @@
 [
   {
-    "listing": "/categories.html",
+    "listing": "/index.html",
     "items": [
       "/posts/2026-04-10-transfer-entropy-lstm/index.html"
     ]
   },
   {
-    "listing": "/index.html",
+    "listing": "/categories.html",
     "items": [
       "/posts/2026-04-10-transfer-entropy-lstm/index.html"
     ]

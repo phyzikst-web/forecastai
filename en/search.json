@@ -1,59 +1,10 @@
 [
   {
-    "objectID": "contact.html",
-    "href": "contact.html",
-    "title": "Contact",
-    "section": "",
-    "text": "Email: phyzik@yuhan.ac.kr\nGitHub: github.com/phyzik\n\nFeel free to reach out via email for any inquiries."
-  },
-  {
-    "objectID": "contact.html#contact",
-    "href": "contact.html#contact",
-    "title": "Contact",
-    "section": "",
-    "text": "Email: phyzik@yuhan.ac.kr\nGitHub: github.com/phyzik\n\nFeel free to reach out via email for any inquiries."
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "About",
-    "section": "",
-    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\nPhD in Physics, Pukyong National University\nAssistant Professor, Department of Artificial Intelligence at Yuhan University\nAI-based atmospheric and environmental prediction modeling"
-  },
-  {
-    "objectID": "about.html#prof.-shin-phyzik",
-    "href": "about.html#prof.-shin-phyzik",
-    "title": "About",
-    "section": "",
-    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\nPhD in Physics, Pukyong National University\nAssistant Professor, Department of Artificial Intelligence at Yuhan University\nAI-based atmospheric and environmental prediction modeling"
-  },
-  {
-    "objectID": "about.html#research-areas",
-    "href": "about.html#research-areas",
-    "title": "About",
-    "section": "Research Areas",
-    "text": "Research Areas\n\nCausal Inference: Transfer Entropy, PCMCI, IMV-LSTM\nTime Series Deep Learning: Transformer, LSTM, CNN-based forecasting\nAtmospheric & Environmental AI: FLUXNET CH₄ flux prediction, meteorological data analysis\nXAI: Explainable AI for environmental prediction"
-  },
-  {
-    "objectID": "about.html#about-this-blog",
-    "href": "about.html#about-this-blog",
-    "title": "About",
-    "section": "About This Blog",
-    "text": "About This Blog\nThis blog shares research and tutorials on AI, data science, and time series analysis."
-  },
-  {
-    "objectID": "about.html#contact",
-    "href": "about.html#contact",
-    "title": "About",
-    "section": "Contact",
-    "text": "Contact\n\nGitHub: github.com/phyzik\nEmail: phyzik@yuhan.ac.kr"
-  },
-  {
     "objectID": "privacy-policy.html",
     "href": "privacy-policy.html",
     "title": "Privacy Policy",
     "section": "",
-    "text": "This Privacy Policy describes how AI·DATA LAB (“this site”) collects and uses information."
+    "text": "This Privacy Policy describes how ForecastAI (“this site”) collects and uses information."
   },
   {
     "objectID": "privacy-policy.html#information-we-collect",
@@ -102,14 +53,7 @@
     "href": "privacy-policy.html#contact",
     "title": "Privacy Policy",
     "section": "Contact",
-    "text": "Contact\nFor any privacy-related inquiries, please contact us at:\n\nEmail: phyzik@example.ac.kr\n\nLast updated: April 2026"
-  },
-  {
-    "objectID": "categories.html",
-    "href": "categories.html",
-    "title": "Categories",
-    "section": "",
-    "text": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM\n\n\n\nCausal Inference\n\nDeep Learning\n\nTime Series\n\nPython\n\n\n\nWe introduce a TE-IMV-LSTM framework that integrates Transfer Entropy as a variable selection criterion into the IMV-LSTM architecture, validated on FLUXNET CH₄ data.\n\n\n\n\n\nApr 10, 2026\n\n\nProf. Shin (phyzik)\n\n\n\n\n\nNo matching items"
+    "text": "Contact\nLast updated: April 2026"
   },
   {
     "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html",
@@ -131,5 +75,61 @@
     "title": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM",
     "section": "Results",
     "text": "Results\n\n\n\nModel\nRMSE\nR²\n\n\n\n\nVanilla LSTM\n0.124\n0.821\n\n\nTE-IMV-LSTM\n0.091\n0.901"
+  },
+  {
+    "objectID": "categories.html",
+    "href": "categories.html",
+    "title": "Categories",
+    "section": "",
+    "text": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM\n\n\n\nCausal Inference\n\nDeep Learning\n\nTime Series\n\nPython\n\n\n\nWe introduce a TE-IMV-LSTM framework that integrates Transfer Entropy as a variable selection criterion into the IMV-LSTM architecture, validated on FLUXNET CH₄ data.\n\n\n\n\n\nApr 10, 2026\n\n\nProf. Shin (phyzik)\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "contact.html",
+    "href": "contact.html",
+    "title": "Contact",
+    "section": "",
+    "text": "GitHub: github.com/phyzikst-web\n\nFeel free to reach out via email for any inquiries."
+  },
+  {
+    "objectID": "contact.html#contact",
+    "href": "contact.html#contact",
+    "title": "Contact",
+    "section": "",
+    "text": "GitHub: github.com/phyzikst-web\n\nFeel free to reach out via email for any inquiries."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\nPhD in Physics, Pukyong National University\nAssistant Professor, Department of Artificial Intelligence at Yuhan University\nAI-based atmospheric and environmental prediction modeling"
+  },
+  {
+    "objectID": "about.html#prof.-shin-phyzik",
+    "href": "about.html#prof.-shin-phyzik",
+    "title": "About",
+    "section": "",
+    "text": "Hello! I am Prof. Shin, an assistant professor specializing in AI and data science.\n\nPhD in Physics, Pukyong National University\nAssistant Professor, Department of Artificial Intelligence at Yuhan University\nAI-based atmospheric and environmental prediction modeling"
+  },
+  {
+    "objectID": "about.html#research-areas",
+    "href": "about.html#research-areas",
+    "title": "About",
+    "section": "Research Areas",
+    "text": "Research Areas\n\nCausal Inference: Transfer Entropy, PCMCI, IMV-LSTM\nTime Series Deep Learning: Transformer, LSTM, CNN-based forecasting\nAtmospheric & Environmental AI: FLUXNET CH₄ flux prediction, meteorological data analysis\nXAI: Explainable AI for environmental prediction"
+  },
+  {
+    "objectID": "about.html#about-this-blog",
+    "href": "about.html#about-this-blog",
+    "title": "About",
+    "section": "About This Blog",
+    "text": "About This Blog\nThis blog shares research and tutorials on AI, data science, and time series analysis."
+  },
+  {
+    "objectID": "about.html#contact",
+    "href": "about.html#contact",
+    "title": "About",
+    "section": "Contact",
+    "text": "Contact\n\nGitHub: github.com/phyzikst-web"
   }
 ]
