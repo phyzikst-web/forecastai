@@ -48,12 +48,6 @@ listing:
       </ul>
     </div>
 
-    <div class="sidebar-widget profile-widget">
-      <img src="../profile.jpg" alt="Prof. Shin" class="profile-img" onerror="this.style.display='none'" />
-      <p><strong>Prof. Shin (phyzik)</strong></p>
-      <p>Assistant Professor of AI<br/>PhD in Physics | Atmospheric AI Research</p>
-      <a href="about.html" class="profile-link">About Me →</a>
-    </div>
   </aside>
 </div>
 

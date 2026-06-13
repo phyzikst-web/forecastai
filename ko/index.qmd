@@ -48,12 +48,6 @@ listing:
       </ul>
     </div>
 
-    <div class="sidebar-widget profile-widget">
-      <img src="../profile.jpg" alt="Prof. Shin" class="profile-img" onerror="this.style.display='none'" />
-      <p><strong>Prof. Shin (phyzik)</strong></p>
-      <p>AI 및 데이터 사이언스 조교수<br/>물리학 박사 | 대기·환경 AI 예측 연구</p>
-      <a href="about.html" class="profile-link">소개 →</a>
-    </div>
   </aside>
 </div>
 
