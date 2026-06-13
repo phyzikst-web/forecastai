@@ -416,12 +416,17 @@ body {
   max-width: 100%;
   padding: 0;
 }
-/* ===== 네비게이션 로고 텍스트 ===== */
 .navbar-brand {
   font-size: 1.6rem !important;
   font-weight: 900 !important;
-  letter-spacing: -0.5px !important;
+  letter-spacing: -1px !important; /* 자간을 더 좁혀서 완전히 붙어보이게 함 */
   color: #185FA5 !important;
   text-decoration: none !important;
+}
+
+.navbar-title span {
+  letter-spacing: -1px !important;
+  margin-left: 0px !important;
+  padding-left: 0px !important;
 }
 
