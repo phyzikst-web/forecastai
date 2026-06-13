@@ -3,26 +3,24 @@ title: "About"
 page-layout: article
 ---
 
-## Prof. Shin (phyzik)
+## ForecastAI
 
-Hello! I am **Prof. Shin**, an assistant professor specializing in AI and data science.
+**ForecastAI** is a technical blog sharing core concepts, recent research, and hands-on tutorials in artificial intelligence and data science.
 
-- PhD in Physics, Pukyong National University
-- Assistant Professor, Department of Artificial Intelligence at Yuhan University
-- AI-based atmospheric and environmental prediction modeling
+## Topics We Cover
 
-## Research Areas
+- **Time Series Forecasting** — LSTM, Transformer, and statistical model-based analysis and prediction
+- **Causal Inference** — Data-driven causal analysis using Transfer Entropy, Granger Causality, PCMCI, and more
+- **Deep Learning & Machine Learning** — Model architecture, training strategies, and hyperparameter tuning
+- **Explainable AI (XAI)** — Techniques for model interpretability and trustworthiness
+- **Data Analysis** — Exploratory data analysis, preprocessing, and visualization
 
-- **Causal Inference**: Transfer Entropy, PCMCI, IMV-LSTM
-- **Time Series Deep Learning**: Transformer, LSTM, CNN-based forecasting
-- **Atmospheric & Environmental AI**: FLUXNET CH₄ flux prediction, meteorological data analysis
-- **XAI**: Explainable AI for environmental prediction
+## Our Goals
 
-## About This Blog
-
-This blog shares research and tutorials on AI, data science, and time series analysis.
+1. Explain papers and theory with **executable code**.
+2. Provide **practical, actionable content** for students and practitioners in data science and AI.
+3. Cover each topic in depth while keeping it **concise and to the point**.
 
 ## Contact
 
 - GitHub: [github.com/phyzikst-web](https://github.com/phyzikst-web)
-
