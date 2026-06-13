@@ -3,7 +3,7 @@ title: "Privacy Policy"
 page-layout: article
 ---
 
-This Privacy Policy describes how AI·DATA LAB ("this site") collects and uses information.
+This Privacy Policy describes how ForecastAI ("this site") collects and uses information.
 
 ## Information We Collect
 
@@ -34,8 +34,6 @@ This policy may be updated as needed. Any changes will be reflected on this page
 
 ## Contact
 
-For any privacy-related inquiries, please contact us at:
 
-- Email: phyzik@example.ac.kr
 
 *Last updated: April 2026*

@@ -5,7 +5,7 @@ page-layout: article
 
 ## 연락처
 
-- **Email**: phyzik@yuhan.ac.kr
-- **GitHub**: [github.com/phyzik](https://github.com/phyzik)
+
+- **GitHub**: [github.com/phyzikst-web](https://github.com/phyzikst-web)
 
 문의 사항이 있으시면 이메일로 연락 주세요.

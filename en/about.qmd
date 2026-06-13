@@ -24,5 +24,5 @@ This blog shares research and tutorials on AI, data science, and time series ana
 
 ## Contact
 
-- GitHub: [github.com/phyzik](https://github.com/phyzik)
-- Email: phyzik@yuhan.ac.kr
+- GitHub: [github.com/phyzikst-web](https://github.com/phyzikst-web)
+

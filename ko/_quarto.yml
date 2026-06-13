@@ -3,7 +3,7 @@ project:
   output-dir: _site
 
 website:
-  title: "Forecast"
+  title: "ForecastAI"
   description: "AI & Data Science 예측 연구 블로그 | Prof. Shin"
   favicon: ../favicon.ico
 
@@ -24,7 +24,7 @@ website:
       - text: "🇺🇸 English"
         href: "../en/"
       - icon: github
-        href: https://github.com/phyzik
+        href: https://github.com/phyzikst-web
 
   page-footer:
     left: "© 2026 Prof. Shin · ForecastAI"
@@ -39,7 +39,7 @@ format:
     lang: ko
     toc: false
     code-fold: true
-    code-tools: true
+    code-tools: false
     highlight-style: github
     mainfont: "Noto Sans KR"
     monofont: "JetBrains Mono"

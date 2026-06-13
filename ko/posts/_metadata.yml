@@ -4,5 +4,5 @@ format:
     toc: true
     toc-depth: 3
     code-fold: true
-    code-tools: true
+    code-tools: false
 freeze: auto

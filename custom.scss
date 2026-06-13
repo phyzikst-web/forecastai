@@ -425,9 +425,4 @@ body {
   text-decoration: none !important;
 }
 
-.navbar-brand::after {
-  content: 'AI';
-  color: #F97316;
-  font-size: 1.6rem;
-  font-weight: 900;
-}
+/* navbar-brand::after 제거됨 — title에 ForecastAI로 통일 */

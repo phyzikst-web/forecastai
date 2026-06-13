@@ -27,16 +27,12 @@ listing:
 
   <aside class="sidebar">
     <div class="sidebar-widget search-widget">
-      <input type="text" id="search-input" placeholder="Search AI·DATA LAB.." autocomplete="off" />
+      <input type="text" id="search-input" placeholder="Search ForecastAI.." autocomplete="off" />
       <button id="search-btn">Go</button>
       <div id="search-results" class="search-dropdown" style="display:none;"></div>
     </div>
 
-    <div class="sidebar-widget subscribe-widget">
-      <input type="email" id="email-input" placeholder="Your e-mail here" />
-      <button onclick="doSubscribe()">Subscribe</button>
-      <p class="subscribe-note">Get notified when new posts are published.</p>
-    </div>
+
 
     <div class="sidebar-widget popular-widget">
       <h4>Recent Posts</h4>
@@ -158,7 +154,7 @@ function renderCategories(catCount, catLinks) {
     : '<li style="color:#aaa;font-size:0.85rem;">No categories</li>';
 }
 
-function doSubscribe() { alert('Subscribe feature coming soon!'); }
+
 
 loadSearchIndex();
 </script>

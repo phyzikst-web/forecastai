@@ -3,7 +3,7 @@ title: "개인정보처리방침"
 page-layout: article
 ---
 
-본 개인정보처리방침은 AI·DATA LAB(이하 "본 사이트")이 수집하는 정보와 그 사용 방법을 설명합니다.
+본 개인정보처리방침은 ForecastAI(이하 "본 사이트")이 수집하는 정보와 그 사용 방법을 설명합니다.
 
 ## 수집하는 정보
 
@@ -34,8 +34,6 @@ page-layout: article
 
 ## 문의
 
-개인정보 관련 문의사항은 아래로 연락해주세요.
 
-- Email: phyzik@example.ac.kr
 
 *최종 업데이트: 2026년 4월*
