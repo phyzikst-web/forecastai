@@ -43,7 +43,6 @@ format:
     highlight-style: github
     mainfont: "Noto Sans KR"
     monofont: "JetBrains Mono"
-    include-after-body: ../navbar-logo.html
 
 execute:
   freeze: auto
