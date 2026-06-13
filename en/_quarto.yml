@@ -3,7 +3,7 @@ project:
   output-dir: _site
 
 website:
-  title: "ForecastAI"
+  title: "Forecast"
   description: "AI & Data Science Forecasting Research Blog | Prof. Shin"
   favicon: ../favicon.ico
 
