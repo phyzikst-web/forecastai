@@ -427,7 +427,7 @@ body {
 
 .navbar-brand::after {
   content: 'AI';
-  color: #F97316;
+  color: #F97316 !important;
   font-size: 1.6rem;
   font-weight: 900;
 }
