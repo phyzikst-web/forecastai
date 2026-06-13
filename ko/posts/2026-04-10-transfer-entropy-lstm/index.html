@@ -265,6 +265,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 
 </main> <!-- /main -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const navbar = document.querySelector('.navbar-brand');
+  if (navbar) {
+    navbar.innerHTML = '<span style="font-size:1.6rem;font-weight:900;letter-spacing:-0.5px;"><span style="color:#185FA5;">Forecast</span><span style="color:#F97316;">AI</span></span>';
+  }
+});
+</script>
+
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
     const icon = "";
