@@ -1,6 +1,6 @@
-# AI·DATA LAB
+# ForecastAI
 
-AI 및 데이터 사이언스 연구 블로그 | Prof. Shin (phyzik)
+AI 및 데이터 과학 예측 연구 블로그 | Prof. Shin (phyzikst-web)
 
 ## 구조
 
