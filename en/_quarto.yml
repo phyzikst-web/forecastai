@@ -3,12 +3,12 @@ project:
   output-dir: _site
 
 website:
-  title: "Forecast"
-  description: "AI & Data Science Forecasting Research Blog | Prof. Shin"
+  title: "ForecastAI"
+  description: "AI & Data Science Research Blog | Prof. Shin"
   favicon: ../favicon.ico
 
   navbar:
-
+    title: "Forecast<span style='color:#F97316;'>AI</span>"
     left:
       - text: "HOME"
         href: index.qmd
