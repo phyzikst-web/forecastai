@@ -18,6 +18,7 @@ toc-depth: 3
 number-sections: false
 code-fold: false
 code-tools: false
+bibliography: ../../references.bib
 execute:
   echo: true
   output: true
@@ -354,4 +355,7 @@ $H$개의 모델과 끊어진 구간 간 구조를 대가로 비편향과 구간
 하나가 필요하다면, 적절한 계절성 제거를 동반한 다중 출력 모델은 NN5 규모의 증거가
 잘 뒷받침합니다. 다만 이를 정답이 아니라 넘어서야 할 기준선으로 다루십시오.
 
+## 참고문헌
 
+::: {#refs}
+:::

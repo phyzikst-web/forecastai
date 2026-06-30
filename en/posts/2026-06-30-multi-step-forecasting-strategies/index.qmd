@@ -18,6 +18,7 @@ toc-depth: 3
 number-sections: false
 code-fold: false
 code-tools: false
+bibliography: ../../references.bib
 execute:
   echo: true
   output: true
@@ -376,4 +377,7 @@ default to start from, a multi-output model with proper deseasonalization is wel
 supported by the NN5-scale evidence — but treat it as a baseline to beat, not a
 settled answer.
 
+## References
 
+::: {#refs}
+:::
