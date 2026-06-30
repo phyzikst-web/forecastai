@@ -430,3 +430,7 @@ body {
   padding-left: 0px !important;
 }
 
+/* ===== 자동 목차 번호 뒤 마침표(.) 추가 ===== */
+span.header-section-number::after {
+  content: ".";
+}
