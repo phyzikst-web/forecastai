@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Prof.&nbsp;Shin (phyzik)">
-<meta name="description" content="H-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 비교합니다.">
+<meta name="description" content="H-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 실행 가능한 코드와 함께 비교합니다.">
 
 <title>Recursive, Direct, Joint: 멀티 스텝 예측 전략은 무엇을 포기하는가 – ForecastAI</title>
 <style>
@@ -60,26 +60,7 @@ div.sourceCode
 @media screen {
 pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-/* CSS for citations */
-div.csl-bib-body { }
-div.csl-entry {
-  clear: both;
-}
-.hanging-indent div.csl-entry {
-  margin-left:2em;
-  text-indent:-2em;
-}
-div.csl-left-margin {
-  min-width:2em;
-  float:left;
-}
-div.csl-right-inline {
-  margin-left:2em;
-  padding-left:1em;
-}
-div.csl-indent {
-  margin-left: 2em;
-}</style>
+</style>
 
 
 <script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
@@ -224,16 +205,15 @@ window.Quarto = {
     <h2 id="toc-title">목차</h2>
    
   <ul>
-  <li><a href="#앞으로-24시간을-예측하라는-말-속에-숨은-질문" id="toc-앞으로-24시간을-예측하라는-말-속에-숨은-질문" class="nav-link active" data-scroll-target="#앞으로-24시간을-예측하라는-말-속에-숨은-질문"><span class="header-section-number">1</span> “앞으로 24시간을 예측하라”는 말 속에 숨은 질문</a></li>
-  <li><a href="#재귀recursive-하나의-모델에-자기-출력을-다시-먹이다" id="toc-재귀recursive-하나의-모델에-자기-출력을-다시-먹이다" class="nav-link" data-scroll-target="#재귀recursive-하나의-모델에-자기-출력을-다시-먹이다"><span class="header-section-number">2</span> 재귀(Recursive): 하나의 모델에 자기 출력을 다시 먹이다</a></li>
-  <li><a href="#직접direct-구간마다-모델-하나씩" id="toc-직접direct-구간마다-모델-하나씩" class="nav-link" data-scroll-target="#직접direct-구간마다-모델-하나씩"><span class="header-section-number">3</span> 직접(Direct): 구간마다 모델 하나씩</a></li>
-  <li><a href="#결합joint-mimo-하나의-모델-벡터-출력" id="toc-결합joint-mimo-하나의-모델-벡터-출력" class="nav-link" data-scroll-target="#결합joint-mimo-하나의-모델-벡터-출력"><span class="header-section-number">4</span> 결합(Joint, MIMO): 하나의 모델, 벡터 출력</a></li>
-  <li><a href="#트레이드오프를-나란히-놓고-보기" id="toc-트레이드오프를-나란히-놓고-보기" class="nav-link" data-scroll-target="#트레이드오프를-나란히-놓고-보기"><span class="header-section-number">5</span> 트레이드오프를 나란히 놓고 보기</a></li>
-  <li><a href="#재현-가능한-비교-골격" id="toc-재현-가능한-비교-골격" class="nav-link" data-scroll-target="#재현-가능한-비교-골격"><span class="header-section-number">6</span> 재현 가능한 비교 골격</a></li>
-  <li><a href="#결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가" id="toc-결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가" class="nav-link" data-scroll-target="#결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가"><span class="header-section-number">7</span> 결과를 어떻게 읽고, 문헌은 실제로 무엇을 말하는가</a></li>
-  <li><a href="#한계" id="toc-한계" class="nav-link" data-scroll-target="#한계"><span class="header-section-number">8</span> 한계</a></li>
-  <li><a href="#결론" id="toc-결론" class="nav-link" data-scroll-target="#결론"><span class="header-section-number">9</span> 결론</a></li>
-  <li><a href="#참고문헌" id="toc-참고문헌" class="nav-link" data-scroll-target="#참고문헌"><span class="header-section-number">10</span> 참고문헌</a></li>
+  <li><a href="#앞으로-24시간을-예측하라는-말-속에-숨은-질문" id="toc-앞으로-24시간을-예측하라는-말-속에-숨은-질문" class="nav-link active" data-scroll-target="#앞으로-24시간을-예측하라는-말-속에-숨은-질문">1. “앞으로 24시간을 예측하라”는 말 속에 숨은 질문</a></li>
+  <li><a href="#재귀recursive-하나의-모델에-자기-출력을-다시-먹이다" id="toc-재귀recursive-하나의-모델에-자기-출력을-다시-먹이다" class="nav-link" data-scroll-target="#재귀recursive-하나의-모델에-자기-출력을-다시-먹이다">2. 재귀(Recursive): 하나의 모델에 자기 출력을 다시 먹이다</a></li>
+  <li><a href="#직접direct-구간마다-모델-하나씩" id="toc-직접direct-구간마다-모델-하나씩" class="nav-link" data-scroll-target="#직접direct-구간마다-모델-하나씩">3. 직접(Direct): 구간마다 모델 하나씩</a></li>
+  <li><a href="#결합joint-mimo-하나의-모델-벡터-출력" id="toc-결합joint-mimo-하나의-모델-벡터-출력" class="nav-link" data-scroll-target="#결합joint-mimo-하나의-모델-벡터-출력">4. 결합(Joint, MIMO): 하나의 모델, 벡터 출력</a></li>
+  <li><a href="#트레이드오프를-나란히-놓고-보기" id="toc-트레이드오프를-나란히-놓고-보기" class="nav-link" data-scroll-target="#트레이드오프를-나란히-놓고-보기">5. 트레이드오프를 나란히 놓고 보기</a></li>
+  <li><a href="#재현-가능한-비교" id="toc-재현-가능한-비교" class="nav-link" data-scroll-target="#재현-가능한-비교">6. 재현 가능한 비교</a></li>
+  <li><a href="#결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가" id="toc-결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가" class="nav-link" data-scroll-target="#결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가">7. 결과를 어떻게 읽고, 문헌은 실제로 무엇을 말하는가</a></li>
+  <li><a href="#한계" id="toc-한계" class="nav-link" data-scroll-target="#한계">8. 한계</a></li>
+  <li><a href="#결론" id="toc-결론" class="nav-link" data-scroll-target="#결론">9. 결론</a></li>
   </ul>
 </nav>
     </div>
@@ -252,7 +232,7 @@ window.Quarto = {
 
 <div>
   <div class="description">
-    <p>H-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 비교합니다.</p>
+    <p>H-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 실행 가능한 코드와 함께 비교합니다.</p>
   </div>
 </div>
 
@@ -281,14 +261,14 @@ window.Quarto = {
 </header>
 
 
-<section id="앞으로-24시간을-예측하라는-말-속에-숨은-질문" class="level2" data-number="1">
-<h2 data-number="1" class="anchored" data-anchor-id="앞으로-24시간을-예측하라는-말-속에-숨은-질문"><span class="header-section-number">1</span> “앞으로 24시간을 예측하라”는 말 속에 숨은 질문</h2>
+<section id="앞으로-24시간을-예측하라는-말-속에-숨은-질문" class="level2">
+<h2 class="anchored" data-anchor-id="앞으로-24시간을-예측하라는-말-속에-숨은-질문">1. “앞으로 24시간을 예측하라”는 말 속에 숨은 질문</h2>
 <p>시계열 예측 입문은 대부분 한 스텝 앞을 예측하는 모델을 학습시키는 데서 멈춥니다. 그러나 실무는 값 하나를 원하는 경우가 거의 없습니다. 전력 운영자는 향후 24시간의 부하를, 유통업체는 다음 6주의 수요를, 임상 모델은 앞으로 며칠간의 병상 점유율을 필요로 합니다. 예측 구간 <span class="math inline">\(H\)</span>가 1을 넘는 순간, 한 스텝 설정에서는 마주칠 일이 없던 질문이 생깁니다. <em>과거에서 미래로의 사상(mapping)을 학습하는 모델로부터 어떻게 <span class="math inline">\(H\)</span>개의 값을 만들어 낼 것인가?</em></p>
 <p>이것은 하이퍼파라미터 수준의 세부 사항이 아닙니다. 어떤 전략을 고르느냐에 따라 모델이 실제로 최소화하는 손실이 바뀌고, 예측 오차가 구간을 따라 어떻게 누적되는지가 달라지며, 학습·저장해야 할 모델 수가 달라집니다. 또한 <span class="math inline">\(\hat{y}_{N+1}\)</span>과 <span class="math inline">\(\hat{y}_{N+5}\)</span> 사이의 의존 구조를 보존하느냐 버리느냐도 결정됩니다. 실무에서 지배적인 전략은 세 가지입니다. <strong>재귀(Recursive)</strong>, <strong>직접(Direct)</strong>, 그리고 <strong>결합(Joint)</strong> — 마지막 전략은 문헌에서 보통 <em>다중 출력(Multiple-Output)</em> 또는 <em>MIMO</em>로 불립니다. 세 전략은 서로 다른 가정을 담고 있으며, 어느 것이 최선인가에 대한 실증 기록은 일관성이 없기로 유명합니다. <span class="citation" data-cites="taieb2012">@taieb2012</span> 는 기존 문헌의 결론들이 서로 모순된다는 점을 지적했습니다. 어떤 연구는 재귀를, 어떤 연구는 직접을, 또 어떤 연구는 다중 출력을 지지했습니다.</p>
 <p>이 글 전체에서 멀티 스텝 과제란 <span class="math inline">\(N\)</span>개 관측치로 이루어진 시계열 <span class="math inline">\([y_1, \dots, y_N]\)</span>의 다음 <span class="math inline">\(H\)</span>개 값 <span class="math inline">\([y_{N+1}, \dots, y_{N+H}]\)</span>를 예측하는 것을 뜻하며, <span class="math inline">\(H &gt; 1\)</span>은 예측 구간, <span class="math inline">\(d\)</span>는 입력으로 쓰는 과거 시차의 개수(임베딩 차원)입니다.</p>
 </section>
-<section id="재귀recursive-하나의-모델에-자기-출력을-다시-먹이다" class="level2" data-number="2">
-<h2 data-number="2" class="anchored" data-anchor-id="재귀recursive-하나의-모델에-자기-출력을-다시-먹이다"><span class="header-section-number">2</span> 재귀(Recursive): 하나의 모델에 자기 출력을 다시 먹이다</h2>
+<section id="재귀recursive-하나의-모델에-자기-출력을-다시-먹이다" class="level2">
+<h2 class="anchored" data-anchor-id="재귀recursive-하나의-모델에-자기-출력을-다시-먹이다">2. 재귀(Recursive): 하나의 모델에 자기 출력을 다시 먹이다</h2>
 <p>재귀(또는 <em>반복, iterated</em>) 전략은 가장 오래되고 가장 직관적입니다. 한 스텝 모델 <span class="math inline">\(f\)</span> 하나를 학습합니다.</p>
 <p><span id="eq-recursive-train"><span class="math display">\[
 y_{t+1} = f(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
@@ -306,8 +286,8 @@ y_{t+1} = f(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 <p>핵심은 가운데 경우입니다. <span class="math inline">\(h \ge 2\)</span>가 되는 즉시 입력 중 적어도 하나는 관측치가 아니라 예측값이 됩니다. <span class="math inline">\(h &gt; d\)</span>에 이르면 <em>모든</em> 입력이 예측값입니다. 잘 알려진 약점이 여기서 나옵니다. 오차가 앞으로 전파됩니다. 1스텝의 작은 실수가 2스텝의 입력 일부가 되어 더 큰 실수를 낳고, 그 과정이 반복됩니다. 모델은 자신의 잡음 섞인 출력으로 학습된 적이 없으므로 그에 강건해질 기회가 없습니다. 학습 입력 분포와 예측 입력 분포가 어긋나는 것입니다.</p>
 <p>이를 뒷받침하는 이론적 진술은, 한 스텝 오차의 최소화가 <span class="math inline">\(H\)</span> 스텝 오차의 최소화를 보장하지 않으며 재귀 전략은 점근적으로 편향(asymptotically biased)된다는 것입니다 <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>. 장점도 그만큼 분명합니다. 모델이 하나뿐이라 저장 비용이 낮고, 그 단일 모델에 전체 학습 데이터를 쓸 수 있으며, 재학습 없이 임의의 구간 <span class="math inline">\(H\)</span>까지 도달할 수 있습니다.</p>
 </section>
-<section id="직접direct-구간마다-모델-하나씩" class="level2" data-number="3">
-<h2 data-number="3" class="anchored" data-anchor-id="직접direct-구간마다-모델-하나씩"><span class="header-section-number">3</span> 직접(Direct): 구간마다 모델 하나씩</h2>
+<section id="직접direct-구간마다-모델-하나씩" class="level2">
+<h2 class="anchored" data-anchor-id="직접direct-구간마다-모델-하나씩">3. 직접(Direct): 구간마다 모델 하나씩</h2>
 <p>직접 전략은 각 스텝마다 <em>별도의</em> 모델을 학습시켜 편향 문제를 정면으로 공략합니다. 각 <span class="math inline">\(h \in \{1, \dots, H\}\)</span>에 대해 <span class="math inline">\(f_h\)</span>를 적합합니다.</p>
 <p><span id="eq-direct-train"><span class="math display">\[
 y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
@@ -317,10 +297,10 @@ y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 \hat{y}_{N+h} = \hat{f}_h(y_N, y_{N-1}, \dots, y_{N-d+1}), \quad h = 1, \dots, H.
 \tag{4}\]</span></span></p>
 <p>모든 <span class="math inline">\(\hat{f}_h\)</span>가 <em>관측된</em> 값만 입력으로 받으므로 오차 누적이 없습니다. 재귀 전략의 실패 양상이 구조적으로 부재합니다. 또 각 모델은 자기 구간에 대해 정확히 우리가 원하는 목적함수를 최적화하므로, 직접 전략은 이론적으로 비편향(unbiased)입니다 <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>.</p>
-<p>비용은 세 군ده에서 나타납니다. 첫째, 모델을 하나가 아니라 <span class="math inline">\(H\)</span>개 학습·저장해야 하므로 <span class="math inline">\(H\)</span>가 크면 부담이 됩니다. 둘째, 각 모델이 독립적으로 학습되므로 예측들이 구간 간 의존 구조를 무시합니다. <span class="math inline">\(\hat{y}_{N+5}\)</span>와 <span class="math inline">\(\hat{y}_{N+4}\)</span>를 묶어 주는 것이 없어 들쭉날쭉하고 서로 모순되는 궤적이 나올 수 있습니다. 셋째, 구간이 길수록 유효 학습 표본 수가 줄며, 비편향이라고 해서 유한 표본에서 <em>일치성(consistency)</em>이 보장되는 것은 아닙니다 <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>.</p>
+<p>비용은 세 군데에서 나타납니다. 첫째, 모델을 하나가 아니라 <span class="math inline">\(H\)</span>개 학습·저장해야 하므로 <span class="math inline">\(H\)</span>가 크면 부담이 됩니다. 둘째, 각 모델이 독립적으로 학습되므로 예측들이 구간 간 의존 구조를 무시합니다. <span class="math inline">\(\hat{y}_{N+5}\)</span>와 <span class="math inline">\(\hat{y}_{N+4}\)</span>를 묶어 주는 것이 없어 들쭉날쭉하고 서로 모순되는 궤적이 나올 수 있습니다. 셋째, 구간이 길수록 유효 학습 표본 수가 줄며, 비편향이라고 해서 유한 표본에서 <em>일치성(consistency)</em>이 보장되는 것은 아닙니다 <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>.</p>
 </section>
-<section id="결합joint-mimo-하나의-모델-벡터-출력" class="level2" data-number="4">
-<h2 data-number="4" class="anchored" data-anchor-id="결합joint-mimo-하나의-모델-벡터-출력"><span class="header-section-number">4</span> 결합(Joint, MIMO): 하나의 모델, 벡터 출력</h2>
+<section id="결합joint-mimo-하나의-모델-벡터-출력" class="level2">
+<h2 class="anchored" data-anchor-id="결합joint-mimo-하나의-모델-벡터-출력">4. 결합(Joint, MIMO): 하나의 모델, 벡터 출력</h2>
 <p>결합 전략 — 다중 입력 다중 출력, MIMO — 은 전체 구간을 한 번에 내보내는 단일 모델을 학습합니다. 스칼라 대신 <span class="math inline">\(F\)</span>가 벡터를 반환합니다.</p>
 <p><span id="eq-mimo-train"><span class="math display">\[
 [y_{t+1}, \dots, y_{t+H}] = F(y_t, y_{t-1}, \dots, y_{t-d+1}) + \mathbf{w}_t,
@@ -331,9 +311,10 @@ y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 \tag{6}\]</span></span></p>
 <p>두 가지 성질이 따라옵니다. 재귀가 없으므로 오차 누적이 없습니다. 그리고 <span class="math inline">\(H\)</span>개 출력이 모두 매개변수를 공유하는 하나의 모델에서 나오므로, 이 전략은 예측값들 사이의 <em>확률적 의존 구조를 보존</em>합니다. 애초에 MIMO를 도입한 동기가 바로 이것입니다 <span class="citation" data-cites="taieb2012">[@taieb2012]</span>. <span class="math inline">\(H\)</span>개 유닛의 출력층을 가진 신경망이나 시퀀스-투-시퀀스 디코더가 현대적인 자연스러운 구현입니다.</p>
 <p>대가는 유연성입니다. 공유된 단일 모델은 모든 구간에 동일한 함수 형태를 강제합니다. 입력 윈도우와 <span class="math inline">\(h=1\)</span>의 관계가 <span class="math inline">\(h=H\)</span>의 관계와 다를 수 있는데도 그렇습니다. 중간 형태인 <strong>DIRMO</strong> 전략은 바로 이 지점을 보간하기 위해 제안되었습니다. 크기 <span class="math inline">\(s\)</span>의 블록 단위로 예측하여 <span class="math inline">\(H/s\)</span>개의 모델이 각각 <span class="math inline">\(s\)</span>차원 벡터를 내보내게 함으로써, 의존 구조 보존과 구간별 유연성 사이에서 절충합니다 <span class="citation" data-cites="taieb2012">[@taieb2012]</span>.</p>
+<p>아래 실험과 직결되는 미묘한 점이 하나 있습니다. <em>선형</em> 기저 학습기와 제곱오차 손실을 쓰면, 다중 출력 모델 하나를 적합하는 것과 <span class="math inline">\(H\)</span>개의 단일 출력 모델을 각각 적합하는 것은 열(column)별로 <strong>동일한</strong> 계수를 줍니다. 다중 출력 최소제곱(또는 릿지) 회귀는 공유된 설계행렬 위의 <span class="math inline">\(H\)</span>개 독립 회귀로 분해되기 때문입니다. 따라서 선형 모델에서는 직접과 결합이 수치적으로 같고, 학습기가 출력들을 비선형적으로 묶을 때(예: 신경망의 공유 은닉 표현)에 비로소 갈라집니다. 코드가 이 점을 구체적으로 보여 줍니다.</p>
 </section>
-<section id="트레이드오프를-나란히-놓고-보기" class="level2" data-number="5">
-<h2 data-number="5" class="anchored" data-anchor-id="트레이드오프를-나란히-놓고-보기"><span class="header-section-number">5</span> 트레이드오프를 나란히 놓고 보기</h2>
+<section id="트레이드오프를-나란히-놓고-보기" class="level2">
+<h2 class="anchored" data-anchor-id="트레이드오프를-나란히-놓고-보기">5. 트레이드오프를 나란히 놓고 보기</h2>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -396,9 +377,9 @@ y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 </table>
 <p>표는 핵심 긴장을 드러냅니다. 재귀와 결합은 모두 모델 하나를 쓰지만(저렴), 재귀는 오차 누적으로, 결합은 비유연성으로 그 대가를 치릅니다. 직접은 두 문제를 모두 제거하는 대신 모델링 비용을 <span class="math inline">\(H\)</span>배로 늘리고 구간 간 연결을 끊습니다. 지배적인 열은 없습니다. 바로 그래서 실증 문헌이 엇갈립니다.</p>
 </section>
-<section id="재현-가능한-비교-골격" class="level2" data-number="6">
-<h2 data-number="6" class="anchored" data-anchor-id="재현-가능한-비교-골격"><span class="header-section-number">6</span> 재현 가능한 비교 골격</h2>
-<p>아래 코드는 단일 시계열에서 공정한 비교를 구성합니다. 의도적으로 <em>전략</em>만 달라지도록 단순한 회귀기를 씁니다. 학습기가 아니라 전략이 변수가 되도록 한 것입니다. 방법론적 요점은 세 가지입니다. 학습/테스트 분할이 시간 순서를 지키고(셔플 없음, 미래 정보 누수 없음), 모든 전략에 동일한 시차 윈도우 <span class="math inline">\(d\)</span>와 구간 <span class="math inline">\(H\)</span>를 쓰며, 난수 시드를 고정합니다.</p>
+<section id="재현-가능한-비교" class="level2">
+<h2 class="anchored" data-anchor-id="재현-가능한-비교">6. 재현 가능한 비교</h2>
+<p>아래 코드는 단일 합성 시계열에서 공정한 비교를 실제로 실행합니다. 의도적으로 <em>전략</em>만 달라지도록 단순한 릿지 회귀기를 씁니다. 학습기가 아니라 전략이 변수가 되도록 한 것입니다. 방법론적 요점은 이렇습니다. 예측 윈도우가 시간 순서를 지키고(셔플 없음, 미래 정보 누수 없음), 모든 전략에 동일한 시차 윈도우 <span class="math inline">\(d\)</span>와 구간 <span class="math inline">\(H\)</span>를 쓰며, 난수 시드를 고정합니다. 여기서 보고하는 수치는 합성 시계열에 대해 이 코드가 실제로 산출한 값으로, 메커니즘을 보여 주기 위한 것이지 실제 데이터에 대한 벤치마크 주장이 아닙니다.</p>
 <div id="setup" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.linear_model <span class="im">import</span> Ridge</span>
@@ -407,136 +388,135 @@ y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>SEED <span class="op">=</span> <span class="dv">42</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>np.random.seed(SEED)</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 합성 시계열: 추세 + 계절성 + 잡음.</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 벤치마크 결과가 아니라 메커니즘 예시용 골격이다.</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="dv">600</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> np.arange(N)</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>series <span class="op">=</span> (</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="fl">0.01</span> <span class="op">*</span> t</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> <span class="fl">2.0</span> <span class="op">*</span> np.sin(<span class="dv">2</span> <span class="op">*</span> np.pi <span class="op">*</span> t <span class="op">/</span> <span class="dv">24</span>)</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> np.random.normal(<span class="dv">0</span>, <span class="fl">0.5</span>, size<span class="op">=</span>N)</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>D <span class="op">=</span> <span class="dv">24</span>   <span class="co"># 임베딩 차원(입력으로 쓰는 시차 수)</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>H <span class="op">=</span> <span class="dv">12</span>   <span class="co"># 예측 구간</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>TEST <span class="op">=</span> <span class="dv">100</span></span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 합성 시계열: 선형 추세 + 24주기 계절성 + 가우시안 잡음.</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="dv">600</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> np.arange(N)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>series <span class="op">=</span> (</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="fl">0.01</span> <span class="op">*</span> t</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> <span class="fl">2.0</span> <span class="op">*</span> np.sin(<span class="dv">2</span> <span class="op">*</span> np.pi <span class="op">*</span> t <span class="op">/</span> <span class="dv">24</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> np.random.normal(<span class="dv">0</span>, <span class="fl">0.5</span>, size<span class="op">=</span>N)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>D <span class="op">=</span> <span class="dv">24</span>    <span class="co"># 임베딩 차원(입력으로 쓰는 시차 수)</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>H <span class="op">=</span> <span class="dv">12</span>    <span class="co"># 예측 구간</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>TEST <span class="op">=</span> <span class="dv">100</span>  <span class="co"># 롤링 오리진 평가에 쓰는 꼬리 구간</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"series length=</span><span class="sc">{</span>N<span class="sc">}</span><span class="ss">, lags D=</span><span class="sc">{</span>D<span class="sc">}</span><span class="ss">, horizon H=</span><span class="sc">{</span>H<span class="sc">}</span><span class="ss">, test tail=</span><span class="sc">{</span>TEST<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>series length=600, lags D=24, horizon H=12, test tail=100</code></pre>
+</div>
 </div>
 <div id="windowing" class="cell" data-execution_count="2">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> make_supervised(s, d, h):</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""X는 (n_samples, d) 형태의 과거 시차, Y는 (n_samples, h) 형태의</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">    다음 h개 타깃인 (X, Y)를 만든다. 시간 순서를 보존하며,</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">    행 i는 자신의 윈도우 이후 정보를 절대 보지 않는다."""</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    X, Y <span class="op">=</span> [], []</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(d, <span class="bu">len</span>(s) <span class="op">-</span> h <span class="op">+</span> <span class="dv">1</span>):</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        X.append(s[i <span class="op">-</span> d:i])          <span class="co"># 과거 d개 관측치</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        Y.append(s[i:i <span class="op">+</span> h])          <span class="co"># 미래 h개 타깃</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.array(X), np.array(Y)</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>train_series <span class="op">=</span> series[:<span class="op">-</span>TEST]</span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>X_tr, Y_tr <span class="op">=</span> make_supervised(train_series, D, H)</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co"># X_tr: (n_samples, D)   Y_tr: (n_samples, H)</span></span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> make_supervised(s, d, h):</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""X: (n_samples, d) 과거 시차; Y: (n_samples, h) 미래 h개 타깃.</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">    시간 순서를 보존하며, 행 i는 자기 윈도우 이후 데이터를 보지 않는다."""</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    X, Y <span class="op">=</span> [], []</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(d, <span class="bu">len</span>(s) <span class="op">-</span> h <span class="op">+</span> <span class="dv">1</span>):</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        X.append(s[i <span class="op">-</span> d:i])      <span class="co"># 과거 d개 관측치</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        Y.append(s[i:i <span class="op">+</span> h])      <span class="co"># 미래 h개 타깃</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.array(X), np.array(Y)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>train_series <span class="op">=</span> series[:<span class="op">-</span>TEST]</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>X_tr, Y_tr <span class="op">=</span> make_supervised(train_series, D, H)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"X_tr shape:"</span>, X_tr.shape, <span class="st">"| Y_tr shape:"</span>, Y_tr.shape)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>X_tr shape: (465, 24) | Y_tr shape: (465, 12)</code></pre>
+</div>
 </div>
 <div id="strategies" class="cell" data-execution_count="3">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> fit_recursive(X, y_onestep):</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""1-스텝 타깃(Y의 첫 열)으로 학습한 단일 모델."""</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> Ridge(alpha<span class="op">=</span><span class="fl">1.0</span>, random_state<span class="op">=</span>SEED)</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    m.fit(X, y_onestep)</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> m</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> forecast_recursive(model, last_window, h, d):</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    win <span class="op">=</span> <span class="bu">list</span>(last_window)</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    preds <span class="op">=</span> []</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(h):</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        yhat <span class="op">=</span> model.predict(np.array(win[<span class="op">-</span>d:]).reshape(<span class="dv">1</span>, <span class="op">-</span><span class="dv">1</span>))[<span class="dv">0</span>]</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        preds.append(yhat)</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        win.append(yhat)             <span class="co"># 예측값을 다시 입력으로</span></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.array(preds)</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> fit_direct(X, Y):</span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""구간마다 하나씩, H개의 독립 모델."""</span></span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> [Ridge(alpha<span class="op">=</span><span class="fl">1.0</span>).fit(X, Y[:, h]) <span class="cf">for</span> h <span class="kw">in</span> <span class="bu">range</span>(Y.shape[<span class="dv">1</span>])]</span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> forecast_direct(models, last_window):</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    x <span class="op">=</span> last_window.reshape(<span class="dv">1</span>, <span class="op">-</span><span class="dv">1</span>)</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.array([m.predict(x)[<span class="dv">0</span>] <span class="cf">for</span> m <span class="kw">in</span> models])</span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> fit_joint(X, Y):</span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""단일 다중 출력 모델: Ridge는 벡터 타깃을 직접 지원한다."""</span></span>
-<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Ridge(alpha<span class="op">=</span><span class="fl">1.0</span>).fit(X, Y)</span>
-<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> forecast_joint(model, last_window):</span>
-<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> model.predict(last_window.reshape(<span class="dv">1</span>, <span class="op">-</span><span class="dv">1</span>))[<span class="dv">0</span>]</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> fit_recursive(X, y_onestep):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""1-스텝 타깃(Y의 첫 열)으로 학습한 단일 모델."""</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Ridge(alpha<span class="op">=</span><span class="fl">1.0</span>, random_state<span class="op">=</span>SEED).fit(X, y_onestep)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> forecast_recursive(model, last_window, h, d):</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    win <span class="op">=</span> <span class="bu">list</span>(last_window)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    preds <span class="op">=</span> []</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(h):</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        yhat <span class="op">=</span> model.predict(np.array(win[<span class="op">-</span>d:]).reshape(<span class="dv">1</span>, <span class="op">-</span><span class="dv">1</span>))[<span class="dv">0</span>]</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        preds.append(yhat)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        win.append(yhat)          <span class="co"># 예측값을 다시 입력으로</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.array(preds)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> fit_direct(X, Y):</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""구간마다 하나씩, H개의 독립 단일 출력 모델."""</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> [Ridge(alpha<span class="op">=</span><span class="fl">1.0</span>).fit(X, Y[:, h]) <span class="cf">for</span> h <span class="kw">in</span> <span class="bu">range</span>(Y.shape[<span class="dv">1</span>])]</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> forecast_direct(models, last_window):</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    x <span class="op">=</span> last_window.reshape(<span class="dv">1</span>, <span class="op">-</span><span class="dv">1</span>)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.array([m.predict(x)[<span class="dv">0</span>] <span class="cf">for</span> m <span class="kw">in</span> models])</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> fit_joint(X, Y):</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""단일 다중 출력 모델: Ridge는 벡터 타깃을 직접 지원한다."""</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Ridge(alpha<span class="op">=</span><span class="fl">1.0</span>).fit(X, Y)</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> forecast_joint(model, last_window):</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> model.predict(last_window.reshape(<span class="dv">1</span>, <span class="op">-</span><span class="dv">1</span>))[<span class="dv">0</span>]</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>rec   <span class="op">=</span> fit_recursive(X_tr, Y_tr[:, <span class="dv">0</span>])</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>dir_  <span class="op">=</span> fit_direct(X_tr, Y_tr)</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>joint <span class="op">=</span> fit_joint(X_tr, Y_tr)</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"fitted: recursive (1 model), direct (</span><span class="sc">%d</span><span class="st"> models), joint (1 model)"</span> <span class="op">%</span> <span class="bu">len</span>(dir_))</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>fitted: recursive (1 model), direct (12 models), joint (1 model)</code></pre>
+</div>
 </div>
 <div id="evaluate" class="cell" data-execution_count="4">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>rec <span class="op">=</span> fit_recursive(X_tr, Y_tr[:, <span class="dv">0</span>])</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>dir_ <span class="op">=</span> fit_direct(X_tr, Y_tr)</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>joint <span class="op">=</span> fit_joint(X_tr, Y_tr)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>last <span class="op">=</span> train_series[<span class="op">-</span>D:]</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>truth <span class="op">=</span> series[<span class="op">-</span>TEST:<span class="op">-</span>TEST <span class="op">+</span> H]</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>p_rec   <span class="op">=</span> forecast_recursive(rec, last, H, D)</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>p_dir   <span class="op">=</span> forecast_direct(dir_, last)</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>p_joint <span class="op">=</span> forecast_joint(joint, last)</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, p <span class="kw">in</span> [(<span class="st">"recursive"</span>, p_rec), (<span class="st">"direct"</span>, p_dir), (<span class="st">"joint"</span>, p_joint)]:</span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(name, np.sqrt(mean_squared_error(truth, p)))</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 롤링 오리진 평가: 꼬리 구간에서 원점을 밀어 가며 H 스텝을 예측하고</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 실현된 미래와 비교한다.</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>errs <span class="op">=</span> {<span class="st">"recursive"</span>: [], <span class="st">"direct"</span>: [], <span class="st">"joint"</span>: []}</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>sq_by_h <span class="op">=</span> {k: np.zeros(H) <span class="cf">for</span> k <span class="kw">in</span> errs}</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>n_windows <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> <span class="bu">len</span>(series) <span class="op">-</span> TEST</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> origin <span class="kw">in</span> <span class="bu">range</span>(start, <span class="bu">len</span>(series) <span class="op">-</span> H <span class="op">+</span> <span class="dv">1</span>):</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    win   <span class="op">=</span> series[origin <span class="op">-</span> D:origin]</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    truth <span class="op">=</span> series[origin:origin <span class="op">+</span> H]</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    preds <span class="op">=</span> {</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"recursive"</span>: forecast_recursive(rec, win, H, D),</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"direct"</span>:    forecast_direct(dir_, win),</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        <span class="st">"joint"</span>:     forecast_joint(joint, win),</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k, p <span class="kw">in</span> preds.items():</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>        errs[k].append(np.sqrt(mean_squared_error(truth, p)))</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>        sq_by_h[k] <span class="op">+=</span> (p <span class="op">-</span> truth) <span class="op">**</span> <span class="dv">2</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>    n_windows <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"rolling windows evaluated: </span><span class="sc">{</span>n_windows<span class="sc">}</span><span class="ch">\n</span><span class="ss">"</span>)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"mean RMSE over the full 12-step horizon"</span>)</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> k <span class="kw">in</span> errs:</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  </span><span class="sc">{</span>k<span class="sc">:10s}</span><span class="ss"> </span><span class="sc">{</span>np<span class="sc">.</span>mean(errs[k])<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">RMSE at short horizon (h=1..3) vs long horizon (h=10..12)"</span>)</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> k <span class="kw">in</span> sq_by_h:</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>    rmse_h <span class="op">=</span> np.sqrt(sq_by_h[k] <span class="op">/</span> n_windows)</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  </span><span class="sc">{</span>k<span class="sc">:10s}</span><span class="ss"> short=</span><span class="sc">{</span>rmse_h[:<span class="dv">3</span>]<span class="sc">.</span>mean()<span class="sc">:.4f}</span><span class="ss">  long=</span><span class="sc">{</span>rmse_h[<span class="op">-</span><span class="dv">3</span>:]<span class="sc">.</span>mean()<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>recursive 0.402653629333326
-direct 0.40946224616781524
-joint 0.4094622461678082</code></pre>
-</div>
-</div>
-<p>평가 셀을 실행하여 아래와 같이 성능 수치(RMSE) 결과를 얻을 수 있습니다. 로컬에서 — 가능하면 단일 분할이 아니라 여러 윈도우에 대한 롤링 오리진(rolling origin) 평가로 — 실행한 뒤 채워 넣을 구조는 다음과 같습니다.</p>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>전략</th>
-<th>지표</th>
-<th>짧은 구간</th>
-<th>긴 구간</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>재귀(Recursive)</td>
-<td>RMSE</td>
-<td>실행 후 입력</td>
-<td>실행 후 입력</td>
-</tr>
-<tr class="even">
-<td>직접(Direct)</td>
-<td>RMSE</td>
-<td>실행 후 입력</td>
-<td>실행 후 입력</td>
-</tr>
-<tr class="odd">
-<td>결합(Joint, MIMO)</td>
-<td>RMSE</td>
-<td>실행 후 입력</td>
-<td>실행 후 입력</td>
-</tr>
-</tbody>
-</table>
-<p>단일 집계 수치보다 <em>구간의 함수로서의 오차</em>를 보고하는 편이 더 중요합니다. 전략들은 <span class="math inline">\(h\)</span>가 커질수록 갈라지는 경향이 있는데, 평균 RMSE 하나는 정작 비교하려는 그 거동을 가립니다.</p>
-</section>
-<section id="결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가" class="level2" data-number="7">
-<h2 data-number="7" class="anchored" data-anchor-id="결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가"><span class="header-section-number">7</span> 결과를 어떻게 읽고, 문헌은 실제로 무엇을 말하는가</h2>
-<p>결과를 어떻게 읽고, 문헌은 실제로 무엇을 말하는가에 대한 설명입니다.</p>
-</section>
-<section id="한계" class="level2" data-number="8">
-<h2 data-number="8" class="anchored" data-anchor-id="한계"><span class="header-section-number">8</span> 한계</h2>
-<p>이 비교는 학습기를 고정한 채 <em>전략</em>에 관한 것입니다. 다른 기저 모델(그래디언트 부스팅, LSTM, 트랜스포머)을 쓰면 상대 순위가 바뀔 수 있고, 일부 아키텍처는 범주를 흐립니다. 시퀀스-투-시퀀스 모델은 구성상 결합이고, 자기회귀 트랜스포머 디코더는 추론 시 재귀입니다. 여기서 쓴 합성 시계열은 메커니즘을 보여 주기 위한 것이지 결론을 내리기 위한 것이 아닙니다. 실제 판정에는 여러 실제 시계열과 적절한 재표집이 필요합니다. 재귀의 오차 누적은 잡음 수준과 기저 동역학의 안정성과도 상호작용하므로, 단일 데이터셋으로는 문제를 매듭지을 수 없습니다. 끝으로, 이 전략들 중 어느 것도 예측 <em>불확실성</em>을 직접 다루지 않습니다. 구간 전체에 걸친 예측 구간(predictive interval)을 정량화하는 일은 전략 선택과 얽히는 별개의 문제이며 여기서는 다루지 않았습니다.</p>
-</section>
-<section id="결론" class="level2" data-number="9">
-<h2 data-number="9" class="anchored" data-anchor-id="결론"><span class="header-section-number">9</span> 결론</h2>
-<p>재귀, 직접, 결합 사이의 선택은 <em>어떤 문제를 감수할 것인가</em>에 대한 선택입니다. 재귀는 오차 누적을 대가로 저렴함과 임의 구간 유연성을 삽니다. 직접은 <span class="math inline">\(H\)</span>개의 모델과 끊어진 구간 간 구조를 대가로 비편향과 구간별 맞춤을 삽니다. 결합은 모든 스텝에 하나의 함수 형태를 강제하는 대가로, 구간 간 의존 구조를 존중하는 단일의 저렴한 모델을 삽니다. 이론은 이들을 느슨하게만 줄 세우고, 실증 문헌은 공공연히 모순되며, 당신의 데이터에서 이기는 전략은 가정할 것이 아니라 구간별로 측정해야 할 대상입니다. 출발점으로 삼을 기본값 하나가 필요하다면, 적절한 계절성 제거를 동반한 다중 출력 모델은 NN5 규모의 증거가 잘 뒷받침합니다. 다만 이를 정답이 아니라 넘어서야 할 기준선으로 다루십시오.</p>
-</section>
-<section id="참고문헌" class="level2" data-number="10">
-<h2 data-number="10" class="anchored" data-anchor-id="참고문헌"><span class="header-section-number">10</span> 참고문헌</h2>
-<div id="refs" role="list">
+<pre><code>rolling windows evaluated: 89
 
+mean RMSE over the full 12-step horizon
+  recursive  0.4733
+  direct     0.4868
+  joint      0.4868
+
+RMSE at short horizon (h=1..3) vs long horizon (h=10..12)
+  recursive  short=0.4896  long=0.4764
+  direct     short=0.4957  long=0.4933
+  joint      short=0.4957  long=0.4933</code></pre>
 </div>
+</div>
+<p>출력에서 주의 깊게 읽을 점이 세 가지입니다. 첫째, <strong>직접과 결합이 소수점 넷째 자리까지 동일</strong>합니다. 4절에서 예고한 그대로입니다. 선형 릿지 학습기에서는 다중 출력 적합과 구간별 적합이 같은 최소제곱 문제를 풀기 때문입니다. 두 수치는 출력들을 서로 묶는 비선형 학습기를 쓸 때에야 갈라집니다. 둘째, <em>이</em> 시계열에서는 <strong>재귀 전략의 평균 RMSE가 가장 낮습니다.</strong> 가장 높지 않습니다. “재귀는 편향되니 진다”는 깔끔한 서사는 여기서 성립하지 않습니다. 데이터 생성 과정이 한 스텝 모델의 함수 형태에 가깝고 잡음이 작으며 동역학이 안정적이어서, 오차 누적이 작게 유지되는 동안 재귀 모델은 잘 설정된 단일 타깃에 전체 학습 데이터를 쓰는 이점을 누립니다. 셋째, 짧은 구간 대 긴 구간 비교를 보면 이 시계열에서는 구간이 길어져도 오차가 폭발하지 않습니다. 이 또한 일반 법칙이 아니라 안정적이고 잡음이 적은 동역학의 결과입니다.</p>
+</section>
+<section id="결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가" class="level2">
+<h2 class="anchored" data-anchor-id="결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가">7. 결과를 어떻게 읽고, 문헌은 실제로 무엇을 말하는가</h2>
+<p>깔끔한 이론적 서사 — 재귀는 편향되지만 분산이 낮고, 직접은 비편향이지만 분산이 더 높으며, 결합은 의존 구조를 보존한다 — 는 유용한 길잡이지만 신뢰할 만한 예측자는 아니며, 위 실행이 그 점을 작게나마 실시간으로 보여 줍니다. 출판된 비교 전반에서 순위는 데이터셋, 기저 학습기, 구간에 따라 뒤집힙니다. <span class="citation" data-cites="taieb2012">@taieb2012</span> 는 NN5 대회의 111개 시계열로 실험하여 다중 출력(결합 계열) 전략이 전반적으로 가장 좋은 성능을 보였다고 보고했고, 예측 전 계절성을 제거하면 전략에 무관하게 정확도가 일관되게 향상된다는 점도 발견했습니다. 전처리가 전략 선택보다 더 중요할 수 있음을 일깨우는 결과입니다. 최근의 한 분석은 편향-분산 틀 자체를 재검토하여, 이론적으로 직접이 더 나아 보이는데도 실무에서는 재귀가 직접과 대등하거나 더 나을 수 있다고 보고하며 그 격차를 교과서적 분해가 놓친 요인들로 돌립니다 <span class="citation" data-cites="green2025epistemic">[@green2025epistemic]</span>. 매끄러운 합성 시계열에서 재귀가 이긴 위 결과는 이 신중한 해석과 일관됩니다.</p>
+<p>실무적 해석은 이렇습니다. 전략을 원리만으로 고르지 마십시오. 현실적인 검증 구간을 떼어 두고, 여기서 한 것처럼 롤링 오리진 재표집으로 스텝별 오차를 평가한 뒤, <em>당신의</em> 시계열에 대한 데이터가 결정하게 하십시오. <span class="citation" data-cites="taieb_rectify">@taieb_rectify</span> 의 <strong>rectify</strong> 전략은 원칙적인 중간 지대로 알아 둘 가치가 있습니다. 편향된 재귀 예측에서 출발해 그 위에 직접 보정을 적합하는 방식이며, 재귀와 직접 중 더 나은 쪽 이상의 성능을 낸다고 보고되었습니다.</p>
+</section>
+<section id="한계" class="level2">
+<h2 class="anchored" data-anchor-id="한계">8. 한계</h2>
+<p>이 비교는 학습기를 고정한 채 <em>전략</em>에 관한 것입니다. 다른 기저 모델(그래디언트 부스팅, LSTM, 트랜스포머)을 쓰면 상대 순위가 바뀔 수 있고, 일부 아키텍처는 범주를 흐립니다. 시퀀스-투-시퀀스 모델은 구성상 결합이고, 자기회귀 트랜스포머 디코더는 추론 시 재귀입니다. 위에서 직접과 결합이 일치한 것은 바로 선형 릿지 학습기 때문이며, 그 일치는 선형성의 산물이지 일반적 사실이 아닙니다. 여기서 쓴 합성 시계열은 매끄럽고 잡음이 적으며 계절 구조가 안정적이어서 재귀 전략에 유리합니다. 더 잡음이 많거나 더 비선형적인 과정은 순위를 뒤집을 수 있으므로, 단일 데이터셋으로는 문제를 매듭지을 수 없습니다. 끝으로, 이 전략들 중 어느 것도 예측 <em>불확실성</em>을 직접 다루지 않습니다. 구간 전체에 걸친 예측 구간(predictive interval)을 정량화하는 일은 전략 선택과 얽히는 별개의 문제이며 여기서는 다루지 않았습니다.</p>
+</section>
+<section id="결론" class="level2">
+<h2 class="anchored" data-anchor-id="결론">9. 결론</h2>
+<p>재귀, 직접, 결합 사이의 선택은 <em>어떤 문제를 감수할 것인가</em>에 대한 선택입니다. 재귀는 오차 누적을 대가로 저렴함과 임의 구간 유연성을 사며, 실험이 보여 주듯 그 대가는 안정적이고 잡음이 적은 데이터에서는 거의 0에 가까울 수 있습니다. 직접은 <span class="math inline">\(H\)</span>개의 모델과 끊어진 구간 간 구조를 대가로 비편향과 구간별 맞춤을 삽니다. 결합은 모든 스텝에 하나의 함수 형태를 강제하는 대가로 구간 간 의존 구조를 존중하는 단일의 저렴한 모델을 사며, 학습기가 선형일 때는 정확히 직접과 포개집니다. 이론은 이들을 느슨하게만 줄 세우고, 실증 문헌은 공공연히 모순되며, 당신의 데이터에서 이기는 전략은 가정할 것이 아니라 구간별로 측정해야 할 대상입니다. 출발점으로 삼을 기본값 하나가 필요하다면, 적절한 계절성 제거를 동반한 다중 출력 모델은 NN5 규모의 증거가 잘 뒷받침합니다. 다만 이를 정답이 아니라 넘어서야 할 기준선으로 다루십시오.</p>
 
 
 </section>
