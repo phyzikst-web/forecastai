@@ -266,8 +266,7 @@ def forecast_joint(model, last_window):
 ```{python}
 #| label: evaluate
 #| echo: true
-#| eval: false
-# eval is disabled here: run locally to obtain real numbers.
+#| eval: true
 rec = fit_recursive(X_tr, Y_tr[:, 0])
 dir_ = fit_direct(X_tr, Y_tr)
 joint = fit_joint(X_tr, Y_tr)
@@ -283,10 +282,7 @@ for name, p in [("recursive", p_rec), ("direct", p_dir), ("joint", p_joint)]:
     print(name, np.sqrt(mean_squared_error(truth, p)))
 ```
 
-The evaluation cell is intentionally not executed in this article, so no
-performance numbers are reported here. The structure you would fill in after
-running it locally — ideally with rolling-origin evaluation across many windows
-rather than a single split — looks like this:
+The evaluation cell is executed below to display the performance numbers. The structure of the results looks like this:
 
 | Strategy | Metric | Short horizon | Long horizon |
 |---|---|---|---|

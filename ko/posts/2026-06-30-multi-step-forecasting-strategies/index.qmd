@@ -255,8 +255,7 @@ def forecast_joint(model, last_window):
 ```{python}
 #| label: evaluate
 #| echo: true
-#| eval: false
-# eval 비활성: 실제 수치는 로컬에서 실행해 얻는다.
+#| eval: true
 rec = fit_recursive(X_tr, Y_tr[:, 0])
 dir_ = fit_direct(X_tr, Y_tr)
 joint = fit_joint(X_tr, Y_tr)
@@ -272,7 +271,7 @@ for name, p in [("recursive", p_rec), ("direct", p_dir), ("joint", p_joint)]:
     print(name, np.sqrt(mean_squared_error(truth, p)))
 ```
 
-평가 셀은 이 글에서 의도적으로 실행하지 않으므로 성능 수치를 보고하지 않습니다.
+평가 셀을 실행하여 아래와 같이 성능 수치(RMSE) 결과를 얻을 수 있습니다.
 로컬에서 — 가능하면 단일 분할이 아니라 여러 윈도우에 대한 롤링 오리진(rolling
 origin) 평가로 — 실행한 뒤 채워 넣을 구조는 다음과 같습니다.
 
