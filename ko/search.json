@@ -133,6 +133,13 @@
     "text": "10 참고문헌"
   },
   {
+    "objectID": "categories.html",
+    "href": "categories.html",
+    "title": "카테고리",
+    "section": "",
+    "text": "Recursive, Direct, Joint: 멀티 스텝 예측 전략은 무엇을 포기하는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n\n\nH-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 비교합니다.\n\n\n\n\n\n\n\n30.\n\n\n\n\nProf. Shin (phyzik)\n\n\n:::\n:::\n:::\n일치 없음\n:::\n:::"
+  },
+  {
     "objectID": "contact.html",
     "href": "contact.html",
     "title": "연락처",
@@ -145,34 +152,6 @@
     "title": "연락처",
     "section": "",
     "text": "GitHub: github.com/phyzikst-web\n\n문의 사항이 있으시면 이메일로 연락 주세요."
-  },
-  {
-    "objectID": "categories.html",
-    "href": "categories.html",
-    "title": "카테고리",
-    "section": "",
-    "text": "Recursive, Direct, Joint: 멀티 스텝 예측 전략은 무엇을 포기하는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n\n\nH-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 비교합니다.\n\n\n\n\n\n\n\n30.\n\n\n\n\nProf. Shin (phyzik)\n\n\n:::\n:::\n\n\n\n\n\n\n\n\nTransfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측\n\n\n\n인과추론\n\n딥러닝\n\n시계열\n\nPython\n\n\n\nTransfer Entropy를 변수 선택 기준으로 활용하여 IMV-LSTM 아키텍처에 통합하는 방법을 소개합니다. FLUXNET CH₄ 데이터에 적용하여 인과 구조 기반 예측 성능을 검증합니다.\n\n\n\n\n\n\n\n10.\n\n\n\n\nProf. Shin (phyzik)\n\n\n:::\n:::\n:::\n일치 없음\n:::\n:::"
-  },
-  {
-    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html",
-    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html",
-    "title": "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측",
-    "section": "",
-    "text": "Transfer Entropy(TE)는 정보이론 기반의 비선형 인과성 측도입니다.\nimport numpy as np\n\ndef transfer_entropy(X, Y, k=1, bins=10):\n    X_d = np.digitize(X, np.histogram_bin_edges(X, bins=bins))\n    Y_d = np.digitize(Y, np.histogram_bin_edges(Y, bins=bins))\n    # TE 계산 로직\n    return te"
-  },
-  {
-    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html#개요",
-    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html#개요",
-    "title": "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측",
-    "section": "",
-    "text": "Transfer Entropy(TE)는 정보이론 기반의 비선형 인과성 측도입니다.\nimport numpy as np\n\ndef transfer_entropy(X, Y, k=1, bins=10):\n    X_d = np.digitize(X, np.histogram_bin_edges(X, bins=bins))\n    Y_d = np.digitize(Y, np.histogram_bin_edges(Y, bins=bins))\n    # TE 계산 로직\n    return te"
-  },
-  {
-    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html#실험-결과",
-    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html#실험-결과",
-    "title": "Transfer Entropy 기반 IMV-LSTM을 활용한 CH₄ Flux 예측",
-    "section": "실험 결과",
-    "text": "실험 결과\n\n\n\n모델\nRMSE\nR²\n\n\n\n\nVanilla LSTM\n0.124\n0.821\n\n\nTE-IMV-LSTM\n0.091\n0.901"
   },
   {
     "objectID": "about.html",

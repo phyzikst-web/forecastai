@@ -2,15 +2,13 @@
   {
     "listing": "/index.html",
     "items": [
-      "/posts/2026-06-30-multi-step-forecasting-strategies/index.html",
-      "/posts/2026-04-10-transfer-entropy-lstm/index.html"
+      "/posts/2026-06-30-multi-step-forecasting-strategies/index.html"
     ]
   },
   {
     "listing": "/categories.html",
     "items": [
-      "/posts/2026-06-30-multi-step-forecasting-strategies/index.html",
-      "/posts/2026-04-10-transfer-entropy-lstm/index.html"
+      "/posts/2026-06-30-multi-step-forecasting-strategies/index.html"
     ]
   }
 ]

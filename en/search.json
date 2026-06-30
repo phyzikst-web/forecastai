@@ -133,6 +133,13 @@
     "text": "10 References"
   },
   {
+    "objectID": "categories.html",
+    "href": "categories.html",
+    "title": "Categories",
+    "section": "",
+    "text": "Recursive, Direct, or Joint? A Comparison of Multi-Step Forecasting Strategies\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\n\n\nHow you generate an H-step forecast is a modeling decision in its own right. This article compares the recursive, direct, and joint (MIMO) strategies in terms of error propagation, the bias-variance trade-off, computational cost, and the conditions under which each one wins.\n\n\n\n\n\nJun 30, 2026\n\n\nProf. Shin (phyzik)\n\n\n\n\n\nNo matching items"
+  },
+  {
     "objectID": "contact.html",
     "href": "contact.html",
     "title": "Contact",
@@ -145,34 +152,6 @@
     "title": "Contact",
     "section": "",
     "text": "GitHub: github.com/phyzikst-web\n\nFeel free to reach out via email for any inquiries."
-  },
-  {
-    "objectID": "categories.html",
-    "href": "categories.html",
-    "title": "Categories",
-    "section": "",
-    "text": "Recursive, Direct, or Joint? A Comparison of Multi-Step Forecasting Strategies\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\n\n\nHow you generate an H-step forecast is a modeling decision in its own right. This article compares the recursive, direct, and joint (MIMO) strategies in terms of error propagation, the bias-variance trade-off, computational cost, and the conditions under which each one wins.\n\n\n\n\n\nJun 30, 2026\n\n\nProf. Shin (phyzik)\n\n\n\n\n\n\n\n\n\n\n\n\nCH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM\n\n\n\nCausal Inference\n\nDeep Learning\n\nTime Series\n\nPython\n\n\n\nWe introduce a TE-IMV-LSTM framework that integrates Transfer Entropy as a variable selection criterion into the IMV-LSTM architecture, validated on FLUXNET CH₄ data.\n\n\n\n\n\nApr 10, 2026\n\n\nProf. Shin (phyzik)\n\n\n\n\n\nNo matching items"
-  },
-  {
-    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html",
-    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html",
-    "title": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM",
-    "section": "",
-    "text": "Transfer Entropy (TE) is a nonlinear causality measure based on information theory.\nimport numpy as np\n\ndef transfer_entropy(X, Y, k=1, bins=10):\n    X_d = np.digitize(X, np.histogram_bin_edges(X, bins=bins))\n    Y_d = np.digitize(Y, np.histogram_bin_edges(Y, bins=bins))\n    # TE computation logic\n    return te"
-  },
-  {
-    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html#overview",
-    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html#overview",
-    "title": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM",
-    "section": "",
-    "text": "Transfer Entropy (TE) is a nonlinear causality measure based on information theory.\nimport numpy as np\n\ndef transfer_entropy(X, Y, k=1, bins=10):\n    X_d = np.digitize(X, np.histogram_bin_edges(X, bins=bins))\n    Y_d = np.digitize(Y, np.histogram_bin_edges(Y, bins=bins))\n    # TE computation logic\n    return te"
-  },
-  {
-    "objectID": "posts/2026-04-10-transfer-entropy-lstm/index.html#results",
-    "href": "posts/2026-04-10-transfer-entropy-lstm/index.html#results",
-    "title": "CH₄ Flux Prediction Using Transfer Entropy-based IMV-LSTM",
-    "section": "Results",
-    "text": "Results\n\n\n\nModel\nRMSE\nR²\n\n\n\n\nVanilla LSTM\n0.124\n0.821\n\n\nTE-IMV-LSTM\n0.091\n0.901"
   },
   {
     "objectID": "about.html",
