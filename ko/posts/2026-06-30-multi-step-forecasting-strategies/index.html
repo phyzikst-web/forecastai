@@ -468,22 +468,26 @@ y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 <span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> model.predict(last_window.reshape(<span class="dv">1</span>, <span class="op">-</span><span class="dv">1</span>))[<span class="dv">0</span>]</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="evaluate" class="cell" data-execution_count="4">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># eval 비활성: 실제 수치는 로컬에서 실행해 얻는다.</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>rec <span class="op">=</span> fit_recursive(X_tr, Y_tr[:, <span class="dv">0</span>])</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>dir_ <span class="op">=</span> fit_direct(X_tr, Y_tr)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>joint <span class="op">=</span> fit_joint(X_tr, Y_tr)</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>last <span class="op">=</span> train_series[<span class="op">-</span>D:]</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>truth <span class="op">=</span> series[<span class="op">-</span>TEST:<span class="op">-</span>TEST <span class="op">+</span> H]</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>p_rec   <span class="op">=</span> forecast_recursive(rec, last, H, D)</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>p_dir   <span class="op">=</span> forecast_direct(dir_, last)</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>p_joint <span class="op">=</span> forecast_joint(joint, last)</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, p <span class="kw">in</span> [(<span class="st">"recursive"</span>, p_rec), (<span class="st">"direct"</span>, p_dir), (<span class="st">"joint"</span>, p_joint)]:</span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(name, np.sqrt(mean_squared_error(truth, p)))</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>rec <span class="op">=</span> fit_recursive(X_tr, Y_tr[:, <span class="dv">0</span>])</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>dir_ <span class="op">=</span> fit_direct(X_tr, Y_tr)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>joint <span class="op">=</span> fit_joint(X_tr, Y_tr)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>last <span class="op">=</span> train_series[<span class="op">-</span>D:]</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>truth <span class="op">=</span> series[<span class="op">-</span>TEST:<span class="op">-</span>TEST <span class="op">+</span> H]</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>p_rec   <span class="op">=</span> forecast_recursive(rec, last, H, D)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>p_dir   <span class="op">=</span> forecast_direct(dir_, last)</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>p_joint <span class="op">=</span> forecast_joint(joint, last)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, p <span class="kw">in</span> [(<span class="st">"recursive"</span>, p_rec), (<span class="st">"direct"</span>, p_dir), (<span class="st">"joint"</span>, p_joint)]:</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(name, np.sqrt(mean_squared_error(truth, p)))</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>recursive 0.402653629333326
+direct 0.40946224616781524
+joint 0.4094622461678082</code></pre>
 </div>
-<p>평가 셀은 이 글에서 의도적으로 실행하지 않으므로 성능 수치를 보고하지 않습니다. 로컬에서 — 가능하면 단일 분할이 아니라 여러 윈도우에 대한 롤링 오리진(rolling origin) 평가로 — 실행한 뒤 채워 넣을 구조는 다음과 같습니다.</p>
+</div>
+<p>평가 셀을 실행하여 아래와 같이 성능 수치(RMSE) 결과를 얻을 수 있습니다. 로컬에서 — 가능하면 단일 분할이 아니라 여러 윈도우에 대한 롤링 오리진(rolling origin) 평가로 — 실행한 뒤 채워 넣을 구조는 다음과 같습니다.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
