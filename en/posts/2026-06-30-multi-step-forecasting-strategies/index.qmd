@@ -6,7 +6,7 @@ categories:
   - Data Science
   - Artificial Intelligence
   - Time Series
-# image: "thumbnail.png" # 썸네일 이미지가 아직 없어 임시로 주석 처리했습니다.
+image: "thumbnail.jpg"
 description: |
   How you generate an H-step forecast is a modeling decision in its own right.
   This article compares the recursive, direct, and joint (MIMO) strategies in
