@@ -404,7 +404,7 @@ $body-color: #333333;
 
 /* ===== 페이지 배경 ===== */
 body {
-  background-color: #f5f5f5;
+  background-color: #ffffff; /* 배경색을 회색에서 흰색으로 변경 */
 }
 
 /* content 영역 padding 제거 */
@@ -433,4 +433,18 @@ body {
 /* ===== 자동 목차 번호 뒤 마침표(.) 추가 ===== */
 span.header-section-number::after {
   content: ".";
+}
+
+/* ===== 코드 실행 결과(출력물) 스타일링 ===== */
+.cell-output-stdout pre, .cell-output pre {
+  background-color: #f8f9fa !important;
+  border: 1px solid #e9ecef !important;
+  border-left: 4px solid #F97316 !important; /* 브랜드 오렌지색 포인트 바 */
+  padding: 15px !important;
+  border-radius: 4px !important;
+  color: #333333 !important;
+  font-family: var(--bs-font-monospace) !important;
+  font-size: 0.9rem !important;
+  margin-top: 10px !important;
+  margin-bottom: 20px !important;
 }
