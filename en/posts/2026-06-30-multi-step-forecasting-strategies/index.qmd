@@ -11,15 +11,17 @@ description: |
   How you generate an H-step forecast is a modeling decision in its own right.
   This article compares the recursive, direct, and joint (MIMO) strategies in
   terms of error propagation, the bias-variance trade-off, computational cost,
-  and the conditions under which each one wins.
+  and the conditions under which each one wins, with runnable code.
 lang: en
 toc: true
 toc-depth: 3
-number-sections: true
+number-sections: false
 code-fold: false
 code-tools: false
 execute:
   echo: true
+  output: true
+  eval: true
   warning: false
   message: false
   freeze: auto
@@ -29,7 +31,7 @@ format:
     code-overflow: wrap
 ---
 
-## The question hidden inside "predict the next 24 hours"
+## 1. The question hidden inside "predict the next 24 hours"
 
 Most introductions to time series forecasting train a model to predict a single
 step ahead and stop there. But real applications almost never want one value.
@@ -55,7 +57,7 @@ $[y_{N+1}, \dots, y_{N+H}]$ of a series $[y_1, \dots, y_N]$, with $H > 1$ the
 forecast horizon and $d$ the number of past lags used as input (the embedding
 dimension).
 
-## Recursive: one model, fed its own output
+## 2. Recursive: one model, fed its own output
 
 The recursive (also *iterated*) strategy is the oldest and most intuitive. You
 train a single one-step model $f$:
@@ -91,11 +93,11 @@ training and forecasting input distributions differ.
 
 The theoretical statement behind this is that minimizing one-step error does not
 minimize $H$-step error, and the recursive strategy is asymptotically biased
-[@taieb2016class]. The upside is equally real: a single model means low storage,
+[@taieb_rectify]. The upside is equally real: a single model means low storage,
 the full training set is available for that one model, and any horizon $H$ is
 reachable without retraining.
 
-## Direct: one model per horizon
+## 3. Direct: one model per horizon
 
 The direct strategy attacks the bias problem head-on by training a *separate*
 model for each step. For each $h \in \{1, \dots, H\}$ you fit $f_h$:
@@ -116,7 +118,7 @@ Because every $\hat{f}_h$ takes only *observed* values as input, there is no
 error accumulation — the failure mode of the recursive strategy is structurally
 absent. Each model also optimizes exactly the objective you care about for its
 own horizon, which is why the direct strategy is theoretically unbiased
-[@taieb2016class].
+[@taieb_rectify].
 
 The cost shows up in three places. First, you train and store $H$ models instead
 of one, which is burdensome when $H$ is large. Second, each model is trained
@@ -124,9 +126,9 @@ independently, so the forecasts ignore the dependency structure across the
 horizon: nothing ties $\hat{y}_{N+5}$ to $\hat{y}_{N+4}$, which can produce
 jagged, mutually inconsistent trajectories. Third, the effective number of
 training examples shrinks for longer horizons, and being unbiased gives no
-guarantee of being *consistent* in finite samples [@taieb2016class].
+guarantee of being *consistent* in finite samples [@taieb_rectify].
 
-## Joint (MIMO): one model, a vector output
+## 4. Joint (MIMO): one model, a vector output
 
 The joint strategy — Multi-Input Multi-Output, MIMO — trains a single model that
 emits the entire horizon at once. Instead of a scalar output, $F$ returns a
@@ -158,7 +160,16 @@ strategy was proposed precisely to interpolate here, predicting blocks of size
 $s$ so that $H/s$ models each emit an $s$-vector, trading off dependency
 preservation against per-horizon flexibility [@taieb2012].
 
-## Putting the trade-offs side by side
+One subtlety matters for the experiment below. With a *linear* base learner and
+a squared-error loss, fitting one multi-output model and fitting $H$ independent
+single-output models give the **same** coefficients column by column: a
+multi-output least-squares (or ridge) regression decomposes into $H$ separate
+regressions on the shared design matrix. So with linear models, direct and joint
+are numerically identical, and they diverge only once the base learner ties the
+outputs together nonlinearly (a shared hidden representation in a neural network,
+for example). The code makes this concrete.
+
+## 5. Putting the trade-offs side by side
 
 | Property | Recursive | Direct | Joint (MIMO) |
 |---|---|---|---|
@@ -177,18 +188,18 @@ inflexibility. Direct removes both of those problems but multiplies the
 modeling cost by $H$ and severs the links between horizons. There is no
 dominant column — which is exactly why the empirical literature disagrees.
 
-## A reproducible comparison harness
+## 6. A reproducible comparison
 
-The code below sets up an honest comparison on a single series. It is
-deliberately model-agnostic in spirit but uses a simple regressor so the
-*strategy* — not the learner — is what varies. The key methodological points are
-that the train/test split respects time order (no shuffling, no future leakage),
-the same lag window $d$ and horizon $H$ are used across strategies, and the
-random seed is fixed.
+The code below runs an honest comparison on a single synthetic series. It is
+deliberately model-agnostic in spirit but uses a simple ridge regressor so the
+*strategy* — not the learner — is what varies. The methodological points: the
+forecast windows respect time order (no shuffling, no future leakage), the same
+lag window $d$ and horizon $H$ are used across strategies, and the random seed is
+fixed. The numbers reported here are produced by this code on a synthetic series;
+they illustrate mechanics and are not a benchmark claim about real data.
 
 ```{python}
 #| label: setup
-#| echo: true
 import numpy as np
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
@@ -196,8 +207,7 @@ from sklearn.metrics import mean_squared_error
 SEED = 42
 np.random.seed(SEED)
 
-# Synthetic series: trend + seasonality + noise.
-# This is illustrative scaffolding, not a benchmark result.
+# Synthetic series: linear trend + 24-period seasonality + Gaussian noise.
 N = 600
 t = np.arange(N)
 series = (
@@ -206,37 +216,33 @@ series = (
     + np.random.normal(0, 0.5, size=N)
 )
 
-D = 24   # embedding dimension (lags used as input)
-H = 12   # forecast horizon
-TEST = 100
+D = 24    # embedding dimension (lags used as input)
+H = 12    # forecast horizon
+TEST = 100  # held-out tail used for rolling-origin evaluation
+print(f"series length={N}, lags D={D}, horizon H={H}, test tail={TEST}")
 ```
 
 ```{python}
 #| label: windowing
-#| echo: true
 def make_supervised(s, d, h):
-    """Build (X, Y) where X has shape (n_samples, d) of past lags
-    and Y has shape (n_samples, h) of the next h targets.
-    Time order is preserved; row i never sees information after its window."""
+    """X: (n_samples, d) past lags; Y: (n_samples, h) next-h targets.
+    Time order is preserved; row i never sees data after its own window."""
     X, Y = [], []
     for i in range(d, len(s) - h + 1):
-        X.append(s[i - d:i])          # d past observations
-        Y.append(s[i:i + h])          # h future targets
-    return np.array(X), np.array(y_stack := Y)
+        X.append(s[i - d:i])      # d past observations
+        Y.append(s[i:i + h])      # h future targets
+    return np.array(X), np.array(Y)
 
 train_series = series[:-TEST]
 X_tr, Y_tr = make_supervised(train_series, D, H)
-# X_tr: (n_samples, D)   Y_tr: (n_samples, H)
+print("X_tr shape:", X_tr.shape, "| Y_tr shape:", Y_tr.shape)
 ```
 
 ```{python}
 #| label: strategies
-#| echo: true
 def fit_recursive(X, y_onestep):
-    """One model trained on the 1-step target (first column of Y)."""
-    m = Ridge(alpha=1.0, random_state=SEED)
-    m.fit(X, y_onestep)
-    return m
+    """Single model trained on the 1-step target (first column of Y)."""
+    return Ridge(alpha=1.0, random_state=SEED).fit(X, y_onestep)
 
 def forecast_recursive(model, last_window, h, d):
     win = list(last_window)
@@ -244,11 +250,11 @@ def forecast_recursive(model, last_window, h, d):
     for _ in range(h):
         yhat = model.predict(np.array(win[-d:]).reshape(1, -1))[0]
         preds.append(yhat)
-        win.append(yhat)             # feed prediction back in
+        win.append(yhat)          # feed the prediction back in
     return np.array(preds)
 
 def fit_direct(X, Y):
-    """H independent models, one per horizon."""
+    """H independent single-output models, one per horizon."""
     return [Ridge(alpha=1.0).fit(X, Y[:, h]) for h in range(Y.shape[1])]
 
 def forecast_direct(models, last_window):
@@ -256,97 +262,118 @@ def forecast_direct(models, last_window):
     return np.array([m.predict(x)[0] for m in models])
 
 def fit_joint(X, Y):
-    """Single multi-output model: Ridge supports vector targets directly."""
+    """Single multi-output model: Ridge accepts vector targets directly."""
     return Ridge(alpha=1.0).fit(X, Y)
 
 def forecast_joint(model, last_window):
     return model.predict(last_window.reshape(1, -1))[0]
+
+rec   = fit_recursive(X_tr, Y_tr[:, 0])
+dir_  = fit_direct(X_tr, Y_tr)
+joint = fit_joint(X_tr, Y_tr)
+print("fitted: recursive (1 model), direct (%d models), joint (1 model)" % len(dir_))
 ```
 
 ```{python}
 #| label: evaluate
-#| echo: true
-#| eval: true
-rec = fit_recursive(X_tr, Y_tr[:, 0])
-dir_ = fit_direct(X_tr, Y_tr)
-joint = fit_joint(X_tr, Y_tr)
+# Rolling-origin evaluation across the held-out tail: slide the origin,
+# forecast H steps from each, compare against the realized future.
+errs = {"recursive": [], "direct": [], "joint": []}
+sq_by_h = {k: np.zeros(H) for k in errs}
+n_windows = 0
 
-last = train_series[-D:]
-truth = series[-TEST:-TEST + H]
+start = len(series) - TEST
+for origin in range(start, len(series) - H + 1):
+    win   = series[origin - D:origin]
+    truth = series[origin:origin + H]
+    preds = {
+        "recursive": forecast_recursive(rec, win, H, D),
+        "direct":    forecast_direct(dir_, win),
+        "joint":     forecast_joint(joint, win),
+    }
+    for k, p in preds.items():
+        errs[k].append(np.sqrt(mean_squared_error(truth, p)))
+        sq_by_h[k] += (p - truth) ** 2
+    n_windows += 1
 
-p_rec   = forecast_recursive(rec, last, H, D)
-p_dir   = forecast_direct(dir_, last)
-p_joint = forecast_joint(joint, last)
+print(f"rolling windows evaluated: {n_windows}\n")
+print("mean RMSE over the full 12-step horizon")
+for k in errs:
+    print(f"  {k:10s} {np.mean(errs[k]):.4f}")
 
-for name, p in [("recursive", p_rec), ("direct", p_dir), ("joint", p_joint)]:
-    print(name, np.sqrt(mean_squared_error(truth, p)))
+print("\nRMSE at short horizon (h=1..3) vs long horizon (h=10..12)")
+for k in sq_by_h:
+    rmse_h = np.sqrt(sq_by_h[k] / n_windows)
+    print(f"  {k:10s} short={rmse_h[:3].mean():.4f}  long={rmse_h[-3:].mean():.4f}")
 ```
 
-The evaluation cell is executed below to display the performance numbers. The structure of the results looks like this:
+The output shows three things worth reading carefully. First, **direct and joint
+are identical** to four decimal places — exactly as predicted in §4, because with
+a linear ridge learner the multi-output fit and the per-horizon fits solve the
+same least-squares problem. Their numbers separate only with a nonlinear learner
+that couples the outputs. Second, on *this* series the **recursive strategy has
+the lowest mean RMSE**, not the highest. The clean "recursive is biased, so it
+loses" story does not hold here: the data-generating process is close to the
+one-step model's functional form, the noise is modest, and the dynamics are
+stable, so error accumulation stays small while the recursive model benefits from
+using the full training set on a single well-specified target. Third, the
+short-vs-long split shows the gap does not blow up with horizon on this series —
+again a consequence of stable, low-noise dynamics rather than a general law.
 
-| Strategy | Metric | Short horizon | Long horizon |
-|---|---|---|---|
-| Recursive | RMSE | fill after running | fill after running |
-| Direct | RMSE | fill after running | fill after running |
-| Joint (MIMO) | RMSE | fill after running | fill after running |
-
-Reporting error *as a function of horizon* matters more than a single aggregate:
-the strategies tend to diverge precisely as $h$ grows, and a single averaged
-RMSE hides exactly the behavior you are trying to compare.
-
-## How to read the results, and what the literature actually says
+## 7. How to read the results, and what the literature actually says
 
 The clean theoretical story — recursive is biased but low-variance, direct is
 unbiased but higher-variance, joint preserves dependency — is a useful guide but
-an unreliable predictor. Across published comparisons the rankings flip with the
-dataset, the base learner, and the horizon. @taieb2012, running 111 series from
-the NN5 competition, found multiple-output (joint-family) strategies to be the
-best performers overall, and also found that deseasonalizing the series before
+an unreliable predictor, and the run above is a small live demonstration of that.
+Across published comparisons the rankings flip with the dataset, the base
+learner, and the horizon. @taieb2012, running 111 series from the NN5
+competition, found multiple-output (joint-family) strategies to be the best
+performers overall, and also found that deseasonalizing the series before
 forecasting improved accuracy uniformly across strategies — a reminder that
 preprocessing can matter more than the strategy choice. A recent analysis
 revisits the bias-variance framing itself and reports that recursive strategies
 can match or beat direct ones in practice despite the latter looking
 theoretically preferable [@green2025epistemic], attributing the gap to factors
-the textbook decomposition omits.
+the textbook decomposition omits. The result above, where recursive wins on a
+smooth synthetic series, is consistent with that more cautious reading.
 
-The practical reading: do not select a strategy from first principles alone.
+The practical takeaway: do not select a strategy from first principles alone.
 Hold out a realistic validation horizon, evaluate per-step error with
-rolling-origin resampling, and let the data on *your* series decide. The
-**rectify** strategy of @taieb2016class is worth knowing as a principled
+rolling-origin resampling as done here, and let the data on *your* series decide.
+The **rectify** strategy of @taieb_rectify is worth knowing as a principled
 middle ground — it starts from biased recursive forecasts and fits a direct
 correction on top, and was reported to be at least as good as the better of
 recursive and direct.
 
-## Limitations
+## 8. Limitations
 
 This comparison is about *strategy*, holding the learner fixed; with a different
 base model (gradient boosting, an LSTM, a Transformer) the relative ranking can
 change, and some architectures blur the categories — a sequence-to-sequence
 model is joint by construction, while an autoregressive Transformer decoder is
-recursive at inference. The synthetic series used here is for illustrating the
-mechanics, not for drawing conclusions; any real verdict requires multiple real
-series and proper resampling. Error accumulation in the recursive case also
-interacts with the noise level and the stability of the underlying dynamics,
-so a single dataset cannot settle the question. Finally, none of these
-strategies addresses forecast *uncertainty* directly; quantifying predictive
-intervals over a horizon is a separate problem that interacts with the strategy
-choice in ways not covered here.
+recursive at inference. The linear ridge learner is precisely why direct and
+joint coincide above; that coincidence is an artifact of linearity, not a general
+fact. The synthetic series here is smooth, low-noise, and stationary in its
+seasonal structure, which flatters the recursive strategy; a noisier or more
+nonlinear process can reverse the ranking, so a single dataset cannot settle the
+question. Finally, none of these strategies addresses forecast *uncertainty*
+directly; quantifying predictive intervals over a horizon is a separate problem
+that interacts with the strategy choice in ways not covered here.
 
-## Conclusion
+## 9. Conclusion
 
 The choice among recursive, direct, and joint is a choice about which problem you
 are willing to have. Recursive buys cheapness and any-horizon flexibility at the
-price of compounding error. Direct buys unbiasedness and per-horizon tailoring at
-the price of $H$ models and broken cross-horizon structure. Joint buys a single
-cheap model that respects the dependency across the horizon, at the price of
-imposing one functional form on every step. Theory ranks them only loosely; the
-empirical literature is openly contradictory; and the strategy that wins on your
-data is something you should measure, per horizon, rather than assume. If you
-want one default to start from, a multi-output model with proper
-deseasonalization is well supported by the NN5-scale evidence — but treat it as a
-baseline to beat, not a settled answer.
+price of compounding error — a price that, as the experiment shows, can be near
+zero on stable low-noise data. Direct buys unbiasedness and per-horizon tailoring
+at the price of $H$ models and broken cross-horizon structure. Joint buys a
+single cheap model that respects the dependency across the horizon, at the price
+of imposing one functional form on every step — and collapses onto direct exactly
+when the learner is linear. Theory ranks them only loosely; the empirical
+literature is openly contradictory; and the strategy that wins on your data is
+something you should measure, per horizon, rather than assume. If you want one
+default to start from, a multi-output model with proper deseasonalization is well
+supported by the NN5-scale evidence — but treat it as a baseline to beat, not a
+settled answer.
 
-## References
 
-::: {#refs}
-:::
