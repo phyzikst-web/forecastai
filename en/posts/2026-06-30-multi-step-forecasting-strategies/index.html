@@ -61,7 +61,26 @@ div.sourceCode
 @media screen {
 pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-</style>
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
 
 
 <script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
@@ -215,6 +234,7 @@ window.Quarto = {
   <li><a href="#how-to-read-the-results-and-what-the-literature-actually-says" id="toc-how-to-read-the-results-and-what-the-literature-actually-says" class="nav-link" data-scroll-target="#how-to-read-the-results-and-what-the-literature-actually-says">7. How to read the results, and what the literature actually says</a></li>
   <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">8. Limitations</a></li>
   <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">9. Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
 </nav>
     </div>
@@ -265,7 +285,7 @@ window.Quarto = {
 <section id="the-question-hidden-inside-predict-the-next-24-hours" class="level2">
 <h2 class="anchored" data-anchor-id="the-question-hidden-inside-predict-the-next-24-hours">1. The question hidden inside “predict the next 24 hours”</h2>
 <p>Most introductions to time series forecasting train a model to predict a single step ahead and stop there. But real applications almost never want one value. An energy operator needs the next 24 hours of load, a retailer needs the next six weeks of demand, a clinical model needs the next several days of bed occupancy. The moment the horizon <span class="math inline">\(H\)</span> exceeds 1, a question appears that the one-step setup never forced you to answer: <em>how do you produce <span class="math inline">\(H\)</span> values from a model that, fundamentally, learns a mapping from past to future?</em></p>
-<p>This is not a hyperparameter detail. The strategy you pick changes which loss the model actually minimizes, how forecast errors accumulate across the horizon, how many models you have to train and store, and whether the dependency structure between <span class="math inline">\(\hat{y}_{N+1}\)</span> and <span class="math inline">\(\hat{y}_{N+5}\)</span> is preserved or thrown away. Three strategies dominate practice: <strong>recursive</strong>, <strong>direct</strong>, and <strong>joint</strong> (the latter usually called <em>Multiple-Output</em> or <em>MIMO</em> in the literature). They embody genuinely different assumptions, and the empirical record on which is best is famously inconsistent — <span class="citation" data-cites="taieb2012">@taieb2012</span> found contradictory conclusions across the prior literature, with some studies favoring recursive, others direct, others multi-output.</p>
+<p>This is not a hyperparameter detail. The strategy you pick changes which loss the model actually minimizes, how forecast errors accumulate across the horizon, how many models you have to train and store, and whether the dependency structure between <span class="math inline">\(\hat{y}_{N+1}\)</span> and <span class="math inline">\(\hat{y}_{N+5}\)</span> is preserved or thrown away. Three strategies dominate practice: <strong>recursive</strong>, <strong>direct</strong>, and <strong>joint</strong> (the latter usually called <em>Multiple-Output</em> or <em>MIMO</em> in the literature). They embody genuinely different assumptions, and the empirical record on which is best is famously inconsistent — <span class="citation" data-cites="taieb2012">Ben Taieb et al. (<a href="#ref-taieb2012" role="doc-biblioref">2012</a>)</span> found contradictory conclusions across the prior literature, with some studies favoring recursive, others direct, others multi-output.</p>
 <p>Throughout, a multi-step task means predicting the next <span class="math inline">\(H\)</span> values <span class="math inline">\([y_{N+1}, \dots, y_{N+H}]\)</span> of a series <span class="math inline">\([y_1, \dots, y_N]\)</span>, with <span class="math inline">\(H &gt; 1\)</span> the forecast horizon and <span class="math inline">\(d\)</span> the number of past lags used as input (the embedding dimension).</p>
 </section>
 <section id="recursive-one-model-fed-its-own-output" class="level2">
@@ -285,7 +305,7 @@ y_{t+1} = f(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 \end{cases}
 \tag{2}\]</span></span></p>
 <p>The middle case is the important one: as soon as <span class="math inline">\(h \ge 2\)</span>, at least one input is itself a prediction, not an observation. By the time <span class="math inline">\(h &gt; d\)</span>, <em>every</em> input is a prediction. This is where the strategy’s well-known weakness comes from — errors feed forward. A small mistake at step 1 becomes part of the input at step 2, which produces a larger mistake, and so on. The model was never trained on its own noisy outputs, so it has no chance to learn to be robust to them; the training and forecasting input distributions differ.</p>
-<p>The theoretical statement behind this is that minimizing one-step error does not minimize <span class="math inline">\(H\)</span>-step error, and the recursive strategy is asymptotically biased <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>. The upside is equally real: a single model means low storage, the full training set is available for that one model, and any horizon <span class="math inline">\(H\)</span> is reachable without retraining.</p>
+<p>The theoretical statement behind this is that minimizing one-step error does not minimize <span class="math inline">\(H\)</span>-step error, and the recursive strategy is asymptotically biased <span class="citation" data-cites="taieb_rectify">(<a href="#ref-taieb_rectify" role="doc-biblioref">Ben Taieb and Hyndman 2012</a>)</span>. The upside is equally real: a single model means low storage, the full training set is available for that one model, and any horizon <span class="math inline">\(H\)</span> is reachable without retraining.</p>
 </section>
 <section id="direct-one-model-per-horizon" class="level2">
 <h2 class="anchored" data-anchor-id="direct-one-model-per-horizon">3. Direct: one model per horizon</h2>
@@ -297,8 +317,8 @@ y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 <p><span id="eq-direct-forecast"><span class="math display">\[
 \hat{y}_{N+h} = \hat{f}_h(y_N, y_{N-1}, \dots, y_{N-d+1}), \quad h = 1, \dots, H.
 \tag{4}\]</span></span></p>
-<p>Because every <span class="math inline">\(\hat{f}_h\)</span> takes only <em>observed</em> values as input, there is no error accumulation — the failure mode of the recursive strategy is structurally absent. Each model also optimizes exactly the objective you care about for its own horizon, which is why the direct strategy is theoretically unbiased <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>.</p>
-<p>The cost shows up in three places. First, you train and store <span class="math inline">\(H\)</span> models instead of one, which is burdensome when <span class="math inline">\(H\)</span> is large. Second, each model is trained independently, so the forecasts ignore the dependency structure across the horizon: nothing ties <span class="math inline">\(\hat{y}_{N+5}\)</span> to <span class="math inline">\(\hat{y}_{N+4}\)</span>, which can produce jagged, mutually inconsistent trajectories. Third, the effective number of training examples shrinks for longer horizons, and being unbiased gives no guarantee of being <em>consistent</em> in finite samples <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>.</p>
+<p>Because every <span class="math inline">\(\hat{f}_h\)</span> takes only <em>observed</em> values as input, there is no error accumulation — the failure mode of the recursive strategy is structurally absent. Each model also optimizes exactly the objective you care about for its own horizon, which is why the direct strategy is theoretically unbiased <span class="citation" data-cites="taieb_rectify">(<a href="#ref-taieb_rectify" role="doc-biblioref">Ben Taieb and Hyndman 2012</a>)</span>.</p>
+<p>The cost shows up in three places. First, you train and store <span class="math inline">\(H\)</span> models instead of one, which is burdensome when <span class="math inline">\(H\)</span> is large. Second, each model is trained independently, so the forecasts ignore the dependency structure across the horizon: nothing ties <span class="math inline">\(\hat{y}_{N+5}\)</span> to <span class="math inline">\(\hat{y}_{N+4}\)</span>, which can produce jagged, mutually inconsistent trajectories. Third, the effective number of training examples shrinks for longer horizons, and being unbiased gives no guarantee of being <em>consistent</em> in finite samples <span class="citation" data-cites="taieb_rectify">(<a href="#ref-taieb_rectify" role="doc-biblioref">Ben Taieb and Hyndman 2012</a>)</span>.</p>
 </section>
 <section id="joint-mimo-one-model-a-vector-output" class="level2">
 <h2 class="anchored" data-anchor-id="joint-mimo-one-model-a-vector-output">4. Joint (MIMO): one model, a vector output</h2>
@@ -311,8 +331,8 @@ y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 <p><span id="eq-mimo-forecast"><span class="math display">\[
 [\hat{y}_{N+1}, \dots, \hat{y}_{N+H}] = \hat{F}(y_N, \dots, y_{N-d+1}).
 \tag{6}\]</span></span></p>
-<p>Two properties follow. There is no recursion, so no error accumulation. And because all <span class="math inline">\(H\)</span> outputs come from one model with shared parameters, the strategy <em>preserves the stochastic dependency</em> between forecasted values — the motivation that introduced MIMO in the first place <span class="citation" data-cites="taieb2012">[@taieb2012]</span>. A neural network with an <span class="math inline">\(H\)</span>-unit output layer, or a sequence-to-sequence decoder, is the natural modern implementation.</p>
-<p>The trade-off is flexibility. A single shared model imposes the same functional form on every horizon, even though the relationship between the input window and <span class="math inline">\(h=1\)</span> may differ from the relationship at <span class="math inline">\(h=H\)</span>. The intermediate <strong>DIRMO</strong> strategy was proposed precisely to interpolate here, predicting blocks of size <span class="math inline">\(s\)</span> so that <span class="math inline">\(H/s\)</span> models each emit an <span class="math inline">\(s\)</span>-vector, trading off dependency preservation against per-horizon flexibility <span class="citation" data-cites="taieb2012">[@taieb2012]</span>.</p>
+<p>Two properties follow. There is no recursion, so no error accumulation. And because all <span class="math inline">\(H\)</span> outputs come from one model with shared parameters, the strategy <em>preserves the stochastic dependency</em> between forecasted values — the motivation that introduced MIMO in the first place <span class="citation" data-cites="taieb2012">(<a href="#ref-taieb2012" role="doc-biblioref">Ben Taieb et al. 2012</a>)</span>. A neural network with an <span class="math inline">\(H\)</span>-unit output layer, or a sequence-to-sequence decoder, is the natural modern implementation.</p>
+<p>The trade-off is flexibility. A single shared model imposes the same functional form on every horizon, even though the relationship between the input window and <span class="math inline">\(h=1\)</span> may differ from the relationship at <span class="math inline">\(h=H\)</span>. The intermediate <strong>DIRMO</strong> strategy was proposed precisely to interpolate here, predicting blocks of size <span class="math inline">\(s\)</span> so that <span class="math inline">\(H/s\)</span> models each emit an <span class="math inline">\(s\)</span>-vector, trading off dependency preservation against per-horizon flexibility <span class="citation" data-cites="taieb2012">(<a href="#ref-taieb2012" role="doc-biblioref">Ben Taieb et al. 2012</a>)</span>.</p>
 <p>One subtlety matters for the experiment below. With a <em>linear</em> base learner and a squared-error loss, fitting one multi-output model and fitting <span class="math inline">\(H\)</span> independent single-output models give the <strong>same</strong> coefficients column by column: a multi-output least-squares (or ridge) regression decomposes into <span class="math inline">\(H\)</span> separate regressions on the shared design matrix. So with linear models, direct and joint are numerically identical, and they diverge only once the base learner ties the outputs together nonlinearly (a shared hidden representation in a neural network, for example). The code makes this concrete.</p>
 </section>
 <section id="putting-the-trade-offs-side-by-side" class="level2">
@@ -515,8 +535,8 @@ RMSE at short horizon (h=1..3) vs long horizon (h=10..12)
 </section>
 <section id="how-to-read-the-results-and-what-the-literature-actually-says" class="level2">
 <h2 class="anchored" data-anchor-id="how-to-read-the-results-and-what-the-literature-actually-says">7. How to read the results, and what the literature actually says</h2>
-<p>The clean theoretical story — recursive is biased but low-variance, direct is unbiased but higher-variance, joint preserves dependency — is a useful guide but an unreliable predictor, and the run above is a small live demonstration of that. Across published comparisons the rankings flip with the dataset, the base learner, and the horizon. <span class="citation" data-cites="taieb2012">@taieb2012</span>, running 111 series from the NN5 competition, found multiple-output (joint-family) strategies to be the best performers overall, and also found that deseasonalizing the series before forecasting improved accuracy uniformly across strategies — a reminder that preprocessing can matter more than the strategy choice. A recent analysis revisits the bias-variance framing itself and reports that recursive strategies can match or beat direct ones in practice despite the latter looking theoretically preferable <span class="citation" data-cites="green2025epistemic">[@green2025epistemic]</span>, attributing the gap to factors the textbook decomposition omits. The result above, where recursive wins on a smooth synthetic series, is consistent with that more cautious reading.</p>
-<p>The practical takeaway: do not select a strategy from first principles alone. Hold out a realistic validation horizon, evaluate per-step error with rolling-origin resampling as done here, and let the data on <em>your</em> series decide. The <strong>rectify</strong> strategy of <span class="citation" data-cites="taieb_rectify">@taieb_rectify</span> is worth knowing as a principled middle ground — it starts from biased recursive forecasts and fits a direct correction on top, and was reported to be at least as good as the better of recursive and direct.</p>
+<p>The clean theoretical story — recursive is biased but low-variance, direct is unbiased but higher-variance, joint preserves dependency — is a useful guide but an unreliable predictor, and the run above is a small live demonstration of that. Across published comparisons the rankings flip with the dataset, the base learner, and the horizon. <span class="citation" data-cites="taieb2012">Ben Taieb et al. (<a href="#ref-taieb2012" role="doc-biblioref">2012</a>)</span>, running 111 series from the NN5 competition, found multiple-output (joint-family) strategies to be the best performers overall, and also found that deseasonalizing the series before forecasting improved accuracy uniformly across strategies — a reminder that preprocessing can matter more than the strategy choice. A recent analysis revisits the bias-variance framing itself and reports that recursive strategies can match or beat direct ones in practice despite the latter looking theoretically preferable <span class="citation" data-cites="green2025epistemic">(<a href="#ref-green2025epistemic" role="doc-biblioref"><span class="nocase">al.</span> 2025</a>)</span>, attributing the gap to factors the textbook decomposition omits. The result above, where recursive wins on a smooth synthetic series, is consistent with that more cautious reading.</p>
+<p>The practical takeaway: do not select a strategy from first principles alone. Hold out a realistic validation horizon, evaluate per-step error with rolling-origin resampling as done here, and let the data on <em>your</em> series decide. The <strong>rectify</strong> strategy of <span class="citation" data-cites="taieb_rectify">Ben Taieb and Hyndman (<a href="#ref-taieb_rectify" role="doc-biblioref">2012</a>)</span> is worth knowing as a principled middle ground — it starts from biased recursive forecasts and fits a direct correction on top, and was reported to be at least as good as the better of recursive and direct.</p>
 </section>
 <section id="limitations" class="level2">
 <h2 class="anchored" data-anchor-id="limitations">8. Limitations</h2>
@@ -525,6 +545,20 @@ RMSE at short horizon (h=1..3) vs long horizon (h=10..12)
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">9. Conclusion</h2>
 <p>The choice among recursive, direct, and joint is a choice about which problem you are willing to have. Recursive buys cheapness and any-horizon flexibility at the price of compounding error — a price that, as the experiment shows, can be near zero on stable low-noise data. Direct buys unbiasedness and per-horizon tailoring at the price of <span class="math inline">\(H\)</span> models and broken cross-horizon structure. Joint buys a single cheap model that respects the dependency across the horizon, at the price of imposing one functional form on every step — and collapses onto direct exactly when the learner is linear. Theory ranks them only loosely; the empirical literature is openly contradictory; and the strategy that wins on your data is something you should measure, per horizon, rather than assume. If you want one default to start from, a multi-output model with proper deseasonalization is well supported by the NN5-scale evidence — but treat it as a baseline to beat, not a settled answer.</p>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-green2025epistemic" class="csl-entry" role="listitem">
+<span class="nocase">al., Green et</span>. 2025. <em>Epistemic Error Decomposition for Multi-Step Time Series Forecasting: Rethinking Bias-Variance in Recursive and Direct Strategies</em>. <a href="https://arxiv.org/abs/2511.11461">https://arxiv.org/abs/2511.11461</a>.
+</div>
+<div id="ref-taieb2012" class="csl-entry" role="listitem">
+Ben Taieb, Souhaib, Gianluca Bontempi, Amir F. Atiya, and Antti Sorjamaa. 2012. <span>“A Review and Comparison of Strategies for Multi-Step Ahead Time Series Forecasting Based on the <span>NN5</span> Forecasting Competition.”</span> <em>Expert Systems with Applications</em> 39 (8): 7067–83. <a href="https://doi.org/10.1016/j.eswa.2012.01.039">https://doi.org/10.1016/j.eswa.2012.01.039</a>.
+</div>
+<div id="ref-taieb_rectify" class="csl-entry" role="listitem">
+Ben Taieb, Souhaib, and Rob J. Hyndman. 2012. <em>Recursive and Direct Multi-Step Forecasting: The Best of Both Worlds</em>. Working Paper 19/12. Department of Econometrics; Business Statistics, Monash University.
+</div>
+</div>
 
 
 </section>

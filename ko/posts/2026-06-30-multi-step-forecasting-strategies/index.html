@@ -60,7 +60,26 @@ div.sourceCode
 @media screen {
 pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-</style>
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
 
 
 <script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
@@ -214,6 +233,7 @@ window.Quarto = {
   <li><a href="#결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가" id="toc-결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가" class="nav-link" data-scroll-target="#결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가">7. 결과를 어떻게 읽고, 문헌은 실제로 무엇을 말하는가</a></li>
   <li><a href="#한계" id="toc-한계" class="nav-link" data-scroll-target="#한계">8. 한계</a></li>
   <li><a href="#결론" id="toc-결론" class="nav-link" data-scroll-target="#결론">9. 결론</a></li>
+  <li><a href="#참고문헌" id="toc-참고문헌" class="nav-link" data-scroll-target="#참고문헌">참고문헌</a></li>
   </ul>
 </nav>
     </div>
@@ -264,7 +284,7 @@ window.Quarto = {
 <section id="앞으로-24시간을-예측하라는-말-속에-숨은-질문" class="level2">
 <h2 class="anchored" data-anchor-id="앞으로-24시간을-예측하라는-말-속에-숨은-질문">1. “앞으로 24시간을 예측하라”는 말 속에 숨은 질문</h2>
 <p>시계열 예측 입문은 대부분 한 스텝 앞을 예측하는 모델을 학습시키는 데서 멈춥니다. 그러나 실무는 값 하나를 원하는 경우가 거의 없습니다. 전력 운영자는 향후 24시간의 부하를, 유통업체는 다음 6주의 수요를, 임상 모델은 앞으로 며칠간의 병상 점유율을 필요로 합니다. 예측 구간 <span class="math inline">\(H\)</span>가 1을 넘는 순간, 한 스텝 설정에서는 마주칠 일이 없던 질문이 생깁니다. <em>과거에서 미래로의 사상(mapping)을 학습하는 모델로부터 어떻게 <span class="math inline">\(H\)</span>개의 값을 만들어 낼 것인가?</em></p>
-<p>이것은 하이퍼파라미터 수준의 세부 사항이 아닙니다. 어떤 전략을 고르느냐에 따라 모델이 실제로 최소화하는 손실이 바뀌고, 예측 오차가 구간을 따라 어떻게 누적되는지가 달라지며, 학습·저장해야 할 모델 수가 달라집니다. 또한 <span class="math inline">\(\hat{y}_{N+1}\)</span>과 <span class="math inline">\(\hat{y}_{N+5}\)</span> 사이의 의존 구조를 보존하느냐 버리느냐도 결정됩니다. 실무에서 지배적인 전략은 세 가지입니다. <strong>재귀(Recursive)</strong>, <strong>직접(Direct)</strong>, 그리고 <strong>결합(Joint)</strong> — 마지막 전략은 문헌에서 보통 <em>다중 출력(Multiple-Output)</em> 또는 <em>MIMO</em>로 불립니다. 세 전략은 서로 다른 가정을 담고 있으며, 어느 것이 최선인가에 대한 실증 기록은 일관성이 없기로 유명합니다. <span class="citation" data-cites="taieb2012">@taieb2012</span> 는 기존 문헌의 결론들이 서로 모순된다는 점을 지적했습니다. 어떤 연구는 재귀를, 어떤 연구는 직접을, 또 어떤 연구는 다중 출력을 지지했습니다.</p>
+<p>이것은 하이퍼파라미터 수준의 세부 사항이 아닙니다. 어떤 전략을 고르느냐에 따라 모델이 실제로 최소화하는 손실이 바뀌고, 예측 오차가 구간을 따라 어떻게 누적되는지가 달라지며, 학습·저장해야 할 모델 수가 달라집니다. 또한 <span class="math inline">\(\hat{y}_{N+1}\)</span>과 <span class="math inline">\(\hat{y}_{N+5}\)</span> 사이의 의존 구조를 보존하느냐 버리느냐도 결정됩니다. 실무에서 지배적인 전략은 세 가지입니다. <strong>재귀(Recursive)</strong>, <strong>직접(Direct)</strong>, 그리고 <strong>결합(Joint)</strong> — 마지막 전략은 문헌에서 보통 <em>다중 출력(Multiple-Output)</em> 또는 <em>MIMO</em>로 불립니다. 세 전략은 서로 다른 가정을 담고 있으며, 어느 것이 최선인가에 대한 실증 기록은 일관성이 없기로 유명합니다. <span class="citation" data-cites="taieb2012">Ben Taieb 기타 (<a href="#ref-taieb2012" role="doc-biblioref">2012년</a>)</span> 는 기존 문헌의 결론들이 서로 모순된다는 점을 지적했습니다. 어떤 연구는 재귀를, 어떤 연구는 직접을, 또 어떤 연구는 다중 출력을 지지했습니다.</p>
 <p>이 글 전체에서 멀티 스텝 과제란 <span class="math inline">\(N\)</span>개 관측치로 이루어진 시계열 <span class="math inline">\([y_1, \dots, y_N]\)</span>의 다음 <span class="math inline">\(H\)</span>개 값 <span class="math inline">\([y_{N+1}, \dots, y_{N+H}]\)</span>를 예측하는 것을 뜻하며, <span class="math inline">\(H &gt; 1\)</span>은 예측 구간, <span class="math inline">\(d\)</span>는 입력으로 쓰는 과거 시차의 개수(임베딩 차원)입니다.</p>
 </section>
 <section id="재귀recursive-하나의-모델에-자기-출력을-다시-먹이다" class="level2">
@@ -284,7 +304,7 @@ y_{t+1} = f(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 \end{cases}
 \tag{2}\]</span></span></p>
 <p>핵심은 가운데 경우입니다. <span class="math inline">\(h \ge 2\)</span>가 되는 즉시 입력 중 적어도 하나는 관측치가 아니라 예측값이 됩니다. <span class="math inline">\(h &gt; d\)</span>에 이르면 <em>모든</em> 입력이 예측값입니다. 잘 알려진 약점이 여기서 나옵니다. 오차가 앞으로 전파됩니다. 1스텝의 작은 실수가 2스텝의 입력 일부가 되어 더 큰 실수를 낳고, 그 과정이 반복됩니다. 모델은 자신의 잡음 섞인 출력으로 학습된 적이 없으므로 그에 강건해질 기회가 없습니다. 학습 입력 분포와 예측 입력 분포가 어긋나는 것입니다.</p>
-<p>이를 뒷받침하는 이론적 진술은, 한 스텝 오차의 최소화가 <span class="math inline">\(H\)</span> 스텝 오차의 최소화를 보장하지 않으며 재귀 전략은 점근적으로 편향(asymptotically biased)된다는 것입니다 <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>. 장점도 그만큼 분명합니다. 모델이 하나뿐이라 저장 비용이 낮고, 그 단일 모델에 전체 학습 데이터를 쓸 수 있으며, 재학습 없이 임의의 구간 <span class="math inline">\(H\)</span>까지 도달할 수 있습니다.</p>
+<p>이를 뒷받침하는 이론적 진술은, 한 스텝 오차의 최소화가 <span class="math inline">\(H\)</span> 스텝 오차의 최소화를 보장하지 않으며 재귀 전략은 점근적으로 편향(asymptotically biased)된다는 것입니다 <span class="citation" data-cites="taieb_rectify">(<a href="#ref-taieb_rectify" role="doc-biblioref">Ben Taieb 와/과 Hyndman 2012년</a>)</span>. 장점도 그만큼 분명합니다. 모델이 하나뿐이라 저장 비용이 낮고, 그 단일 모델에 전체 학습 데이터를 쓸 수 있으며, 재학습 없이 임의의 구간 <span class="math inline">\(H\)</span>까지 도달할 수 있습니다.</p>
 </section>
 <section id="직접direct-구간마다-모델-하나씩" class="level2">
 <h2 class="anchored" data-anchor-id="직접direct-구간마다-모델-하나씩">3. 직접(Direct): 구간마다 모델 하나씩</h2>
@@ -296,8 +316,8 @@ y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 <p><span id="eq-direct-forecast"><span class="math display">\[
 \hat{y}_{N+h} = \hat{f}_h(y_N, y_{N-1}, \dots, y_{N-d+1}), \quad h = 1, \dots, H.
 \tag{4}\]</span></span></p>
-<p>모든 <span class="math inline">\(\hat{f}_h\)</span>가 <em>관측된</em> 값만 입력으로 받으므로 오차 누적이 없습니다. 재귀 전략의 실패 양상이 구조적으로 부재합니다. 또 각 모델은 자기 구간에 대해 정확히 우리가 원하는 목적함수를 최적화하므로, 직접 전략은 이론적으로 비편향(unbiased)입니다 <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>.</p>
-<p>비용은 세 군데에서 나타납니다. 첫째, 모델을 하나가 아니라 <span class="math inline">\(H\)</span>개 학습·저장해야 하므로 <span class="math inline">\(H\)</span>가 크면 부담이 됩니다. 둘째, 각 모델이 독립적으로 학습되므로 예측들이 구간 간 의존 구조를 무시합니다. <span class="math inline">\(\hat{y}_{N+5}\)</span>와 <span class="math inline">\(\hat{y}_{N+4}\)</span>를 묶어 주는 것이 없어 들쭉날쭉하고 서로 모순되는 궤적이 나올 수 있습니다. 셋째, 구간이 길수록 유효 학습 표본 수가 줄며, 비편향이라고 해서 유한 표본에서 <em>일치성(consistency)</em>이 보장되는 것은 아닙니다 <span class="citation" data-cites="taieb_rectify">[@taieb_rectify]</span>.</p>
+<p>모든 <span class="math inline">\(\hat{f}_h\)</span>가 <em>관측된</em> 값만 입력으로 받으므로 오차 누적이 없습니다. 재귀 전략의 실패 양상이 구조적으로 부재합니다. 또 각 모델은 자기 구간에 대해 정확히 우리가 원하는 목적함수를 최적화하므로, 직접 전략은 이론적으로 비편향(unbiased)입니다 <span class="citation" data-cites="taieb_rectify">(<a href="#ref-taieb_rectify" role="doc-biblioref">Ben Taieb 와/과 Hyndman 2012년</a>)</span>.</p>
+<p>비용은 세 군데에서 나타납니다. 첫째, 모델을 하나가 아니라 <span class="math inline">\(H\)</span>개 학습·저장해야 하므로 <span class="math inline">\(H\)</span>가 크면 부담이 됩니다. 둘째, 각 모델이 독립적으로 학습되므로 예측들이 구간 간 의존 구조를 무시합니다. <span class="math inline">\(\hat{y}_{N+5}\)</span>와 <span class="math inline">\(\hat{y}_{N+4}\)</span>를 묶어 주는 것이 없어 들쭉날쭉하고 서로 모순되는 궤적이 나올 수 있습니다. 셋째, 구간이 길수록 유효 학습 표본 수가 줄며, 비편향이라고 해서 유한 표본에서 <em>일치성(consistency)</em>이 보장되는 것은 아닙니다 <span class="citation" data-cites="taieb_rectify">(<a href="#ref-taieb_rectify" role="doc-biblioref">Ben Taieb 와/과 Hyndman 2012년</a>)</span>.</p>
 </section>
 <section id="결합joint-mimo-하나의-모델-벡터-출력" class="level2">
 <h2 class="anchored" data-anchor-id="결합joint-mimo-하나의-모델-벡터-출력">4. 결합(Joint, MIMO): 하나의 모델, 벡터 출력</h2>
@@ -309,8 +329,8 @@ y_{t+h} = f_h(y_t, y_{t-1}, \dots, y_{t-d+1}) + w_t,
 <p><span id="eq-mimo-forecast"><span class="math display">\[
 [\hat{y}_{N+1}, \dots, \hat{y}_{N+H}] = \hat{F}(y_N, \dots, y_{N-d+1}).
 \tag{6}\]</span></span></p>
-<p>두 가지 성질이 따라옵니다. 재귀가 없으므로 오차 누적이 없습니다. 그리고 <span class="math inline">\(H\)</span>개 출력이 모두 매개변수를 공유하는 하나의 모델에서 나오므로, 이 전략은 예측값들 사이의 <em>확률적 의존 구조를 보존</em>합니다. 애초에 MIMO를 도입한 동기가 바로 이것입니다 <span class="citation" data-cites="taieb2012">[@taieb2012]</span>. <span class="math inline">\(H\)</span>개 유닛의 출력층을 가진 신경망이나 시퀀스-투-시퀀스 디코더가 현대적인 자연스러운 구현입니다.</p>
-<p>대가는 유연성입니다. 공유된 단일 모델은 모든 구간에 동일한 함수 형태를 강제합니다. 입력 윈도우와 <span class="math inline">\(h=1\)</span>의 관계가 <span class="math inline">\(h=H\)</span>의 관계와 다를 수 있는데도 그렇습니다. 중간 형태인 <strong>DIRMO</strong> 전략은 바로 이 지점을 보간하기 위해 제안되었습니다. 크기 <span class="math inline">\(s\)</span>의 블록 단위로 예측하여 <span class="math inline">\(H/s\)</span>개의 모델이 각각 <span class="math inline">\(s\)</span>차원 벡터를 내보내게 함으로써, 의존 구조 보존과 구간별 유연성 사이에서 절충합니다 <span class="citation" data-cites="taieb2012">[@taieb2012]</span>.</p>
+<p>두 가지 성질이 따라옵니다. 재귀가 없으므로 오차 누적이 없습니다. 그리고 <span class="math inline">\(H\)</span>개 출력이 모두 매개변수를 공유하는 하나의 모델에서 나오므로, 이 전략은 예측값들 사이의 <em>확률적 의존 구조를 보존</em>합니다. 애초에 MIMO를 도입한 동기가 바로 이것입니다 <span class="citation" data-cites="taieb2012">(<a href="#ref-taieb2012" role="doc-biblioref">Ben Taieb 기타 2012년</a>)</span>. <span class="math inline">\(H\)</span>개 유닛의 출력층을 가진 신경망이나 시퀀스-투-시퀀스 디코더가 현대적인 자연스러운 구현입니다.</p>
+<p>대가는 유연성입니다. 공유된 단일 모델은 모든 구간에 동일한 함수 형태를 강제합니다. 입력 윈도우와 <span class="math inline">\(h=1\)</span>의 관계가 <span class="math inline">\(h=H\)</span>의 관계와 다를 수 있는데도 그렇습니다. 중간 형태인 <strong>DIRMO</strong> 전략은 바로 이 지점을 보간하기 위해 제안되었습니다. 크기 <span class="math inline">\(s\)</span>의 블록 단위로 예측하여 <span class="math inline">\(H/s\)</span>개의 모델이 각각 <span class="math inline">\(s\)</span>차원 벡터를 내보내게 함으로써, 의존 구조 보존과 구간별 유연성 사이에서 절충합니다 <span class="citation" data-cites="taieb2012">(<a href="#ref-taieb2012" role="doc-biblioref">Ben Taieb 기타 2012년</a>)</span>.</p>
 <p>아래 실험과 직결되는 미묘한 점이 하나 있습니다. <em>선형</em> 기저 학습기와 제곱오차 손실을 쓰면, 다중 출력 모델 하나를 적합하는 것과 <span class="math inline">\(H\)</span>개의 단일 출력 모델을 각각 적합하는 것은 열(column)별로 <strong>동일한</strong> 계수를 줍니다. 다중 출력 최소제곱(또는 릿지) 회귀는 공유된 설계행렬 위의 <span class="math inline">\(H\)</span>개 독립 회귀로 분해되기 때문입니다. 따라서 선형 모델에서는 직접과 결합이 수치적으로 같고, 학습기가 출력들을 비선형적으로 묶을 때(예: 신경망의 공유 은닉 표현)에 비로소 갈라집니다. 코드가 이 점을 구체적으로 보여 줍니다.</p>
 </section>
 <section id="트레이드오프를-나란히-놓고-보기" class="level2">
@@ -507,8 +527,8 @@ RMSE at short horizon (h=1..3) vs long horizon (h=10..12)
 </section>
 <section id="결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가" class="level2">
 <h2 class="anchored" data-anchor-id="결과를-어떻게-읽고-문헌은-실제로-무엇을-말하는가">7. 결과를 어떻게 읽고, 문헌은 실제로 무엇을 말하는가</h2>
-<p>깔끔한 이론적 서사 — 재귀는 편향되지만 분산이 낮고, 직접은 비편향이지만 분산이 더 높으며, 결합은 의존 구조를 보존한다 — 는 유용한 길잡이지만 신뢰할 만한 예측자는 아니며, 위 실행이 그 점을 작게나마 실시간으로 보여 줍니다. 출판된 비교 전반에서 순위는 데이터셋, 기저 학습기, 구간에 따라 뒤집힙니다. <span class="citation" data-cites="taieb2012">@taieb2012</span> 는 NN5 대회의 111개 시계열로 실험하여 다중 출력(결합 계열) 전략이 전반적으로 가장 좋은 성능을 보였다고 보고했고, 예측 전 계절성을 제거하면 전략에 무관하게 정확도가 일관되게 향상된다는 점도 발견했습니다. 전처리가 전략 선택보다 더 중요할 수 있음을 일깨우는 결과입니다. 최근의 한 분석은 편향-분산 틀 자체를 재검토하여, 이론적으로 직접이 더 나아 보이는데도 실무에서는 재귀가 직접과 대등하거나 더 나을 수 있다고 보고하며 그 격차를 교과서적 분해가 놓친 요인들로 돌립니다 <span class="citation" data-cites="green2025epistemic">[@green2025epistemic]</span>. 매끄러운 합성 시계열에서 재귀가 이긴 위 결과는 이 신중한 해석과 일관됩니다.</p>
-<p>실무적 해석은 이렇습니다. 전략을 원리만으로 고르지 마십시오. 현실적인 검증 구간을 떼어 두고, 여기서 한 것처럼 롤링 오리진 재표집으로 스텝별 오차를 평가한 뒤, <em>당신의</em> 시계열에 대한 데이터가 결정하게 하십시오. <span class="citation" data-cites="taieb_rectify">@taieb_rectify</span> 의 <strong>rectify</strong> 전략은 원칙적인 중간 지대로 알아 둘 가치가 있습니다. 편향된 재귀 예측에서 출발해 그 위에 직접 보정을 적합하는 방식이며, 재귀와 직접 중 더 나은 쪽 이상의 성능을 낸다고 보고되었습니다.</p>
+<p>깔끔한 이론적 서사 — 재귀는 편향되지만 분산이 낮고, 직접은 비편향이지만 분산이 더 높으며, 결합은 의존 구조를 보존한다 — 는 유용한 길잡이지만 신뢰할 만한 예측자는 아니며, 위 실행이 그 점을 작게나마 실시간으로 보여 줍니다. 출판된 비교 전반에서 순위는 데이터셋, 기저 학습기, 구간에 따라 뒤집힙니다. <span class="citation" data-cites="taieb2012">Ben Taieb 기타 (<a href="#ref-taieb2012" role="doc-biblioref">2012년</a>)</span> 는 NN5 대회의 111개 시계열로 실험하여 다중 출력(결합 계열) 전략이 전반적으로 가장 좋은 성능을 보였다고 보고했고, 예측 전 계절성을 제거하면 전략에 무관하게 정확도가 일관되게 향상된다는 점도 발견했습니다. 전처리가 전략 선택보다 더 중요할 수 있음을 일깨우는 결과입니다. 최근의 한 분석은 편향-분산 틀 자체를 재검토하여, 이론적으로 직접이 더 나아 보이는데도 실무에서는 재귀가 직접과 대등하거나 더 나을 수 있다고 보고하며 그 격차를 교과서적 분해가 놓친 요인들로 돌립니다 <span class="citation" data-cites="green2025epistemic">(<a href="#ref-green2025epistemic" role="doc-biblioref"><span class="nocase">al.</span> 2025년</a>)</span>. 매끄러운 합성 시계열에서 재귀가 이긴 위 결과는 이 신중한 해석과 일관됩니다.</p>
+<p>실무적 해석은 이렇습니다. 전략을 원리만으로 고르지 마십시오. 현실적인 검증 구간을 떼어 두고, 여기서 한 것처럼 롤링 오리진 재표집으로 스텝별 오차를 평가한 뒤, <em>당신의</em> 시계열에 대한 데이터가 결정하게 하십시오. <span class="citation" data-cites="taieb_rectify">Ben Taieb 와/과 Hyndman (<a href="#ref-taieb_rectify" role="doc-biblioref">2012년</a>)</span> 의 <strong>rectify</strong> 전략은 원칙적인 중간 지대로 알아 둘 가치가 있습니다. 편향된 재귀 예측에서 출발해 그 위에 직접 보정을 적합하는 방식이며, 재귀와 직접 중 더 나은 쪽 이상의 성능을 낸다고 보고되었습니다.</p>
 </section>
 <section id="한계" class="level2">
 <h2 class="anchored" data-anchor-id="한계">8. 한계</h2>
@@ -517,6 +537,20 @@ RMSE at short horizon (h=1..3) vs long horizon (h=10..12)
 <section id="결론" class="level2">
 <h2 class="anchored" data-anchor-id="결론">9. 결론</h2>
 <p>재귀, 직접, 결합 사이의 선택은 <em>어떤 문제를 감수할 것인가</em>에 대한 선택입니다. 재귀는 오차 누적을 대가로 저렴함과 임의 구간 유연성을 사며, 실험이 보여 주듯 그 대가는 안정적이고 잡음이 적은 데이터에서는 거의 0에 가까울 수 있습니다. 직접은 <span class="math inline">\(H\)</span>개의 모델과 끊어진 구간 간 구조를 대가로 비편향과 구간별 맞춤을 삽니다. 결합은 모든 스텝에 하나의 함수 형태를 강제하는 대가로 구간 간 의존 구조를 존중하는 단일의 저렴한 모델을 사며, 학습기가 선형일 때는 정확히 직접과 포개집니다. 이론은 이들을 느슨하게만 줄 세우고, 실증 문헌은 공공연히 모순되며, 당신의 데이터에서 이기는 전략은 가정할 것이 아니라 구간별로 측정해야 할 대상입니다. 출발점으로 삼을 기본값 하나가 필요하다면, 적절한 계절성 제거를 동반한 다중 출력 모델은 NN5 규모의 증거가 잘 뒷받침합니다. 다만 이를 정답이 아니라 넘어서야 할 기준선으로 다루십시오.</p>
+</section>
+<section id="참고문헌" class="level2">
+<h2 class="anchored" data-anchor-id="참고문헌">참고문헌</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-green2025epistemic" class="csl-entry" role="listitem">
+<span class="nocase">al., Green et</span>. 2025년. <em>Epistemic Error Decomposition for Multi-step Time Series Forecasting: Rethinking Bias-Variance in Recursive and Direct Strategies</em>. <a href="https://arxiv.org/abs/2511.11461">https://arxiv.org/abs/2511.11461</a>.
+</div>
+<div id="ref-taieb2012" class="csl-entry" role="listitem">
+Ben Taieb, Souhaib, Gianluca Bontempi, Amir F. Atiya, 와/과 Antti Sorjamaa. 2012년. <span>“A review and comparison of strategies for multi-step ahead time series forecasting based on the <span>NN5</span> forecasting competition”</span>. <em>Expert Systems with Applications</em> 39 (8): 7067–83. <a href="https://doi.org/10.1016/j.eswa.2012.01.039">https://doi.org/10.1016/j.eswa.2012.01.039</a>.
+</div>
+<div id="ref-taieb_rectify" class="csl-entry" role="listitem">
+Ben Taieb, Souhaib, 와/과 Rob J. Hyndman. 2012년. <em>Recursive and direct multi-step forecasting: the best of both worlds</em>. Working Paper 19/12. Department of Econometrics; Business Statistics, Monash University.
+</div>
+</div>
 
 
 </section>
