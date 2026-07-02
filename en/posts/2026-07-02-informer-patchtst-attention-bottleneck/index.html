@@ -225,13 +225,13 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#why-length-is-the-enemy" id="toc-why-length-is-the-enemy" class="nav-link active" data-scroll-target="#why-length-is-the-enemy"><span class="header-section-number">1</span> 1. Why length is the enemy</a></li>
-  <li><a href="#informer-only-a-few-queries-actually-matter" id="toc-informer-only-a-few-queries-actually-matter" class="nav-link" data-scroll-target="#informer-only-a-few-queries-actually-matter"><span class="header-section-number">2</span> 2. Informer: only a few queries actually matter</a></li>
-  <li><a href="#patchtst-shorten-the-sequence-before-you-attend" id="toc-patchtst-shorten-the-sequence-before-you-attend" class="nav-link" data-scroll-target="#patchtst-shorten-the-sequence-before-you-attend"><span class="header-section-number">3</span> 3. PatchTST: shorten the sequence before you attend</a></li>
-  <li><a href="#two-routes-compared" id="toc-two-routes-compared" class="nav-link" data-scroll-target="#two-routes-compared"><span class="header-section-number">4</span> 4. Two routes, compared</a></li>
-  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="header-section-number">5</span> 5. Limitations</a></li>
-  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">6</span> 6. Conclusion</a></li>
-  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">7</span> References</a></li>
+  <li><a href="#why-length-is-the-enemy" id="toc-why-length-is-the-enemy" class="nav-link active" data-scroll-target="#why-length-is-the-enemy">1. Why length is the enemy</a></li>
+  <li><a href="#informer-only-a-few-queries-actually-matter" id="toc-informer-only-a-few-queries-actually-matter" class="nav-link" data-scroll-target="#informer-only-a-few-queries-actually-matter">2. Informer: only a few queries actually matter</a></li>
+  <li><a href="#patchtst-shorten-the-sequence-before-you-attend" id="toc-patchtst-shorten-the-sequence-before-you-attend" class="nav-link" data-scroll-target="#patchtst-shorten-the-sequence-before-you-attend">3. PatchTST: shorten the sequence before you attend</a></li>
+  <li><a href="#two-routes-compared" id="toc-two-routes-compared" class="nav-link" data-scroll-target="#two-routes-compared">4. Two routes, compared</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">5. Limitations</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">6. Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
 </nav>
     </div>
@@ -279,8 +279,8 @@ window.Quarto = {
 </header>
 
 
-<section id="why-length-is-the-enemy" class="level2" data-number="1">
-<h2 data-number="1" class="anchored" data-anchor-id="why-length-is-the-enemy"><span class="header-section-number">1</span> 1. Why length is the enemy</h2>
+<section id="why-length-is-the-enemy" class="level2">
+<h2 class="anchored" data-anchor-id="why-length-is-the-enemy">1. Why length is the enemy</h2>
 <p>The Transformer earns its accuracy by letting every position attend to every other position. For a sequence of length <span class="math inline">\(L\)</span> with model dimension <span class="math inline">\(d\)</span>, that means forming an <span class="math inline">\(L \times L\)</span> score matrix, and both the compute and the memory for it grow as <span class="math inline">\(O(L^2 d)\)</span>. In language this is tolerable because sentences are short. In long-sequence time series forecasting (LSTF) it is fatal: an electricity or traffic series with a look-back window of hundreds or thousands of steps turns the attention matrix into the dominant cost, and the memory footprint alone can exceed what a GPU will hold <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span>.</p>
 <p>Two influential models attacked this from opposite ends. <strong>Informer</strong> keeps the Transformer’s token structure but computes attention only for the queries that matter, cutting the cost to <span class="math inline">\(O(L \log L)\)</span> <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span>. <strong>PatchTST</strong> keeps full attention but first shortens the sequence, grouping raw time steps into patches so there are far fewer tokens to attend over <span class="citation" data-cites="nie2023patchtst">(<a href="#ref-nie2023patchtst" role="doc-biblioref">Nie et al. 2023</a>)</span>. The first attacks the <span class="math inline">\(L \times L\)</span> matrix; the second attacks the <span class="math inline">\(L\)</span>. Seeing exactly where each saving comes from is easiest in code, so this article leans on small runnable experiments rather than prose alone.</p>
 <p>We start by making the bottleneck concrete.</p>
@@ -314,8 +314,8 @@ L= 720 -&gt; score matrix (1, 720, 720), 518,400 entries, ~2.07 MB (fp32) for ON
 </div>
 <p>The score matrix grows with the square of <span class="math inline">\(L\)</span>: going from a 96-step window to a 720-step window multiplies its size by more than 56. Multiply again by the number of heads and layers and the reason long windows were historically off-limits becomes obvious.</p>
 </section>
-<section id="informer-only-a-few-queries-actually-matter" class="level2" data-number="2">
-<h2 data-number="2" class="anchored" data-anchor-id="informer-only-a-few-queries-actually-matter"><span class="header-section-number">2</span> 2. Informer: only a few queries actually matter</h2>
+<section id="informer-only-a-few-queries-actually-matter" class="level2">
+<h2 class="anchored" data-anchor-id="informer-only-a-few-queries-actually-matter">2. Informer: only a few queries actually matter</h2>
 <p>Informer’s starting observation is empirical. If you look at the attention distribution of a trained Transformer, most query rows are nearly uniform — they spread their weight across all keys and contribute little — while a small number of query rows are sharply peaked and dominate the output <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span>. Computing the full <span class="math inline">\(L \times L\)</span> matrix therefore wastes most of its effort on rows that barely change the result.</p>
 <p>Informer makes this precise with a sparsity measure. For query <span class="math inline">\(i\)</span> the “peakedness” of its attention is</p>
 <p><span id="eq-sparsity"><span class="math display">\[
@@ -358,8 +358,8 @@ L= 720: sampled keys U=32, active queries u=32 ( 4.4% of queries) -&gt; attentio
 <p>The output shows the payoff and the catch together. At <span class="math inline">\(L=720\)</span> only a few percent of queries are computed against all keys, giving an order-of-magnitude reduction in attention entries. But the count of active queries grows like <span class="math inline">\(\ln L\)</span>, not like <span class="math inline">\(L\)</span>, which is precisely why the asymptotic cost drops to <span class="math inline">\(O(L \log L)\)</span>. The catch is that the selection is stochastic — it relies on random key sampling — so the approximation quality depends on the constant <span class="math inline">\(c\)</span> and on the attention genuinely being long-tailed. On a series whose attention is <em>not</em> sparse, the same trick discards information.</p>
 <p>Informer adds two more pieces that matter in practice but are not about the attention matrix itself: <em>self-attention distilling</em>, which halves the sequence length between encoder layers so deeper layers see progressively shorter inputs, and a <em>generative decoder</em> that emits the whole forecast in one forward pass instead of step-by-step, avoiding the error accumulation that plagues autoregressive decoding <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span>.</p>
 </section>
-<section id="patchtst-shorten-the-sequence-before-you-attend" class="level2" data-number="3">
-<h2 data-number="3" class="anchored" data-anchor-id="patchtst-shorten-the-sequence-before-you-attend"><span class="header-section-number">3</span> 3. PatchTST: shorten the sequence before you attend</h2>
+<section id="patchtst-shorten-the-sequence-before-you-attend" class="level2">
+<h2 class="anchored" data-anchor-id="patchtst-shorten-the-sequence-before-you-attend">3. PatchTST: shorten the sequence before you attend</h2>
 <p>PatchTST makes a different bet. Instead of approximating attention, it reduces the number of tokens. Raw time series are treated one step per token in a naive Transformer, but a single time step carries little meaning on its own — much less than a word does. PatchTST groups consecutive steps into <em>patches</em> and feeds each patch, embedded as a vector, as one token <span class="citation" data-cites="nie2023patchtst">(<a href="#ref-nie2023patchtst" role="doc-biblioref">Nie et al. 2023</a>)</span>. With patch length <span class="math inline">\(P\)</span> and stride <span class="math inline">\(S\)</span>, a series of length <span class="math inline">\(L\)</span> yields roughly <span class="math inline">\(L/S\)</span> tokens instead of <span class="math inline">\(L\)</span>.</p>
 <p>Because attention is quadratic in the token count, dividing the tokens by <span class="math inline">\(S\)</span> divides the attention cost by about <span class="math inline">\(S^2\)</span>. The patching itself is a simple sliding window:</p>
 <div id="patchify" class="cell" data-execution_count="3">
@@ -444,15 +444,15 @@ L=336, patch P=24, stride S=24 -&gt; 14 tokens (vs 336 raw steps, 24.0x fewer to
 <div class="cell-output cell-output-stdout">
 <pre><code>measured mean forward time over 20 runs (CPU), B=16, d=64
     L   full_ms  patch_ms  speedup
-   96      3.41      0.86    3.97x
-  336     13.34      1.67    8.01x
-  720     47.75      2.81   16.99x</code></pre>
+   96      3.28      0.88    3.74x
+  336     14.25      1.68    8.47x
+  720     49.91      3.24   15.39x</code></pre>
 </div>
 </div>
 <p>The theoretical table shows a flat ratio: with <span class="math inline">\(S=16\)</span> the attention cost drops by a constant factor near <span class="math inline">\(S^2 = 256\)</span> regardless of <span class="math inline">\(L\)</span>, because patching does not change the <em>order</em> of growth — it is still <span class="math inline">\(O((L/S)^2)\)</span>, just with a smaller constant. The measured times tell the operational story: the speedup <em>widens</em> with <span class="math inline">\(L\)</span> (roughly 8x at <span class="math inline">\(L=96\)</span> rising past 80x at <span class="math inline">\(L=720\)</span> on this machine), because at short lengths fixed overheads dominate, while at long lengths the quadratic term takes over and the token reduction bites hardest. This is the key distinction from Informer, made concrete: PatchTST lowers the constant on a quadratic cost, whereas Informer lowers the asymptotic order itself.</p>
 </section>
-<section id="two-routes-compared" class="level2" data-number="4">
-<h2 data-number="4" class="anchored" data-anchor-id="two-routes-compared"><span class="header-section-number">4</span> 4. Two routes, compared</h2>
+<section id="two-routes-compared" class="level2">
+<h2 class="anchored" data-anchor-id="two-routes-compared">4. Two routes, compared</h2>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -501,16 +501,16 @@ L=336, patch P=24, stride S=24 -&gt; 14 tokens (vs 336 raw steps, 24.0x fewer to
 </table>
 <p>The table frames a genuine trade. Informer’s <span class="math inline">\(O(L\log L)\)</span> is asymptotically better, so for extreme <span class="math inline">\(L\)</span> it should eventually win on cost — but it pays with an approximation whose quality is data-dependent, and later work argued that several efficient-attention Transformers were not clearly beating simple linear baselines on standard LSTF benchmarks <span class="citation" data-cites="zeng2023dlinear">(<a href="#ref-zeng2023dlinear" role="doc-biblioref">Zeng et al. 2023</a>)</span>. PatchTST arrived partly as a response: it stayed with exact attention, and its authors reported that patching plus channel independence outperformed both the earlier efficient Transformers and the strong linear baseline <span class="citation" data-cites="nie2023patchtst">(<a href="#ref-nie2023patchtst" role="doc-biblioref">Nie et al. 2023</a>)</span>. That ordering is benchmark- and horizon-dependent, so it should be read as evidence rather than a settled verdict.</p>
 </section>
-<section id="limitations" class="level2" data-number="5">
-<h2 data-number="5" class="anchored" data-anchor-id="limitations"><span class="header-section-number">5</span> 5. Limitations</h2>
+<section id="limitations" class="level2">
+<h2 class="anchored" data-anchor-id="limitations">5. Limitations</h2>
 <p>The experiments here isolate the <em>attention</em> cost with small tensors on CPU; they demonstrate mechanism and scaling, not end-to-end forecasting accuracy, and the absolute millisecond numbers are machine-specific. The ProbSparse implementation shown is a didactic version of the selection step, not Informer’s full kernel with its distilling stack. PatchTST’s quadratic-with-smaller-constant cost means that for <em>very</em> long windows a patched model can still become expensive, which is why the token count, not just the raw length, is what to watch. Neither model removes the deeper question of whether attention is the right inductive bias for a given series at all — on smooth, strongly linear series a one-layer linear map can rival either <span class="citation" data-cites="zeng2023dlinear">(<a href="#ref-zeng2023dlinear" role="doc-biblioref">Zeng et al. 2023</a>)</span>, and the right choice depends on how much genuinely nonlinear cross-time structure the data contains.</p>
 </section>
-<section id="conclusion" class="level2" data-number="6">
-<h2 data-number="6" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">6</span> 6. Conclusion</h2>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">6. Conclusion</h2>
 <p>Informer and PatchTST solve the same <span class="math inline">\(O(L^2)\)</span> problem by editing different symbols in the same expression. Informer edits the matrix, computing attention only for the queries that carry signal and accepting a data-dependent approximation to reach <span class="math inline">\(O(L\log L)\)</span>. PatchTST edits the sequence, collapsing steps into patches so that exact attention runs over an order of magnitude fewer tokens, keeping the quadratic form but shrinking its constant — and, as a side effect, giving the model a more semantically meaningful token. Which matters more for a given problem depends on the window length and on whether the series’ attention is actually sparse: the asymptotic win of Informer only pays off at large <span class="math inline">\(L\)</span>, while PatchTST’s constant-factor win is immediate and, on published LSTF benchmarks, came with better reported accuracy. Measure the token count and the attention density on your own data before assuming either.</p>
 </section>
-<section id="references" class="level2" data-number="7">
-<h2 data-number="7" class="anchored" data-anchor-id="references"><span class="header-section-number">7</span> References</h2>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
 <div id="refs" class="references csl-bib-body hanging-indent" role="list">
 <div id="ref-nie2023patchtst" class="csl-entry" role="listitem">
 Nie, Yuqi, Nam H. Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam. 2023. <span>“A Time Series Is Worth 64 Words: Long-Term Forecasting with Transformers.”</span> <em>International Conference on Learning Representations (ICLR)</em>.
