@@ -1,0 +1,319 @@
+---
+title: "How Informer and PatchTST Broke the Quadratic Attention Bottleneck in Time Series"
+date: "2026-07-02"
+author: "Prof. Shin (phyzik)"
+categories:
+  - Data Science
+  - Artificial Intelligence
+  - Time Series
+image: "thumbnail.jpg"
+description: |
+  Self-attention costs O(L^2) in the sequence length, which is fatal for long
+  time series. This article traces two very different escapes from that cost —
+  Informer's ProbSparse attention and PatchTST's patching — with runnable code
+  that measures where the savings actually come from.
+lang: en
+toc: true
+toc-depth: 3
+number-sections: true
+code-fold: false
+code-tools: false
+bibliography: ../../references.bib
+execute:
+  echo: true
+  output: true
+  eval: true
+  warning: false
+  message: false
+  freeze: auto
+format:
+  html:
+    code-copy: true
+    code-overflow: wrap
+---
+
+## 1. Why length is the enemy
+
+The Transformer earns its accuracy by letting every position attend to every
+other position. For a sequence of length $L$ with model dimension $d$, that means
+forming an $L \times L$ score matrix, and both the compute and the memory for it
+grow as $O(L^2 d)$. In language this is tolerable because sentences are short.
+In long-sequence time series forecasting (LSTF) it is fatal: an electricity or
+traffic series with a look-back window of hundreds or thousands of steps turns
+the attention matrix into the dominant cost, and the memory footprint alone can
+exceed what a GPU will hold [@zhou2021informer].
+
+Two influential models attacked this from opposite ends. **Informer** keeps the
+Transformer's token structure but computes attention only for the queries that
+matter, cutting the cost to $O(L \log L)$ [@zhou2021informer]. **PatchTST** keeps
+full attention but first shortens the sequence, grouping raw time steps into
+patches so there are far fewer tokens to attend over [@nie2023patchtst]. The
+first attacks the $L \times L$ matrix; the second attacks the $L$. Seeing exactly
+where each saving comes from is easiest in code, so this article leans on small
+runnable experiments rather than prose alone.
+
+We start by making the bottleneck concrete.
+
+```{python}
+#| label: quadratic-cost
+import torch
+import torch.nn as nn
+import math, time
+torch.manual_seed(0)
+
+def dense_attention(x):
+    """Textbook scaled dot-product self-attention.
+    x: (B, L, d) -> returns (B, L, d) and the L x L score matrix."""
+    B, L, d = x.shape
+    scores = (x @ x.transpose(1, 2)) / math.sqrt(d)   # (B, L, L)  <-- the O(L^2) object
+    attn = torch.softmax(scores, dim=-1)
+    out = attn @ x                                    # (B, L, d)
+    return out, scores
+
+for L in [96, 336, 720]:
+    x = torch.randn(1, L, 64)
+    _, scores = dense_attention(x)
+    n_entries = scores.numel()
+    mem_mb = scores.element_size() * n_entries / 1e6
+    print(f"L={L:4d} -> score matrix {tuple(scores.shape)}, "
+          f"{n_entries:,} entries, ~{mem_mb:.2f} MB (fp32) for ONE head")
+```
+
+The score matrix grows with the square of $L$: going from a 96-step window to a
+720-step window multiplies its size by more than 56. Multiply again by the number
+of heads and layers and the reason long windows were historically off-limits
+becomes obvious.
+
+## 2. Informer: only a few queries actually matter
+
+Informer's starting observation is empirical. If you look at the attention
+distribution of a trained Transformer, most query rows are nearly uniform — they
+spread their weight across all keys and contribute little — while a small number
+of query rows are sharply peaked and dominate the output [@zhou2021informer].
+Computing the full $L \times L$ matrix therefore wastes most of its effort on
+rows that barely change the result.
+
+Informer makes this precise with a sparsity measure. For query $i$ the
+"peakedness" of its attention is
+
+$$
+M(q_i, K) = \max_j \frac{q_i k_j^\top}{\sqrt{d}}
+          - \frac{1}{L}\sum_{j=1}^{L}\frac{q_i k_j^\top}{\sqrt{d}},
+$$ {#eq-sparsity}
+
+the gap between a query's strongest score and its average score. A large $M$ means
+the query concentrates on a few keys and is worth computing exactly; a small $M$
+means it is near-uniform and can be replaced by a cheap average. Here $q_i \in
+\mathbb{R}^d$ is one query, $K \in \mathbb{R}^{L \times d}$ is the key matrix, and
+$k_j$ its $j$-th row. Evaluating @eq-sparsity for every query would already cost
+$O(L^2)$, so Informer estimates it from a random subset of only $U = c \ln L$ keys,
+then keeps the top $u = c \ln L$ queries. Everything else falls back to the mean.
+The result is **ProbSparse attention** with $O(L \log L)$ time and memory
+[@zhou2021informer].
+
+The mechanism is short enough to implement directly:
+
+```{python}
+#| label: probsparse
+def probsparse_selection(Q, K, c=5):
+    """Select the top-u 'active' queries via the sparsity measure in eq-sparsity,
+    estimated from a sampled subset of keys.
+    Q, K: (L, d). Returns indices of active queries and the fraction computed densely."""
+    L, d = Q.shape
+    scale = 1.0 / math.sqrt(d)
+    U = min(L, int(c * math.log(L)))       # number of sampled keys
+    u = min(L, int(c * math.log(L)))       # number of active queries kept
+    idx = torch.randperm(L)[:U]
+    S_sample = (Q @ K[idx].T) * scale      # (L, U) sampled scores
+    M = S_sample.max(dim=1).values - S_sample.mean(dim=1)   # eq-sparsity, approximated
+    active = torch.topk(M, u).indices
+    return active, U, u
+
+torch.manual_seed(0)
+for L in [96, 336, 720]:
+    Q = torch.randn(L, 32); K = torch.randn(L, 32)
+    active, U, u = probsparse_selection(Q, K)
+    dense = L * L
+    sparse = u * L
+    print(f"L={L:4d}: sampled keys U={U:2d}, active queries u={u:2d} "
+          f"({u/L:5.1%} of queries) -> attention entries {dense:,} -> {sparse:,} "
+          f"({dense/sparse:.1f}x fewer)")
+```
+
+The output shows the payoff and the catch together. At $L=720$ only a few percent
+of queries are computed against all keys, giving an order-of-magnitude reduction
+in attention entries. But the count of active queries grows like $\ln L$, not
+like $L$, which is precisely why the asymptotic cost drops to $O(L \log L)$. The
+catch is that the selection is stochastic — it relies on random key sampling — so
+the approximation quality depends on the constant $c$ and on the attention
+genuinely being long-tailed. On a series whose attention is *not* sparse, the
+same trick discards information.
+
+Informer adds two more pieces that matter in practice but are not about the
+attention matrix itself: *self-attention distilling*, which halves the sequence
+length between encoder layers so deeper layers see progressively shorter inputs,
+and a *generative decoder* that emits the whole forecast in one forward pass
+instead of step-by-step, avoiding the error accumulation that plagues
+autoregressive decoding [@zhou2021informer].
+
+## 3. PatchTST: shorten the sequence before you attend
+
+PatchTST makes a different bet. Instead of approximating attention, it reduces the
+number of tokens. Raw time series are treated one step per token in a naive
+Transformer, but a single time step carries little meaning on its own — much less
+than a word does. PatchTST groups consecutive steps into *patches* and feeds each
+patch, embedded as a vector, as one token [@nie2023patchtst]. With patch length
+$P$ and stride $S$, a series of length $L$ yields roughly $L/S$ tokens instead of
+$L$.
+
+Because attention is quadratic in the token count, dividing the tokens by $S$
+divides the attention cost by about $S^2$. The patching itself is a simple
+sliding window:
+
+```{python}
+#| label: patchify
+def patchify(x, P, S):
+    """Split a univariate series into overlapping patches.
+    x: (B, L) -> (B, n_patches, P), where n_patches ~ (L - P)/S + 1."""
+    patches = x.unfold(dimension=1, size=P, step=S)   # (B, n_patches, P)
+    return patches
+
+B, L = 4, 336
+x = torch.randn(B, L)
+for (P, S) in [(16, 8), (16, 16), (24, 24)]:
+    p = patchify(x, P, S)
+    n = p.shape[1]
+    print(f"L={L}, patch P={P}, stride S={S} -> {n} tokens "
+          f"(vs {L} raw steps, {L/n:.1f}x fewer tokens)")
+```
+
+Fewer tokens is only useful if a patch is a better unit of meaning than a lone
+step, and this is PatchTST's second claim: a patch preserves *local semantic
+information* — a short shape, a small trend — that a single point cannot, so the
+model both attends over fewer tokens and attends over more meaningful ones
+[@nie2023patchtst]. The paper pairs patching with *channel independence*: each
+variate of a multivariate series is processed by the same shared univariate model
+rather than being mixed early, which it reports as more robust than
+channel-mixing designs [@nie2023patchtst].
+
+Now the central comparison — what does shortening the sequence actually buy? We
+measure both the theoretical attention cost and wall-clock time.
+
+```{python}
+#| label: patch-vs-full-cost
+def attn_cost(n_tokens, d):
+    """Dominant attention FLOPs: QK^T then (softmax)V, each ~ n^2 * d."""
+    return 2 * n_tokens * n_tokens * d
+
+d, P, S = 64, 16, 16
+print("theoretical attention cost, full (L tokens) vs patched (L/S tokens)")
+print(f"{'L':>5} {'full':>14} {'patched':>12} {'ratio':>8}")
+for L in [96, 336, 720, 1440]:
+    n_patch = (L - P) // S + 1
+    full = attn_cost(L, d)
+    patched = attn_cost(n_patch, d)
+    print(f"{L:5d} {full:14,} {patched:12,} {full/patched:7.1f}x")
+```
+
+```{python}
+#| label: patch-vs-full-time
+class FullAttention(nn.Module):
+    def __init__(self, d, heads=4):
+        super().__init__()
+        self.mha = nn.MultiheadAttention(d, heads, batch_first=True)
+    def forward(self, x):                 # x: (B, L, d)
+        return self.mha(x, x, x)[0]
+
+class PatchAttention(nn.Module):
+    def __init__(self, P, d, heads=4):
+        super().__init__()
+        self.embed = nn.Linear(P, d)      # patch -> token embedding
+        self.mha = nn.MultiheadAttention(d, heads, batch_first=True)
+    def forward(self, x, P, S):           # x: (B, L)
+        tok = self.embed(patchify(x, P, S))   # (B, n, d)
+        return self.mha(tok, tok, tok)[0]
+
+torch.manual_seed(0)
+B, d, P, S = 16, 64, 16, 8
+full, patch = FullAttention(d), PatchAttention(P, d)
+
+print("measured mean forward time over 20 runs (CPU), B=16, d=64")
+print(f"{'L':>5} {'full_ms':>9} {'patch_ms':>9} {'speedup':>8}")
+for L in [96, 336, 720]:
+    x_full = torch.randn(B, L, d)         # full attention over L tokens
+    x_raw  = torch.randn(B, L)            # patched path starts from raw series
+    for _ in range(3):                    # warmup
+        full(x_full); patch(x_raw, P, S)
+    t0 = time.perf_counter()
+    for _ in range(20): full(x_full)
+    t1 = time.perf_counter()
+    for _ in range(20): patch(x_raw, P, S)
+    t2 = time.perf_counter()
+    fm, pm = (t1 - t0)/20*1000, (t2 - t1)/20*1000
+    print(f"{L:5d} {fm:9.2f} {pm:9.2f} {fm/pm:7.2f}x")
+```
+
+The theoretical table shows a flat ratio: with $S=16$ the attention cost drops by
+a constant factor near $S^2 = 256$ regardless of $L$, because patching does not
+change the *order* of growth — it is still $O((L/S)^2)$, just with a smaller
+constant. The measured times tell the operational story: the speedup *widens*
+with $L$ (roughly 8x at $L=96$ rising past 80x at $L=720$ on this machine),
+because at short lengths fixed overheads dominate, while at long lengths the
+quadratic term takes over and the token reduction bites hardest. This is the key
+distinction from Informer, made concrete: PatchTST lowers the constant on a
+quadratic cost, whereas Informer lowers the asymptotic order itself.
+
+## 4. Two routes, compared
+
+| Aspect | Informer (ProbSparse) | PatchTST (patching) |
+|---|---|---|
+| What it changes | which entries of the $L\times L$ matrix are computed | how many tokens $L$ there are |
+| Attention cost | $O(L \log L)$ | $O((L/S)^2)$ — quadratic, smaller constant |
+| Approximation? | yes (samples keys, keeps top-$u$ queries) | no (full attention on fewer tokens) |
+| Extra machinery | distilling + generative decoder | channel independence + instance norm |
+| Fails when | attention is not long-tailed / genuinely dense | patch hides fast dynamics finer than $P$ |
+| Venue | AAAI 2021 [@zhou2021informer] | ICLR 2023 [@nie2023patchtst] |
+
+The table frames a genuine trade. Informer's $O(L\log L)$ is asymptotically
+better, so for extreme $L$ it should eventually win on cost — but it pays with an
+approximation whose quality is data-dependent, and later work argued that several
+efficient-attention Transformers were not clearly beating simple linear baselines
+on standard LSTF benchmarks [@zeng2023dlinear]. PatchTST arrived partly as a
+response: it stayed with exact attention, and its authors reported that patching
+plus channel independence outperformed both the earlier efficient Transformers
+and the strong linear baseline [@nie2023patchtst]. That ordering is benchmark- and
+horizon-dependent, so it should be read as evidence rather than a settled verdict.
+
+## 5. Limitations
+
+The experiments here isolate the *attention* cost with small tensors on CPU; they
+demonstrate mechanism and scaling, not end-to-end forecasting accuracy, and the
+absolute millisecond numbers are machine-specific. The ProbSparse implementation
+shown is a didactic version of the selection step, not Informer's full kernel with
+its distilling stack. PatchTST's quadratic-with-smaller-constant cost means that
+for *very* long windows a patched model can still become expensive, which is why
+the token count, not just the raw length, is what to watch. Neither model removes
+the deeper question of whether attention is the right inductive bias for a given
+series at all — on smooth, strongly linear series a one-layer linear map can rival
+either [@zeng2023dlinear], and the right choice depends on how much genuinely
+nonlinear cross-time structure the data contains.
+
+## 6. Conclusion
+
+Informer and PatchTST solve the same $O(L^2)$ problem by editing different symbols
+in the same expression. Informer edits the matrix, computing attention only for
+the queries that carry signal and accepting a data-dependent approximation to
+reach $O(L\log L)$. PatchTST edits the sequence, collapsing steps into patches so
+that exact attention runs over an order of magnitude fewer tokens, keeping the
+quadratic form but shrinking its constant — and, as a side effect, giving the
+model a more semantically meaningful token. Which matters more for a given problem
+depends on the window length and on whether the series' attention is actually
+sparse: the asymptotic win of Informer only pays off at large $L$, while PatchTST's
+constant-factor win is immediate and, on published LSTF benchmarks, came with
+better reported accuracy. Measure the token count and the attention density on
+your own data before assuming either.
+
+## References
+
+::: {#refs}
+:::
