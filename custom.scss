@@ -451,10 +451,15 @@ span.header-section-number::after {
 
 /* ===== 블로그 목록 리스트형 카드 레이아웃 커스텀 ===== */
 .quarto-post {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 24px !important;
+  display: grid !important;
+  grid-template-columns: 1fr 180px !important;
+  grid-template-areas:
+    "title thumbnail"
+    "categories thumbnail"
+    "metadata thumbnail"
+    "description thumbnail" !important;
+  row-gap: 8px !important;
+  column-gap: 24px !important;
   border: 1px solid #e9ecef !important;
   border-radius: 8px !important;
   padding: 24px !important;
@@ -462,7 +467,7 @@ span.header-section-number::after {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease !important;
   margin-bottom: 20px !important;
-  flex-wrap: wrap !important;
+  align-items: start !important;
 }
 
 .quarto-post:hover {
@@ -470,40 +475,78 @@ span.header-section-number::after {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
+/* body 컨테이너 내부 요소를 grid 아이템으로 직접 제어하기 위함 */
+.quarto-post .body {
+  display: contents !important;
+}
+
+.quarto-post .listing-title {
+  grid-area: title !important;
+  margin: 0 !important;
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+}
+
+.quarto-post .listing-categories {
+  grid-area: categories !important;
+  margin: 0 !important;
+}
+
 .quarto-post .metadata {
-  width: 100% !important;
-  flex-basis: 100% !important;
-  order: 3 !important; /* 메타데이터를 가장 밑으로 배치 */
+  grid-area: metadata !important;
   display: flex !important;
   flex-direction: row !important;
-  gap: 15px !important;
-  margin-top: 12px !important;
-  padding-top: 12px !important;
-  border-top: 1px solid #f1f3f5 !important;
+  gap: 12px !important;
+  margin: 0 !important;
   font-size: 0.85rem !important;
   color: #6c757d !important;
+  border-top: none !important;
+  padding-top: 0 !important;
+  margin-top: 2px !important;
 }
 
 .quarto-post .metadata > div {
   margin-bottom: 0 !important;
 }
 
-.quarto-post .body {
-  flex: 1 !important;
-  order: 1 !important;
+.quarto-post .listing-description {
+  grid-area: description !important;
+  margin: 0 !important;
+  font-size: 0.95rem !important;
+  color: #495057 !important;
+  line-height: 1.5 !important;
+  margin-top: 4px !important;
 }
 
 .quarto-post .thumbnail {
+  grid-area: thumbnail !important;
   width: 180px !important;
-  max-height: 120px !important;
-  order: 2 !important;
+  height: 120px !important;
+  margin: 0 !important;
   flex-shrink: 0 !important;
-  margin-left: 0 !important;
 }
 
 .quarto-post .thumbnail img {
   width: 100% !important;
-  height: 120px !important;
+  height: 100% !important;
   object-fit: cover !important;
   border-radius: 6px !important;
+}
+
+/* 모바일 화면 대응 반응형 스타일 */
+@media (max-width: 768px) {
+  .quarto-post {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "title"
+      "categories"
+      "metadata"
+      "thumbnail"
+      "description" !important;
+    row-gap: 12px !important;
+  }
+  .quarto-post .thumbnail {
+    width: 100% !important;
+    height: 180px !important;
+  }
 }
