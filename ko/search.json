@@ -151,7 +151,7 @@
     "href": "categories.html",
     "title": "카테고리",
     "section": "",
-    "text": "Informer와 PatchTST는 어떻게 어텐션의 이차 복잡도 병목을 깼는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n\n\n셀프 어텐션은 시퀀스 길이에 대해 O(L^2) 비용이 들며, 이는 긴 시계열에 치명적입니다. 이 글은 그 비용을 벗어나는 매우 다른 두 경로 — Informer의 ProbSparse 어텐션과 PatchTST의 패칭 — 을, 절감이 실제로 어디서 나오는지 측정하는 실행 가능한 코드와 함께 살펴봅니다.\n\n\n\n\n\n\n\n2.\n\n\n\n\nProf. Shin (phyzik)\n\n\n:::\n:::\n\n\n\n\n\n\n\n\nRecursive, Direct, Joint: 멀티 스텝 예측 전략은 무엇을 포기하는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n\n\nH-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 실행 가능한 코드와 함께 비교합니다.\n\n\n\n\n\n\n\n30.\n\n\n\n\nProf. Shin (phyzik)\n\n\n:::\n:::\n:::\n일치 없음\n:::\n:::"
+    "text": "Informer와 PatchTST는 어떻게 어텐션의 이차 복잡도 병목을 깼는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n\n\n셀프 어텐션은 시퀀스 길이에 대해 O(L^2) 비용이 들며, 이는 긴 시계열에 치명적입니다. 이 글은 그 비용을 벗어나는 매우 다른 두 경로 — Informer의 ProbSparse 어텐션과 PatchTST의 패칭 — 을, 절감이 실제로 어디서 나오는지 측정하는 실행 가능한 코드와 함께 살펴봅니다.\n\n\n\n\n\n2026-07-02\n\n\nProf. Shin (phyzik)\n\n\n\n\n\n\n\n\n\n\n\n\nRecursive, Direct, Joint: 멀티 스텝 예측 전략은 무엇을 포기하는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n\n\nH-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 실행 가능한 코드와 함께 비교합니다.\n\n\n\n\n\n2026-06-30\n\n\nProf. Shin (phyzik)\n\n\n\n\n\n일치 없음"
   },
   {
     "objectID": "posts/2026-07-02-informer-patchtst-attention-bottleneck/index.html",
