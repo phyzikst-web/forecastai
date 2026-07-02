@@ -494,9 +494,6 @@ span.header-section-number::after {
 
 .quarto-post .metadata {
   grid-area: metadata !important;
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 12px !important;
   margin: 0 !important;
   font-size: 0.85rem !important;
   color: #6c757d !important;
@@ -505,8 +502,19 @@ span.header-section-number::after {
   margin-top: 2px !important;
 }
 
-.quarto-post .metadata > div {
-  margin-bottom: 0 !important;
+.quarto-post .metadata a {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+.quarto-post .metadata .listing-author::before {
+  content: "·" !important;
+  margin-right: 8px !important;
+  color: #adb5bd !important;
 }
 
 .quarto-post .listing-description {
