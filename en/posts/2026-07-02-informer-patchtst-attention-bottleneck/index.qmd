@@ -15,7 +15,7 @@ description: |
 lang: en
 toc: true
 toc-depth: 3
-number-sections: true
+number-sections: false
 code-fold: false
 code-tools: false
 bibliography: ../../references.bib
