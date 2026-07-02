@@ -70,7 +70,7 @@ async function loadSearchIndex() {
 function buildRecentPosts() {
   const ul = document.getElementById('recent-posts-list');
   const posts = searchIndex
-    .filter(doc => doc.href && !doc.href.includes('index.html'))
+    .filter(doc => doc.href && doc.href.includes('posts/') && !doc.href.includes('#'))
     .slice(0, 5);
   if (posts.length === 0) {
     ul.innerHTML = '<li style="color:#aaa;font-size:0.85rem;">글이 없습니다.</li>';

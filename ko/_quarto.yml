@@ -37,6 +37,7 @@ format:
   html:
     theme: [flatly, ../custom.scss]
     lang: ko
+    date-format: "YYYY-MM-DD"
     toc: false
     code-fold: true
     code-tools: false
