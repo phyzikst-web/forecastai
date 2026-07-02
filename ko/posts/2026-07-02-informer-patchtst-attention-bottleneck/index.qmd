@@ -1,7 +1,7 @@
 ---
 title: "Informer와 PatchTST는 어떻게 어텐션의 이차 복잡도 병목을 깼는가"
 date: "2026-07-02"
-author: "Prof. Shin (phyzik)"
+author: "Prof. Shin"
 categories:
   - 데이터과학
   - 인공지능

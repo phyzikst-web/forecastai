@@ -1,7 +1,7 @@
 ---
 title: "Recursive, Direct, Joint: 멀티 스텝 예측 전략은 무엇을 포기하는가"
 date: "2026-06-30"
-author: "Prof. Shin (phyzik)"
+author: "Prof. Shin"
 categories:
   - 데이터과학
   - 인공지능

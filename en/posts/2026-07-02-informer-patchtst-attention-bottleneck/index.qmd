@@ -1,7 +1,7 @@
 ---
 title: "How Informer and PatchTST Broke the Quadratic Attention Bottleneck in Time Series"
 date: "2026-07-02"
-author: "Prof. Shin (phyzik)"
+author: "Prof. Shin"
 categories:
   - Data Science
   - Artificial Intelligence
