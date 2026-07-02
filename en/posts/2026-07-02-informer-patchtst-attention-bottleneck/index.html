@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Prof.&nbsp;Shin (phyzik)">
+<meta name="author" content="Prof.&nbsp;Shin">
 <meta name="dcterms.date" content="2026-07-02">
 <meta name="description" content="Self-attention costs O(L^2) in the sequence length, which is fatal for long time series. This article traces two very different escapes from that cost — Informer’s ProbSparse attention and PatchTST’s patching — with runnable code that measures where the savings actually come from.">
 
@@ -260,7 +260,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Author</div>
     <div class="quarto-title-meta-contents">
-             <p>Prof.&nbsp;Shin (phyzik) </p>
+             <p>Prof.&nbsp;Shin </p>
           </div>
   </div>
     
@@ -444,9 +444,9 @@ L=336, patch P=24, stride S=24 -&gt; 14 tokens (vs 336 raw steps, 24.0x fewer to
 <div class="cell-output cell-output-stdout">
 <pre><code>measured mean forward time over 20 runs (CPU), B=16, d=64
     L   full_ms  patch_ms  speedup
-   96      3.28      0.88    3.74x
-  336     14.25      1.68    8.47x
-  720     49.91      3.24   15.39x</code></pre>
+   96      2.53      0.81    3.14x
+  336     13.21      1.55    8.50x
+  720     49.99      2.72   18.37x</code></pre>
 </div>
 </div>
 <p>The theoretical table shows a flat ratio: with <span class="math inline">\(S=16\)</span> the attention cost drops by a constant factor near <span class="math inline">\(S^2 = 256\)</span> regardless of <span class="math inline">\(L\)</span>, because patching does not change the <em>order</em> of growth — it is still <span class="math inline">\(O((L/S)^2)\)</span>, just with a smaller constant. The measured times tell the operational story: the speedup <em>widens</em> with <span class="math inline">\(L\)</span> (roughly 8x at <span class="math inline">\(L=96\)</span> rising past 80x at <span class="math inline">\(L=720\)</span> on this machine), because at short lengths fixed overheads dominate, while at long lengths the quadratic term takes over and the token reduction bites hardest. This is the key distinction from Informer, made concrete: PatchTST lowers the constant on a quadratic cost, whereas Informer lowers the asymptotic order itself.</p>

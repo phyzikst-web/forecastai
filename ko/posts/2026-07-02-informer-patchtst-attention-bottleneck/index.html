@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Prof.&nbsp;Shin (phyzik)">
+<meta name="author" content="Prof.&nbsp;Shin">
 <meta name="dcterms.date" content="2026-07-02">
 <meta name="description" content="셀프 어텐션은 시퀀스 길이에 대해 O(L^2) 비용이 들며, 이는 긴 시계열에 치명적입니다. 이 글은 그 비용을 벗어나는 매우 다른 두 경로 — Informer의 ProbSparse 어텐션과 PatchTST의 패칭 — 을, 절감이 실제로 어디서 나오는지 측정하는 실행 가능한 코드와 함께 살펴봅니다.">
 
@@ -260,7 +260,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">저자</div>
     <div class="quarto-title-meta-contents">
-             <p>Prof.&nbsp;Shin (phyzik) </p>
+             <p>Prof.&nbsp;Shin </p>
           </div>
   </div>
     
@@ -445,9 +445,9 @@ L=336, patch P=24, stride S=24 -&gt; 14 tokens (vs 336 raw steps, 24.0x fewer to
 <div class="cell-output cell-output-stdout">
 <pre><code>measured mean forward time over 20 runs (CPU), B=16, d=64
     L   full_ms  patch_ms  speedup
-   96      3.27      0.83    3.96x
-  336     13.62      1.46    9.32x
-  720     51.98      2.67   19.45x</code></pre>
+   96      2.78      0.78    3.58x
+  336     13.85      1.65    8.37x
+  720     54.62      2.80   19.50x</code></pre>
 </div>
 </div>
 <p>이론 표는 평평한 비율을 보여 줍니다. <span class="math inline">\(S=16\)</span>이면 어텐션 비용은 <span class="math inline">\(L\)</span>과 무관하게 <span class="math inline">\(S^2 = 256\)</span>에 가까운 상수 배로 줄어듭니다. 패칭은 성장의 <em>차수</em>를 바꾸지 않기 때문입니다. 여전히 <span class="math inline">\(O((L/S)^2)\)</span>이며, 상수만 작아질 뿐입니다. 실측 시간은 운영상의 이야기를 들려줍니다. 속도 향상이 <span class="math inline">\(L\)</span>과 함께 <em>커집니다</em>(이 장비에서 <span class="math inline">\(L=96\)</span>에서 약 8배였다가 <span class="math inline">\(L=720\)</span>에서 80배를 넘어섭니다). 짧은 길이에서는 고정 오버헤드가 지배하고, 긴 길이에서는 이차 항이 지배하면서 토큰 감소가 가장 크게 작용하기 때문입니다. 이것이 Informer와의 핵심 차이를 구체적으로 보여 줍니다. PatchTST는 이차 비용의 상수를 낮추고, Informer는 점근 차수 자체를 낮춥니다.</p>
