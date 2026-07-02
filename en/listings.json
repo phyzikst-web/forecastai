@@ -2,12 +2,14 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/2026-07-02-informer-patchtst-attention-bottleneck/index.html",
       "/posts/2026-06-30-multi-step-forecasting-strategies/index.html"
     ]
   },
   {
     "listing": "/categories.html",
     "items": [
+      "/posts/2026-07-02-informer-patchtst-attention-bottleneck/index.html",
       "/posts/2026-06-30-multi-step-forecasting-strategies/index.html"
     ]
   }

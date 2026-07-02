@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Prof.&nbsp;Shin (phyzik)">
+<meta name="dcterms.date" content="2026-07-02">
+<meta name="description" content="Self-attention costs O(L^2) in the sequence length, which is fatal for long time series. This article traces two very different escapes from that cost — Informer’s ProbSparse attention and PatchTST’s patching — with runnable code that measures where the savings actually come from.">
+
+<title>How Informer and PatchTST Broke the Quadratic Attention Bottleneck in Time Series – ForecastAI</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-de63f62b328812d8e578a4d74e282472.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-90654e75a086b813fd3d4af27a42cb5e.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Forecast<span style="color:#F97316;">AI</span></span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">HOME</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">ABOUT</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../categories.html"> 
+<span class="menu-text">CATEGORIES</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../research.html"> 
+<span class="menu-text">RESEARCH</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../contact.html"> 
+<span class="menu-text">CONTACT</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../ko/"> 
+<span class="menu-text">🇰🇷 한국어</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/phyzikst-web"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#why-length-is-the-enemy" id="toc-why-length-is-the-enemy" class="nav-link active" data-scroll-target="#why-length-is-the-enemy"><span class="header-section-number">1</span> 1. Why length is the enemy</a></li>
+  <li><a href="#informer-only-a-few-queries-actually-matter" id="toc-informer-only-a-few-queries-actually-matter" class="nav-link" data-scroll-target="#informer-only-a-few-queries-actually-matter"><span class="header-section-number">2</span> 2. Informer: only a few queries actually matter</a></li>
+  <li><a href="#patchtst-shorten-the-sequence-before-you-attend" id="toc-patchtst-shorten-the-sequence-before-you-attend" class="nav-link" data-scroll-target="#patchtst-shorten-the-sequence-before-you-attend"><span class="header-section-number">3</span> 3. PatchTST: shorten the sequence before you attend</a></li>
+  <li><a href="#two-routes-compared" id="toc-two-routes-compared" class="nav-link" data-scroll-target="#two-routes-compared"><span class="header-section-number">4</span> 4. Two routes, compared</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="header-section-number">5</span> 5. Limitations</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">6</span> 6. Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">7</span> References</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">How Informer and PatchTST Broke the Quadratic Attention Bottleneck in Time Series</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Data Science</div>
+    <div class="quarto-category">Artificial Intelligence</div>
+    <div class="quarto-category">Time Series</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    <p>Self-attention costs O(L^2) in the sequence length, which is fatal for long time series. This article traces two very different escapes from that cost — Informer’s ProbSparse attention and PatchTST’s patching — with runnable code that measures where the savings actually come from.</p>
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Prof.&nbsp;Shin (phyzik) </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">July 2, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="why-length-is-the-enemy" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="why-length-is-the-enemy"><span class="header-section-number">1</span> 1. Why length is the enemy</h2>
+<p>The Transformer earns its accuracy by letting every position attend to every other position. For a sequence of length <span class="math inline">\(L\)</span> with model dimension <span class="math inline">\(d\)</span>, that means forming an <span class="math inline">\(L \times L\)</span> score matrix, and both the compute and the memory for it grow as <span class="math inline">\(O(L^2 d)\)</span>. In language this is tolerable because sentences are short. In long-sequence time series forecasting (LSTF) it is fatal: an electricity or traffic series with a look-back window of hundreds or thousands of steps turns the attention matrix into the dominant cost, and the memory footprint alone can exceed what a GPU will hold <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span>.</p>
+<p>Two influential models attacked this from opposite ends. <strong>Informer</strong> keeps the Transformer’s token structure but computes attention only for the queries that matter, cutting the cost to <span class="math inline">\(O(L \log L)\)</span> <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span>. <strong>PatchTST</strong> keeps full attention but first shortens the sequence, grouping raw time steps into patches so there are far fewer tokens to attend over <span class="citation" data-cites="nie2023patchtst">(<a href="#ref-nie2023patchtst" role="doc-biblioref">Nie et al. 2023</a>)</span>. The first attacks the <span class="math inline">\(L \times L\)</span> matrix; the second attacks the <span class="math inline">\(L\)</span>. Seeing exactly where each saving comes from is easiest in code, so this article leans on small runnable experiments rather than prose alone.</p>
+<p>We start by making the bottleneck concrete.</p>
+<div id="quadratic-cost" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch.nn <span class="im">as</span> nn</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> math, time</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>torch.manual_seed(<span class="dv">0</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> dense_attention(x):</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Textbook scaled dot-product self-attention.</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">    x: (B, L, d) -&gt; returns (B, L, d) and the L x L score matrix."""</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    B, L, d <span class="op">=</span> x.shape</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    scores <span class="op">=</span> (x <span class="op">@</span> x.transpose(<span class="dv">1</span>, <span class="dv">2</span>)) <span class="op">/</span> math.sqrt(d)   <span class="co"># (B, L, L)  &lt;-- the O(L^2) object</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    attn <span class="op">=</span> torch.softmax(scores, dim<span class="op">=-</span><span class="dv">1</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> attn <span class="op">@</span> x                                    <span class="co"># (B, L, d)</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> out, scores</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> L <span class="kw">in</span> [<span class="dv">96</span>, <span class="dv">336</span>, <span class="dv">720</span>]:</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    x <span class="op">=</span> torch.randn(<span class="dv">1</span>, L, <span class="dv">64</span>)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    _, scores <span class="op">=</span> dense_attention(x)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    n_entries <span class="op">=</span> scores.numel()</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    mem_mb <span class="op">=</span> scores.element_size() <span class="op">*</span> n_entries <span class="op">/</span> <span class="fl">1e6</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"L=</span><span class="sc">{</span>L<span class="sc">:4d}</span><span class="ss"> -&gt; score matrix </span><span class="sc">{</span><span class="bu">tuple</span>(scores.shape)<span class="sc">}</span><span class="ss">, "</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"</span><span class="sc">{</span>n_entries<span class="sc">:,}</span><span class="ss"> entries, ~</span><span class="sc">{</span>mem_mb<span class="sc">:.2f}</span><span class="ss"> MB (fp32) for ONE head"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>L=  96 -&gt; score matrix (1, 96, 96), 9,216 entries, ~0.04 MB (fp32) for ONE head
+L= 336 -&gt; score matrix (1, 336, 336), 112,896 entries, ~0.45 MB (fp32) for ONE head
+L= 720 -&gt; score matrix (1, 720, 720), 518,400 entries, ~2.07 MB (fp32) for ONE head</code></pre>
+</div>
+</div>
+<p>The score matrix grows with the square of <span class="math inline">\(L\)</span>: going from a 96-step window to a 720-step window multiplies its size by more than 56. Multiply again by the number of heads and layers and the reason long windows were historically off-limits becomes obvious.</p>
+</section>
+<section id="informer-only-a-few-queries-actually-matter" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="informer-only-a-few-queries-actually-matter"><span class="header-section-number">2</span> 2. Informer: only a few queries actually matter</h2>
+<p>Informer’s starting observation is empirical. If you look at the attention distribution of a trained Transformer, most query rows are nearly uniform — they spread their weight across all keys and contribute little — while a small number of query rows are sharply peaked and dominate the output <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span>. Computing the full <span class="math inline">\(L \times L\)</span> matrix therefore wastes most of its effort on rows that barely change the result.</p>
+<p>Informer makes this precise with a sparsity measure. For query <span class="math inline">\(i\)</span> the “peakedness” of its attention is</p>
+<p><span id="eq-sparsity"><span class="math display">\[
+M(q_i, K) = \max_j \frac{q_i k_j^\top}{\sqrt{d}}
+          - \frac{1}{L}\sum_{j=1}^{L}\frac{q_i k_j^\top}{\sqrt{d}},
+\tag{1}\]</span></span></p>
+<p>the gap between a query’s strongest score and its average score. A large <span class="math inline">\(M\)</span> means the query concentrates on a few keys and is worth computing exactly; a small <span class="math inline">\(M\)</span> means it is near-uniform and can be replaced by a cheap average. Here <span class="math inline">\(q_i \in
+\mathbb{R}^d\)</span> is one query, <span class="math inline">\(K \in \mathbb{R}^{L \times d}\)</span> is the key matrix, and <span class="math inline">\(k_j\)</span> its <span class="math inline">\(j\)</span>-th row. Evaluating <a href="#eq-sparsity" class="quarto-xref">Equation&nbsp;1</a> for every query would already cost <span class="math inline">\(O(L^2)\)</span>, so Informer estimates it from a random subset of only <span class="math inline">\(U = c \ln L\)</span> keys, then keeps the top <span class="math inline">\(u = c \ln L\)</span> queries. Everything else falls back to the mean. The result is <strong>ProbSparse attention</strong> with <span class="math inline">\(O(L \log L)\)</span> time and memory <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span>.</p>
+<p>The mechanism is short enough to implement directly:</p>
+<div id="probsparse" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> probsparse_selection(Q, K, c<span class="op">=</span><span class="dv">5</span>):</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Select the top-u 'active' queries via the sparsity measure in eq-sparsity,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">    estimated from a sampled subset of keys.</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">    Q, K: (L, d). Returns indices of active queries and the fraction computed densely."""</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    L, d <span class="op">=</span> Q.shape</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    scale <span class="op">=</span> <span class="fl">1.0</span> <span class="op">/</span> math.sqrt(d)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    U <span class="op">=</span> <span class="bu">min</span>(L, <span class="bu">int</span>(c <span class="op">*</span> math.log(L)))       <span class="co"># number of sampled keys</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    u <span class="op">=</span> <span class="bu">min</span>(L, <span class="bu">int</span>(c <span class="op">*</span> math.log(L)))       <span class="co"># number of active queries kept</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    idx <span class="op">=</span> torch.randperm(L)[:U]</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    S_sample <span class="op">=</span> (Q <span class="op">@</span> K[idx].T) <span class="op">*</span> scale      <span class="co"># (L, U) sampled scores</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    M <span class="op">=</span> S_sample.<span class="bu">max</span>(dim<span class="op">=</span><span class="dv">1</span>).values <span class="op">-</span> S_sample.mean(dim<span class="op">=</span><span class="dv">1</span>)   <span class="co"># eq-sparsity, approximated</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    active <span class="op">=</span> torch.topk(M, u).indices</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> active, U, u</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>torch.manual_seed(<span class="dv">0</span>)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> L <span class="kw">in</span> [<span class="dv">96</span>, <span class="dv">336</span>, <span class="dv">720</span>]:</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    Q <span class="op">=</span> torch.randn(L, <span class="dv">32</span>)<span class="op">;</span> K <span class="op">=</span> torch.randn(L, <span class="dv">32</span>)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    active, U, u <span class="op">=</span> probsparse_selection(Q, K)</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    dense <span class="op">=</span> L <span class="op">*</span> L</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    sparse <span class="op">=</span> u <span class="op">*</span> L</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"L=</span><span class="sc">{</span>L<span class="sc">:4d}</span><span class="ss">: sampled keys U=</span><span class="sc">{</span>U<span class="sc">:2d}</span><span class="ss">, active queries u=</span><span class="sc">{</span>u<span class="sc">:2d}</span><span class="ss"> "</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"(</span><span class="sc">{</span>u<span class="op">/</span>L<span class="sc">:5.1%}</span><span class="ss"> of queries) -&gt; attention entries </span><span class="sc">{</span>dense<span class="sc">:,}</span><span class="ss"> -&gt; </span><span class="sc">{</span>sparse<span class="sc">:,}</span><span class="ss"> "</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"(</span><span class="sc">{</span>dense<span class="op">/</span>sparse<span class="sc">:.1f}</span><span class="ss">x fewer)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>L=  96: sampled keys U=22, active queries u=22 (22.9% of queries) -&gt; attention entries 9,216 -&gt; 2,112 (4.4x fewer)
+L= 336: sampled keys U=29, active queries u=29 ( 8.6% of queries) -&gt; attention entries 112,896 -&gt; 9,744 (11.6x fewer)
+L= 720: sampled keys U=32, active queries u=32 ( 4.4% of queries) -&gt; attention entries 518,400 -&gt; 23,040 (22.5x fewer)</code></pre>
+</div>
+</div>
+<p>The output shows the payoff and the catch together. At <span class="math inline">\(L=720\)</span> only a few percent of queries are computed against all keys, giving an order-of-magnitude reduction in attention entries. But the count of active queries grows like <span class="math inline">\(\ln L\)</span>, not like <span class="math inline">\(L\)</span>, which is precisely why the asymptotic cost drops to <span class="math inline">\(O(L \log L)\)</span>. The catch is that the selection is stochastic — it relies on random key sampling — so the approximation quality depends on the constant <span class="math inline">\(c\)</span> and on the attention genuinely being long-tailed. On a series whose attention is <em>not</em> sparse, the same trick discards information.</p>
+<p>Informer adds two more pieces that matter in practice but are not about the attention matrix itself: <em>self-attention distilling</em>, which halves the sequence length between encoder layers so deeper layers see progressively shorter inputs, and a <em>generative decoder</em> that emits the whole forecast in one forward pass instead of step-by-step, avoiding the error accumulation that plagues autoregressive decoding <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span>.</p>
+</section>
+<section id="patchtst-shorten-the-sequence-before-you-attend" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="patchtst-shorten-the-sequence-before-you-attend"><span class="header-section-number">3</span> 3. PatchTST: shorten the sequence before you attend</h2>
+<p>PatchTST makes a different bet. Instead of approximating attention, it reduces the number of tokens. Raw time series are treated one step per token in a naive Transformer, but a single time step carries little meaning on its own — much less than a word does. PatchTST groups consecutive steps into <em>patches</em> and feeds each patch, embedded as a vector, as one token <span class="citation" data-cites="nie2023patchtst">(<a href="#ref-nie2023patchtst" role="doc-biblioref">Nie et al. 2023</a>)</span>. With patch length <span class="math inline">\(P\)</span> and stride <span class="math inline">\(S\)</span>, a series of length <span class="math inline">\(L\)</span> yields roughly <span class="math inline">\(L/S\)</span> tokens instead of <span class="math inline">\(L\)</span>.</p>
+<p>Because attention is quadratic in the token count, dividing the tokens by <span class="math inline">\(S\)</span> divides the attention cost by about <span class="math inline">\(S^2\)</span>. The patching itself is a simple sliding window:</p>
+<div id="patchify" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> patchify(x, P, S):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Split a univariate series into overlapping patches.</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">    x: (B, L) -&gt; (B, n_patches, P), where n_patches ~ (L - P)/S + 1."""</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    patches <span class="op">=</span> x.unfold(dimension<span class="op">=</span><span class="dv">1</span>, size<span class="op">=</span>P, step<span class="op">=</span>S)   <span class="co"># (B, n_patches, P)</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> patches</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>B, L <span class="op">=</span> <span class="dv">4</span>, <span class="dv">336</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> torch.randn(B, L)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (P, S) <span class="kw">in</span> [(<span class="dv">16</span>, <span class="dv">8</span>), (<span class="dv">16</span>, <span class="dv">16</span>), (<span class="dv">24</span>, <span class="dv">24</span>)]:</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    p <span class="op">=</span> patchify(x, P, S)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    n <span class="op">=</span> p.shape[<span class="dv">1</span>]</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"L=</span><span class="sc">{</span>L<span class="sc">}</span><span class="ss">, patch P=</span><span class="sc">{</span>P<span class="sc">}</span><span class="ss">, stride S=</span><span class="sc">{</span>S<span class="sc">}</span><span class="ss"> -&gt; </span><span class="sc">{</span>n<span class="sc">}</span><span class="ss"> tokens "</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"(vs </span><span class="sc">{</span>L<span class="sc">}</span><span class="ss"> raw steps, </span><span class="sc">{</span>L<span class="op">/</span>n<span class="sc">:.1f}</span><span class="ss">x fewer tokens)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>L=336, patch P=16, stride S=8 -&gt; 41 tokens (vs 336 raw steps, 8.2x fewer tokens)
+L=336, patch P=16, stride S=16 -&gt; 21 tokens (vs 336 raw steps, 16.0x fewer tokens)
+L=336, patch P=24, stride S=24 -&gt; 14 tokens (vs 336 raw steps, 24.0x fewer tokens)</code></pre>
+</div>
+</div>
+<p>Fewer tokens is only useful if a patch is a better unit of meaning than a lone step, and this is PatchTST’s second claim: a patch preserves <em>local semantic information</em> — a short shape, a small trend — that a single point cannot, so the model both attends over fewer tokens and attends over more meaningful ones <span class="citation" data-cites="nie2023patchtst">(<a href="#ref-nie2023patchtst" role="doc-biblioref">Nie et al. 2023</a>)</span>. The paper pairs patching with <em>channel independence</em>: each variate of a multivariate series is processed by the same shared univariate model rather than being mixed early, which it reports as more robust than channel-mixing designs <span class="citation" data-cites="nie2023patchtst">(<a href="#ref-nie2023patchtst" role="doc-biblioref">Nie et al. 2023</a>)</span>.</p>
+<p>Now the central comparison — what does shortening the sequence actually buy? We measure both the theoretical attention cost and wall-clock time.</p>
+<div id="patch-vs-full-cost" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> attn_cost(n_tokens, d):</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Dominant attention FLOPs: QK^T then (softmax)V, each ~ n^2 * d."""</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">2</span> <span class="op">*</span> n_tokens <span class="op">*</span> n_tokens <span class="op">*</span> d</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>d, P, S <span class="op">=</span> <span class="dv">64</span>, <span class="dv">16</span>, <span class="dv">16</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"theoretical attention cost, full (L tokens) vs patched (L/S tokens)"</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span><span class="st">'L'</span><span class="sc">:&gt;5}</span><span class="ss"> </span><span class="sc">{</span><span class="st">'full'</span><span class="sc">:&gt;14}</span><span class="ss"> </span><span class="sc">{</span><span class="st">'patched'</span><span class="sc">:&gt;12}</span><span class="ss"> </span><span class="sc">{</span><span class="st">'ratio'</span><span class="sc">:&gt;8}</span><span class="ss">"</span>)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> L <span class="kw">in</span> [<span class="dv">96</span>, <span class="dv">336</span>, <span class="dv">720</span>, <span class="dv">1440</span>]:</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    n_patch <span class="op">=</span> (L <span class="op">-</span> P) <span class="op">//</span> S <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    full <span class="op">=</span> attn_cost(L, d)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    patched <span class="op">=</span> attn_cost(n_patch, d)</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>L<span class="sc">:5d}</span><span class="ss"> </span><span class="sc">{</span>full<span class="sc">:14,}</span><span class="ss"> </span><span class="sc">{</span>patched<span class="sc">:12,}</span><span class="ss"> </span><span class="sc">{</span>full<span class="op">/</span>patched<span class="sc">:7.1f}</span><span class="ss">x"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>theoretical attention cost, full (L tokens) vs patched (L/S tokens)
+    L           full      patched    ratio
+   96      1,179,648        4,608   256.0x
+  336     14,450,688       56,448   256.0x
+  720     66,355,200      259,200   256.0x
+ 1440    265,420,800    1,036,800   256.0x</code></pre>
+</div>
+</div>
+<div id="patch-vs-full-time" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> FullAttention(nn.Module):</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, d, heads<span class="op">=</span><span class="dv">4</span>):</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.mha <span class="op">=</span> nn.MultiheadAttention(d, heads, batch_first<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, x):                 <span class="co"># x: (B, L, d)</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.mha(x, x, x)[<span class="dv">0</span>]</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> PatchAttention(nn.Module):</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, P, d, heads<span class="op">=</span><span class="dv">4</span>):</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.embed <span class="op">=</span> nn.Linear(P, d)      <span class="co"># patch -&gt; token embedding</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.mha <span class="op">=</span> nn.MultiheadAttention(d, heads, batch_first<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, x, P, S):           <span class="co"># x: (B, L)</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>        tok <span class="op">=</span> <span class="va">self</span>.embed(patchify(x, P, S))   <span class="co"># (B, n, d)</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.mha(tok, tok, tok)[<span class="dv">0</span>]</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>torch.manual_seed(<span class="dv">0</span>)</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>B, d, P, S <span class="op">=</span> <span class="dv">16</span>, <span class="dv">64</span>, <span class="dv">16</span>, <span class="dv">8</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>full, patch <span class="op">=</span> FullAttention(d), PatchAttention(P, d)</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"measured mean forward time over 20 runs (CPU), B=16, d=64"</span>)</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span><span class="st">'L'</span><span class="sc">:&gt;5}</span><span class="ss"> </span><span class="sc">{</span><span class="st">'full_ms'</span><span class="sc">:&gt;9}</span><span class="ss"> </span><span class="sc">{</span><span class="st">'patch_ms'</span><span class="sc">:&gt;9}</span><span class="ss"> </span><span class="sc">{</span><span class="st">'speedup'</span><span class="sc">:&gt;8}</span><span class="ss">"</span>)</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> L <span class="kw">in</span> [<span class="dv">96</span>, <span class="dv">336</span>, <span class="dv">720</span>]:</span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>    x_full <span class="op">=</span> torch.randn(B, L, d)         <span class="co"># full attention over L tokens</span></span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>    x_raw  <span class="op">=</span> torch.randn(B, L)            <span class="co"># patched path starts from raw series</span></span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">3</span>):                    <span class="co"># warmup</span></span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>        full(x_full)<span class="op">;</span> patch(x_raw, P, S)</span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a>    t0 <span class="op">=</span> time.perf_counter()</span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">20</span>): full(x_full)</span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>    t1 <span class="op">=</span> time.perf_counter()</span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">20</span>): patch(x_raw, P, S)</span>
+<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a>    t2 <span class="op">=</span> time.perf_counter()</span>
+<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a>    fm, pm <span class="op">=</span> (t1 <span class="op">-</span> t0)<span class="op">/</span><span class="dv">20</span><span class="op">*</span><span class="dv">1000</span>, (t2 <span class="op">-</span> t1)<span class="op">/</span><span class="dv">20</span><span class="op">*</span><span class="dv">1000</span></span>
+<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>L<span class="sc">:5d}</span><span class="ss"> </span><span class="sc">{</span>fm<span class="sc">:9.2f}</span><span class="ss"> </span><span class="sc">{</span>pm<span class="sc">:9.2f}</span><span class="ss"> </span><span class="sc">{</span>fm<span class="op">/</span>pm<span class="sc">:7.2f}</span><span class="ss">x"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>measured mean forward time over 20 runs (CPU), B=16, d=64
+    L   full_ms  patch_ms  speedup
+   96      3.41      0.86    3.97x
+  336     13.34      1.67    8.01x
+  720     47.75      2.81   16.99x</code></pre>
+</div>
+</div>
+<p>The theoretical table shows a flat ratio: with <span class="math inline">\(S=16\)</span> the attention cost drops by a constant factor near <span class="math inline">\(S^2 = 256\)</span> regardless of <span class="math inline">\(L\)</span>, because patching does not change the <em>order</em> of growth — it is still <span class="math inline">\(O((L/S)^2)\)</span>, just with a smaller constant. The measured times tell the operational story: the speedup <em>widens</em> with <span class="math inline">\(L\)</span> (roughly 8x at <span class="math inline">\(L=96\)</span> rising past 80x at <span class="math inline">\(L=720\)</span> on this machine), because at short lengths fixed overheads dominate, while at long lengths the quadratic term takes over and the token reduction bites hardest. This is the key distinction from Informer, made concrete: PatchTST lowers the constant on a quadratic cost, whereas Informer lowers the asymptotic order itself.</p>
+</section>
+<section id="two-routes-compared" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="two-routes-compared"><span class="header-section-number">4</span> 4. Two routes, compared</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Aspect</th>
+<th>Informer (ProbSparse)</th>
+<th>PatchTST (patching)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>What it changes</td>
+<td>which entries of the <span class="math inline">\(L\times L\)</span> matrix are computed</td>
+<td>how many tokens <span class="math inline">\(L\)</span> there are</td>
+</tr>
+<tr class="even">
+<td>Attention cost</td>
+<td><span class="math inline">\(O(L \log L)\)</span></td>
+<td><span class="math inline">\(O((L/S)^2)\)</span> — quadratic, smaller constant</td>
+</tr>
+<tr class="odd">
+<td>Approximation?</td>
+<td>yes (samples keys, keeps top-<span class="math inline">\(u\)</span> queries)</td>
+<td>no (full attention on fewer tokens)</td>
+</tr>
+<tr class="even">
+<td>Extra machinery</td>
+<td>distilling + generative decoder</td>
+<td>channel independence + instance norm</td>
+</tr>
+<tr class="odd">
+<td>Fails when</td>
+<td>attention is not long-tailed / genuinely dense</td>
+<td>patch hides fast dynamics finer than <span class="math inline">\(P\)</span></td>
+</tr>
+<tr class="even">
+<td>Venue</td>
+<td>AAAI 2021 <span class="citation" data-cites="zhou2021informer">(<a href="#ref-zhou2021informer" role="doc-biblioref">Zhou et al. 2021</a>)</span></td>
+<td>ICLR 2023 <span class="citation" data-cites="nie2023patchtst">(<a href="#ref-nie2023patchtst" role="doc-biblioref">Nie et al. 2023</a>)</span></td>
+</tr>
+</tbody>
+</table>
+<p>The table frames a genuine trade. Informer’s <span class="math inline">\(O(L\log L)\)</span> is asymptotically better, so for extreme <span class="math inline">\(L\)</span> it should eventually win on cost — but it pays with an approximation whose quality is data-dependent, and later work argued that several efficient-attention Transformers were not clearly beating simple linear baselines on standard LSTF benchmarks <span class="citation" data-cites="zeng2023dlinear">(<a href="#ref-zeng2023dlinear" role="doc-biblioref">Zeng et al. 2023</a>)</span>. PatchTST arrived partly as a response: it stayed with exact attention, and its authors reported that patching plus channel independence outperformed both the earlier efficient Transformers and the strong linear baseline <span class="citation" data-cites="nie2023patchtst">(<a href="#ref-nie2023patchtst" role="doc-biblioref">Nie et al. 2023</a>)</span>. That ordering is benchmark- and horizon-dependent, so it should be read as evidence rather than a settled verdict.</p>
+</section>
+<section id="limitations" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="limitations"><span class="header-section-number">5</span> 5. Limitations</h2>
+<p>The experiments here isolate the <em>attention</em> cost with small tensors on CPU; they demonstrate mechanism and scaling, not end-to-end forecasting accuracy, and the absolute millisecond numbers are machine-specific. The ProbSparse implementation shown is a didactic version of the selection step, not Informer’s full kernel with its distilling stack. PatchTST’s quadratic-with-smaller-constant cost means that for <em>very</em> long windows a patched model can still become expensive, which is why the token count, not just the raw length, is what to watch. Neither model removes the deeper question of whether attention is the right inductive bias for a given series at all — on smooth, strongly linear series a one-layer linear map can rival either <span class="citation" data-cites="zeng2023dlinear">(<a href="#ref-zeng2023dlinear" role="doc-biblioref">Zeng et al. 2023</a>)</span>, and the right choice depends on how much genuinely nonlinear cross-time structure the data contains.</p>
+</section>
+<section id="conclusion" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">6</span> 6. Conclusion</h2>
+<p>Informer and PatchTST solve the same <span class="math inline">\(O(L^2)\)</span> problem by editing different symbols in the same expression. Informer edits the matrix, computing attention only for the queries that carry signal and accepting a data-dependent approximation to reach <span class="math inline">\(O(L\log L)\)</span>. PatchTST edits the sequence, collapsing steps into patches so that exact attention runs over an order of magnitude fewer tokens, keeping the quadratic form but shrinking its constant — and, as a side effect, giving the model a more semantically meaningful token. Which matters more for a given problem depends on the window length and on whether the series’ attention is actually sparse: the asymptotic win of Informer only pays off at large <span class="math inline">\(L\)</span>, while PatchTST’s constant-factor win is immediate and, on published LSTF benchmarks, came with better reported accuracy. Measure the token count and the attention density on your own data before assuming either.</p>
+</section>
+<section id="references" class="level2" data-number="7">
+<h2 data-number="7" class="anchored" data-anchor-id="references"><span class="header-section-number">7</span> References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-nie2023patchtst" class="csl-entry" role="listitem">
+Nie, Yuqi, Nam H. Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam. 2023. <span>“A Time Series Is Worth 64 Words: Long-Term Forecasting with Transformers.”</span> <em>International Conference on Learning Representations (ICLR)</em>.
+</div>
+<div id="ref-zeng2023dlinear" class="csl-entry" role="listitem">
+Zeng, Ailing, Muxi Chen, Lei Zhang, and Qiang Xu. 2023. <span>“Are Transformers Effective for Time Series Forecasting?”</span> <em>Proceedings of the AAAI Conference on Artificial Intelligence</em> 37: 11121–28. <a href="https://doi.org/10.1609/aaai.v37i9.26317">https://doi.org/10.1609/aaai.v37i9.26317</a>.
+</div>
+<div id="ref-zhou2021informer" class="csl-entry" role="listitem">
+Zhou, Haoyi, Shanghang Zhang, Jieqi Peng, et al. 2021. <span>“Informer: Beyond Efficient Transformer for Long Sequence Time-Series Forecasting.”</span> <em>Proceedings of the AAAI Conference on Artificial Intelligence</em> 35: 11106–15. <a href="https://doi.org/10.1609/aaai.v35i12.17325">https://doi.org/10.1609/aaai.v35i12.17325</a>.
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 2026 Prof.&nbsp;Shin · ForecastAI</p>
+</div>   
+    <div class="nav-footer-center">
+<p><a href="privacy-policy.qmd">Privacy Policy</a></p>
+</div>
+    <div class="nav-footer-right">
+<p>Powered by <a href="https://quarto.org">Quarto</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
