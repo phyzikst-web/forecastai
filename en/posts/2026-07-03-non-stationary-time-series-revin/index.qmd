@@ -6,6 +6,9 @@ categories:
   - Data Science
   - Artificial Intelligence
   - Time Series
+  - Non-stationary Time Series
+  - Reversible Normalization
+  - RevIN
 image: "thumbnail.jpg"
 description: |
   When a series' mean and variance drift over time, a model trained on the past

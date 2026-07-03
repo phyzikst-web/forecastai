@@ -6,6 +6,10 @@ categories:
   - Data Science
   - Artificial Intelligence
   - Time Series
+  - Multi-step Forecasting
+  - Recursive
+  - Direct
+  - Joint
 image: "thumbnail.jpg"
 description: |
   How you generate an H-step forecast is a modeling decision in its own right.
@@ -25,7 +29,7 @@ execute:
   eval: true
   warning: false
   message: false
-  freeze: auto
+  freeze: true
 format:
   html:
     code-copy: true

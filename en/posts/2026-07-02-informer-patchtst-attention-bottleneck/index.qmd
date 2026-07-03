@@ -6,6 +6,9 @@ categories:
   - Data Science
   - Artificial Intelligence
   - Time Series
+  - Attention Bottleneck
+  - Informer
+  - PatchTST
 image: "thumbnail.jpg"
 description: |
   Self-attention costs O(L^2) in the sequence length, which is fatal for long
@@ -25,7 +28,7 @@ execute:
   eval: true
   warning: false
   message: false
-  freeze: auto
+  freeze: true
 format:
   html:
     code-copy: true

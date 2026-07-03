@@ -6,6 +6,9 @@ categories:
   - 데이터과학
   - 인공지능
   - 시계열
+  - 어텐션 병목
+  - Informer
+  - PatchTST
 image: "thumbnail.jpg"
 description: |
   셀프 어텐션은 시퀀스 길이에 대해 O(L^2) 비용이 들며, 이는 긴 시계열에
@@ -25,7 +28,7 @@ execute:
   eval: true
   warning: false
   message: false
-  freeze: auto
+  freeze: true
 format:
   html:
     code-copy: true

@@ -6,6 +6,9 @@ categories:
   - 데이터과학
   - 인공지능
   - 시계열
+  - 비정상 시계열
+  - 가역 정규화
+  - RevIN
 image: "thumbnail.jpg"
 description: |
   시계열의 평균과 분산이 시간에 따라 표류하면, 과거로 학습한 모델은 스케일조차
