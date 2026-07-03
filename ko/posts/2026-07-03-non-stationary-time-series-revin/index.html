@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Prof.&nbsp;Shin">
+<meta name="dcterms.date" content="2026-07-03">
+<meta name="description" content="시계열의 평균과 분산이 시간에 따라 표류하면, 과거로 학습한 모델은 스케일조차 본 적 없는 테스트 데이터를 만납니다. 이 글은 비정상성과 개념 표류를 바닥부터 설명하고, 실행 가능한 코드로 소박한 정규화에서 가역 인스턴스 정규화(RevIN)까지 쌓아 올립니다.">
+
+<title>비정상 시계열 길들이기: 표류와 지수적 성장에 맞서는 가역 정규화 – ForecastAI</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-de63f62b328812d8e578a4d74e282472.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-8b3fcfdd491003ef66acee1be0a5cb78.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "일치 없음",
+    "search-matching-documents-text": "일치된 문서",
+    "search-copy-link-title": "검색 링크 복사",
+    "search-hide-matches-text": "추가 검색 결과 숨기기",
+    "search-more-match-text": "추가 검색결과",
+    "search-more-matches-text": "추가 검색결과",
+    "search-clear-button-title": "제거",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "취소",
+    "search-submit-button-title": "검색",
+    "search-label": "검색"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Forecast<span style="color:#F97316;">AI</span></span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="검색"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="탐색 전환" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">HOME</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">ABOUT</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../categories.html"> 
+<span class="menu-text">CATEGORIES</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../research.html"> 
+<span class="menu-text">RESEARCH</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../contact.html"> 
+<span class="menu-text">CONTACT</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../en/"> 
+<span class="menu-text">🇺🇸 English</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/phyzikst-web"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">목차</h2>
+   
+  <ul>
+  <li><a href="#문제-한-세계에서-학습하고-다른-세계에서-시험받는-모델" id="toc-문제-한-세계에서-학습하고-다른-세계에서-시험받는-모델" class="nav-link active" data-scroll-target="#문제-한-세계에서-학습하고-다른-세계에서-시험받는-모델">1. 문제: 한 세계에서 학습하고 다른 세계에서 시험받는 모델</a></li>
+  <li><a href="#두-실패에-이름-붙이기-분포-이동과-개념-표류" id="toc-두-실패에-이름-붙이기-분포-이동과-개념-표류" class="nav-link" data-scroll-target="#두-실패에-이름-붙이기-분포-이동과-개념-표류">2. 두 실패에 이름 붙이기: 분포 이동과 개념 표류</a></li>
+  <li><a href="#첫-시도-전역-정규화-그리고-그것이-실패하는-이유" id="toc-첫-시도-전역-정규화-그리고-그것이-실패하는-이유" class="nav-link" data-scroll-target="#첫-시도-전역-정규화-그리고-그것이-실패하는-이유">3. 첫 시도: 전역 정규화, 그리고 그것이 실패하는 이유</a></li>
+  <li><a href="#작동하는-아이디어-인스턴스마다-정규화하고-다시-되돌리기" id="toc-작동하는-아이디어-인스턴스마다-정규화하고-다시-되돌리기" class="nav-link" data-scroll-target="#작동하는-아이디어-인스턴스마다-정규화하고-다시-되돌리기">4. 작동하는 아이디어: 인스턴스마다 정규화하고, 다시 되돌리기</a></li>
+  <li><a href="#측정-세-전략의-정면-대결" id="toc-측정-세-전략의-정면-대결" class="nav-link" data-scroll-target="#측정-세-전략의-정면-대결">5. 측정: 세 전략의 정면 대결</a></li>
+  <li><a href="#한계-알기-수준을-제거하는-것이-신호를-제거할-때" id="toc-한계-알기-수준을-제거하는-것이-신호를-제거할-때" class="nav-link" data-scroll-target="#한계-알기-수준을-제거하는-것이-신호를-제거할-때">6. 한계 알기: 수준을 제거하는 것이 신호를 제거할 때</a></li>
+  <li><a href="#결론" id="toc-결론" class="nav-link" data-scroll-target="#결론">7. 결론</a></li>
+  <li><a href="#참고문헌" id="toc-참고문헌" class="nav-link" data-scroll-target="#참고문헌">참고문헌</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">비정상 시계열 길들이기: 표류와 지수적 성장에 맞서는 가역 정규화</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">데이터과학</div>
+    <div class="quarto-category">인공지능</div>
+    <div class="quarto-category">시계열</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    <p>시계열의 평균과 분산이 시간에 따라 표류하면, 과거로 학습한 모델은 스케일조차 본 적 없는 테스트 데이터를 만납니다. 이 글은 비정상성과 개념 표류를 바닥부터 설명하고, 실행 가능한 코드로 소박한 정규화에서 가역 인스턴스 정규화(RevIN)까지 쌓아 올립니다.</p>
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">저자</div>
+    <div class="quarto-title-meta-contents">
+             <p>Prof.&nbsp;Shin </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">공개</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">2026-07-03</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="문제-한-세계에서-학습하고-다른-세계에서-시험받는-모델" class="level2">
+<h2 class="anchored" data-anchor-id="문제-한-세계에서-학습하고-다른-세계에서-시험받는-모델">1. 문제: 한 세계에서 학습하고 다른 세계에서 시험받는 모델</h2>
+<p>대부분의 머신러닝은 조용한 가정 하나에 기댑니다. 학습에 쓰는 데이터와 예측에 쓰는 데이터가 같은 분포에서 나온다는 가정입니다. 시계열은 이 가정을 예사로 깨뜨립니다. 시계열이 <strong>정상(stationary)</strong>이라는 것은 평균·분산·자기상관 같은 통계적 성질이 시간에 걸쳐 일정하다는 뜻입니다. 그러나 실제 시계열은 대개 <strong>비정상(non-stationary)</strong> 입니다. 매출은 성장하고, 물가는 오르고, 센서는 표류하며, 어떤 상품이 갑자기 인기를 끌면 수준(level)이 훌쩍 뛰어오릅니다. 학습 윈도우에서 측정한 통계는 더 이상 지금 예측하려는 윈도우를 설명하지 못합니다.</p>
+<p>이것은 예측에서 구체적이고 해로운 결과를 낳습니다. 모델을 짜기 전에 정확히 짚어 둘 가치가 있습니다. 모델이 입력 윈도우에서 미래 윈도우로의 사상을 학습하는데 그 윈도우들의 <em>스케일</em>이 계속 커진다면, 테스트 시점에 모델은 학습 때 본 적 없는 수치의 입력을 받게 됩니다. 내삽(interpolation)이 아니라 외삽(extrapolation)을 요구받는 것입니다. 이 현상을 세 가지 문제를 한꺼번에 가진 합성 시계열로 구체화해 봅니다. 지수 추세, 급격한 수준 이동(개념 표류의 대역), 그리고 수준에 따라 크기가 커지는 잡음(이분산성)입니다.</p>
+<div id="make-series" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>np.random.seed(<span class="dv">0</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> make_series(N<span class="op">=</span><span class="dv">2400</span>):</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""세 가지 표류 원천을 가진 합성 비정상 시계열:</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">    - exp(0.0028 t): 지수 추세(곱셈적 성장)</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">    - t=600,1200,1800의 수준 이동: 급격한 국면 변화(개념 표류)</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">    - sqrt(trend)로 스케일된 잡음: 이분산(시간이 갈수록 분산 증가)"""</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    t <span class="op">=</span> np.arange(N)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    trend <span class="op">=</span> np.exp(<span class="fl">0.0028</span> <span class="op">*</span> t)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    season <span class="op">=</span> <span class="fl">0.4</span> <span class="op">*</span> np.sin(<span class="dv">2</span> <span class="op">*</span> np.pi <span class="op">*</span> t <span class="op">/</span> <span class="dv">48</span>) <span class="op">*</span> np.sqrt(trend)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    level <span class="op">=</span> np.zeros(N)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> cp <span class="kw">in</span> [<span class="dv">600</span>, <span class="dv">1200</span>, <span class="dv">1800</span>]:</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        level[cp:] <span class="op">+=</span> np.random.uniform(<span class="dv">2</span>, <span class="dv">5</span>) <span class="op">*</span> np.sqrt(trend[cp])</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    noise <span class="op">=</span> <span class="fl">0.08</span> <span class="op">*</span> np.random.randn(N) <span class="op">*</span> trend</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (trend <span class="op">+</span> season <span class="op">+</span> level <span class="op">+</span> noise).astype(np.float32)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>series <span class="op">=</span> make_series()</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co"># 비정상성 정량화: 시계열을 3등분해 구간별 통계를 본다.</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i, part <span class="kw">in</span> <span class="bu">enumerate</span>(np.array_split(series, <span class="dv">3</span>)):</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"third </span><span class="sc">{</span>i<span class="op">+</span><span class="dv">1</span><span class="sc">}</span><span class="ss">: mean=</span><span class="sc">{</span>part<span class="sc">.</span>mean()<span class="sc">:8.2f}</span><span class="ss">  std=</span><span class="sc">{</span>part<span class="sc">.</span>std()<span class="sc">:7.2f}</span><span class="ss">"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>third 1: mean=    5.84  std=   5.80
+third 2: mean=   54.65  std=  31.71
+third 3: mean=  395.70  std= 218.94</code></pre>
+</div>
+</div>
+<p>시계열을 3등분하면 세 구간의 평균과 표준편차가 크게 다릅니다. 평균은 첫 구간에서 마지막 구간으로 가며 한 자릿수 배를 넘게 커집니다. 학습 때 앞부분만 본 모델은 뒷부분이 완전히 다른 스케일에 놓인다는 사실을 알 길이 없습니다. 바로 이 실패를 정규화가 해결해야 합니다.</p>
+</section>
+<section id="두-실패에-이름-붙이기-분포-이동과-개념-표류" class="level2">
+<h2 class="anchored" data-anchor-id="두-실패에-이름-붙이기-분포-이동과-개념-표류">2. 두 실패에 이름 붙이기: 분포 이동과 개념 표류</h2>
+<p>무엇이 잘못되고 있는지를 가리키는 용어가 둘 있습니다. 이 둘을 구분해 두면 해결책을 고르는 데 도움이 됩니다.</p>
+<p><strong>분포 이동(distribution shift)</strong>은 상위 개념입니다. 학습과 배포 사이에서 데이터의 결합 분포가 바뀌는 것입니다. 시계열에서는 값 자체의 평균과 분산이 시간에 따라 움직이는, 주변 통계량의 변화로 가장 눈에 띄게 나타납니다 <span class="citation" data-cites="kim2022revin">(<a href="#ref-kim2022revin" role="doc-biblioref">Kim 기타 2022년</a>)</span>. 위 코드의 지수 추세는 순수한 분포 이동입니다. 과거와 미래의 <em>관계</em>는 바뀌지 않았고, 스케일만 바뀌었습니다.</p>
+<p><strong>개념 표류(concept drift)</strong>는 더 날카롭고 더 위험한 사촌입니다. 여기서는 입력과 목표의 관계, 즉 학습하려는 함수 자체가 시간에 따라 바뀝니다. 새 경쟁자의 진입, 규제, 팬데믹으로 생긴 수준 이동은 개념 표류입니다. 변화 이전에 데이터를 만들던 규칙이 이후에는 더 이상 그 데이터를 만들지 않습니다. 최근 연구는 예측에서 이 표류가 두 얼굴을 가진다고 정식화합니다. 시간에 따라 입력 윈도우들의 공간 <em>안에서</em> 이동할 수도 있고(공간 내 이동, intra-space shift), 입력 윈도우와 예측 대상인 지평 윈도우 <em>사이에서</em> 다를 수도 있습니다(공간 간 이동, inter-space shift) <span class="citation" data-cites="fan2023dishts">(<a href="#ref-fan2023dishts" role="doc-biblioref">Fan 기타 2023년</a>)</span>. 두 번째는 놓치기 쉬운데, 이것이야말로 예측을 일반적인 지도학습보다 어렵게 만드는 지점입니다. 단 하나의 학습 예제조차 룩백과 지평이라는 서로 다를 수 있는 두 분포에 걸쳐 있기 때문입니다.</p>
+<p>정규화는 분포 이동 쪽에 맞서는 첫 번째 방어선입니다. 이 글의 나머지는 정규화 도구를 정교함의 순서대로 쌓아 올리며 각 단계를 측정합니다.</p>
+</section>
+<section id="첫-시도-전역-정규화-그리고-그것이-실패하는-이유" class="level2">
+<h2 class="anchored" data-anchor-id="첫-시도-전역-정규화-그리고-그것이-실패하는-이유">3. 첫 시도: 전역 정규화, 그리고 그것이 실패하는 이유</h2>
+<p>정형 데이터 머신러닝의 반사 반응은 표준화입니다. 평균을 빼고 표준편차로 나누되, 학습 집합 전체에서 한 번 계산합니다. 이 <em>전역(global)</em> 정규화는 최적화를 위해 수치 범위를 안정시키지만, 표류에는 아무것도 하지 못합니다. 고정된 평균과 분산 하나로는 평균과 분산이 움직이는 표적인 시계열을 설명할 수 없기 때문입니다. 열 배 높은 곳에 놓인 테스트 윈도우에서 학습 평균을 빼면, 모델이 학습한 적 없는 거대한 잔차가 남습니다.</p>
+<p>이를 측정하려면 지도학습 장치가 필요합니다. 시간 순서를 지키는(셔플 없음, 누수 없음) 윈도우 구성과 작은 MLP 예측기를 준비합니다.</p>
+<div id="setup-model" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch.nn <span class="im">as</span> nn</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>torch.manual_seed(<span class="dv">0</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>L, H <span class="op">=</span> <span class="dv">48</span>, <span class="dv">24</span>    <span class="co"># 룩백 길이, 예측 지평</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> make_windows(x, L, H):</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""1차원 시계열을 (X, Y)로 변환. X는 (n, L) 룩백, Y는 (n, H) 지평.</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co">    윈도우는 시간 순서로 만들며, 윈도우 i는 미래 정보를 포함하지 않는다."""</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    X, Y <span class="op">=</span> [], []</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(L, <span class="bu">len</span>(x) <span class="op">-</span> H <span class="op">+</span> <span class="dv">1</span>):</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        X.append(x[i <span class="op">-</span> L:i])</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        Y.append(x[i:i <span class="op">+</span> H])</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.stack(X), np.stack(Y)</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>X, Y <span class="op">=</span> make_windows(series, L, H)</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>n <span class="op">=</span> <span class="bu">len</span>(X)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>split <span class="op">=</span> <span class="bu">int</span>(n <span class="op">*</span> <span class="fl">0.7</span>)                       <span class="co"># 앞 70% 학습, 뒤 30% 테스트(시간순)</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>Xtr, Ytr, Xte, Yte <span class="op">=</span> X[:split], Y[:split], X[split:], Y[split:]</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MLP(nn.Module):</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""최소 예측기: L 입력 -&gt; 128 은닉 -&gt; H 출력."""</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, L, H):</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.net <span class="op">=</span> nn.Sequential(nn.Linear(L, <span class="dv">128</span>), nn.ReLU(), nn.Linear(<span class="dv">128</span>, H))</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> forward(<span class="va">self</span>, x):</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">self</span>.net(x)</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"train windows: </span><span class="sc">{</span>Xtr<span class="sc">.</span>shape<span class="sc">}</span><span class="ss">, test windows: </span><span class="sc">{</span>Xte<span class="sc">.</span>shape<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"train input mean: </span><span class="sc">{</span>Xtr<span class="sc">.</span>mean()<span class="sc">:.1f}</span><span class="ss">, test input mean: </span><span class="sc">{</span>Xte<span class="sc">.</span>mean()<span class="sc">:.1f}</span><span class="ss"> "</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"(</span><span class="sc">{</span>Xte<span class="sc">.</span>mean()<span class="op">/</span>Xtr<span class="sc">.</span>mean()<span class="sc">:.1f}</span><span class="ss">x higher)"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>train windows: (1630, 48), test windows: (699, 48)
+train input mean: 33.8, test input mean: 385.6 (11.4x higher)</code></pre>
+</div>
+</div>
+<p>마지막 줄이 문제 전체를 숫자 하나로 보여 줍니다. 테스트 윈도우는 학습 윈도우보다 대략 한 자릿수 배 높은 수준에 놓여 있습니다. 이제 어떤 모델도, 학습 집합에 맞춘 어떤 <em>전역</em> 정규화도 외삽을 하는 셈입니다.</p>
+</section>
+<section id="작동하는-아이디어-인스턴스마다-정규화하고-다시-되돌리기" class="level2">
+<h2 class="anchored" data-anchor-id="작동하는-아이디어-인스턴스마다-정규화하고-다시-되돌리기">4. 작동하는 아이디어: 인스턴스마다 정규화하고, 다시 되돌리기</h2>
+<p><strong>가역 인스턴스 정규화(Reversible Instance Normalization, RevIN)</strong>가 도입한 핵심 동작은, 전역으로 정규화하기를 멈추고 <em>인스턴스마다</em> 정규화하되 그 정규화를 가역으로 만드는 것입니다 <span class="citation" data-cites="kim2022revin">(<a href="#ref-kim2022revin" role="doc-biblioref">Kim 기타 2022년</a>)</span>. 각 입력 윈도우에 대해, 모델이 보기 전에 그 윈도우 자신의 평균과 표준편차를 제거합니다. 그러면 어떤 절대 수준에서 왔든 모든 윈도우가 정상처럼 보이는 상태로 모델에 도착합니다. 그다음 모델이 (정규화된) 예측을 내면, 그 윈도우의 통계를 다시 더해 예측을 원래 스케일로 되돌립니다.</p>
+<p>형식적으로, 입력 윈도우 <span class="math inline">\(x \in \mathbb{R}^{L}\)</span>(한 채널)에 대해 RevIN은 인스턴스 통계량</p>
+<p><span id="eq-stats"><span class="math display">\[
+\mu_x = \frac{1}{L}\sum_{t=1}^{L} x_t, \qquad
+\sigma_x^2 = \frac{1}{L}\sum_{t=1}^{L}(x_t - \mu_x)^2,
+\tag{1}\]</span></span></p>
+<p>을 구하고, 학습 가능한 아핀 변환(매개변수 <span class="math inline">\(\gamma, \beta\)</span>)으로 정규화합니다.</p>
+<p><span id="eq-norm"><span class="math display">\[
+\hat{x}_t = \gamma \, \frac{x_t - \mu_x}{\sqrt{\sigma_x^2 + \epsilon}} + \beta,
+\tag{2}\]</span></span></p>
+<p><span class="math inline">\(\hat{x}\)</span>를 모델에 통과시켜 정규화된 예측 <span class="math inline">\(\hat{y}\)</span>를 얻은 뒤, <em>같은</em> <span class="math inline">\(\mu_x,
+\sigma_x\)</span>로 <a href="#eq-norm" class="quarto-xref">방정식&nbsp;2</a> 을 역산하여 <strong>역정규화</strong>합니다.</p>
+<p><span id="eq-denorm"><span class="math display">\[
+y_t = \sqrt{\sigma_x^2 + \epsilon}\;\cdot\;\frac{\hat{y}_t - \beta}{\gamma} + \mu_x.
+\tag{3}\]</span></span></p>
+<p>여기서 <span class="math inline">\(\epsilon\)</span>은 수치 안정을 위한 작은 상수이고, <span class="math inline">\(\gamma, \beta \in \mathbb{R}\)</span> 는 학습됩니다. 대칭성이 핵심입니다. 각 윈도우의 수준과 스케일이라는 비정상 정보를 입력에서 <em>제거</em>하고 출력에서 <em>복원</em>하므로, 모델은 움직이는 수준이 아니라 정상적인 형태만 학습하면 됩니다 <span class="citation" data-cites="kim2022revin">(<a href="#ref-kim2022revin" role="doc-biblioref">Kim 기타 2022년</a>)</span>.</p>
+<p>정확도를 측정하기 전에, 이 정규화가 입력 분포에 무엇을 하는지 직접 보는 것이 좋습니다. 이것이 이 방법의 개념적 핵심입니다.</p>
+<div id="revin-effect" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> windows_only(x, L):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.stack([x[i <span class="op">-</span> L:i] <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(L, <span class="bu">len</span>(x) <span class="op">-</span> L)])</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>W <span class="op">=</span> windows_only(series, L)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>raw_means <span class="op">=</span> W.mean(axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>raw_stds <span class="op">=</span> W.std(axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 인스턴스별 정규화(RevIN의 제거 단계), 아핀 없음:</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>Wn <span class="op">=</span> (W <span class="op">-</span> W.mean(axis<span class="op">=</span><span class="dv">1</span>, keepdims<span class="op">=</span><span class="va">True</span>)) <span class="op">/</span> (W.std(axis<span class="op">=</span><span class="dv">1</span>, keepdims<span class="op">=</span><span class="va">True</span>) <span class="op">+</span> <span class="fl">1e-8</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"RAW windows    : mean in [</span><span class="sc">%.1f</span><span class="st">, </span><span class="sc">%.1f</span><span class="st">], std in [</span><span class="sc">%.1f</span><span class="st">, </span><span class="sc">%.1f</span><span class="st">]"</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>      <span class="op">%</span> (raw_means.<span class="bu">min</span>(), raw_means.<span class="bu">max</span>(), raw_stds.<span class="bu">min</span>(), raw_stds.<span class="bu">max</span>()))</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"RevIN-normed   : mean in [</span><span class="sc">%.3f</span><span class="st">, </span><span class="sc">%.3f</span><span class="st">], std in [</span><span class="sc">%.3f</span><span class="st">, </span><span class="sc">%.3f</span><span class="st">]"</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>      <span class="op">%</span> (Wn.mean(axis<span class="op">=</span><span class="dv">1</span>).<span class="bu">min</span>(), Wn.mean(axis<span class="op">=</span><span class="dv">1</span>).<span class="bu">max</span>(),</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>         Wn.std(axis<span class="op">=</span><span class="dv">1</span>).<span class="bu">min</span>(), Wn.std(axis<span class="op">=</span><span class="dv">1</span>).<span class="bu">max</span>()))</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">Window means spanned a %.0fx range; RevIN collapses them to ~0."</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>      <span class="op">%</span> (raw_means.<span class="bu">max</span>() <span class="op">/</span> raw_means.<span class="bu">min</span>()))</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>RAW windows    : mean in [1.1, 753.1], std in [0.3, 53.8]
+RevIN-normed   : mean in [-0.000, 0.000], std in [1.000, 1.000]
+
+Window means spanned a 702x range; RevIN collapses them to ~0.</code></pre>
+</div>
+</div>
+<p>원시 윈도우 평균은 수백 대 일의 범위에 걸쳐 있습니다. 인스턴스별 정규화 이후에는 모든 윈도우가 평균 약 0, 표준편차 약 1을 가집니다. 모델의 관점에서 표류하던 시계열이 정상 시계열로 바뀐 것입니다. 이것이 낮은 수준의 초기 데이터로 학습한 모델이 높은 수준의 후기 데이터에서도 여전히 작동하게 만드는 이유입니다. 애초에 수준은 모델이 풀어야 할 문제가 아니었습니다.</p>
+</section>
+<section id="측정-세-전략의-정면-대결" class="level2">
+<h2 class="anchored" data-anchor-id="측정-세-전략의-정면-대결">5. 측정: 세 전략의 정면 대결</h2>
+<p>이제 같은 MLP를 세 방식으로 학습합니다. 정규화 없음, 전역 정규화, 그리고 역정규화를 동반한 RevIN 방식 인스턴스 정규화입니다. 각 전략의 정규화가 보이도록 학습 루프를 의도적으로 명시적으로 작성했습니다.</p>
+<div id="train-compare" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> rmse(a, b):</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">float</span>(np.sqrt(((a <span class="op">-</span> b) <span class="op">**</span> <span class="dv">2</span>).mean()))</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> run(mode, epochs<span class="op">=</span><span class="dv">120</span>):</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    torch.manual_seed(<span class="dv">0</span>)</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    Xt, Yt, Xv <span class="op">=</span> torch.tensor(Xtr), torch.tensor(Ytr), torch.tensor(Xte)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> mode <span class="op">==</span> <span class="st">"global"</span>:</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>        m, sd <span class="op">=</span> Xt.mean(), Xt.std()</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> MLP(L, H)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    opt <span class="op">=</span> torch.optim.Adam(model.parameters(), lr<span class="op">=</span><span class="fl">1e-3</span>)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    lossf <span class="op">=</span> nn.MSELoss()</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(epochs):</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        model.train()</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> mode <span class="op">==</span> <span class="st">"revin"</span>:</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>            mu <span class="op">=</span> Xt.mean(<span class="dv">1</span>, keepdim<span class="op">=</span><span class="va">True</span>)<span class="op">;</span> sg <span class="op">=</span> Xt.std(<span class="dv">1</span>, keepdim<span class="op">=</span><span class="va">True</span>) <span class="op">+</span> <span class="fl">1e-5</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>            xin, ytar <span class="op">=</span> (Xt <span class="op">-</span> mu) <span class="op">/</span> sg, (Yt <span class="op">-</span> mu) <span class="op">/</span> sg   <span class="co"># 입력과 목표를 인스턴스별로 정규화</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> mode <span class="op">==</span> <span class="st">"global"</span>:</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>            xin, ytar <span class="op">=</span> (Xt <span class="op">-</span> m) <span class="op">/</span> sd, (Yt <span class="op">-</span> m) <span class="op">/</span> sd</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:  <span class="co"># none</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>            xin, ytar <span class="op">=</span> Xt, Yt</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>        opt.zero_grad()</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>        loss <span class="op">=</span> lossf(model(xin), ytar)</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>        loss.backward()</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>        opt.step()</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>    model.<span class="bu">eval</span>()</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> torch.no_grad():</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> mode <span class="op">==</span> <span class="st">"revin"</span>:</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>            mu <span class="op">=</span> Xv.mean(<span class="dv">1</span>, keepdim<span class="op">=</span><span class="va">True</span>)<span class="op">;</span> sg <span class="op">=</span> Xv.std(<span class="dv">1</span>, keepdim<span class="op">=</span><span class="va">True</span>) <span class="op">+</span> <span class="fl">1e-5</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>            pred <span class="op">=</span> (model((Xv <span class="op">-</span> mu) <span class="op">/</span> sg) <span class="op">*</span> sg <span class="op">+</span> mu).numpy()   <span class="co"># 스케일로 역정규화</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> mode <span class="op">==</span> <span class="st">"global"</span>:</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>            pred <span class="op">=</span> (model((Xv <span class="op">-</span> m) <span class="op">/</span> sd) <span class="op">*</span> sd <span class="op">+</span> m).numpy()</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>            pred <span class="op">=</span> model(Xv).numpy()</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pred</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>preds <span class="op">=</span> {mode: run(mode) <span class="cf">for</span> mode <span class="kw">in</span> [<span class="st">"none"</span>, <span class="st">"global"</span>, <span class="st">"revin"</span>]}</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"absolute test RMSE (dominated by the large-scale test region):"</span>)</span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> mode, p <span class="kw">in</span> preds.items():</span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  </span><span class="sc">{</span>mode<span class="sc">:8s}</span><span class="ss"> </span><span class="sc">{</span>rmse(p, Yte)<span class="sc">:8.3f}</span><span class="ss">"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>absolute test RMSE (dominated by the large-scale test region):
+  none       33.316
+  global     34.634
+  revin      34.112</code></pre>
+</div>
+</div>
+<p>절대 RMSE 수치는 서로 가깝습니다. 그리고 이 점 자체가 대충 넘기기보다 주의 깊게 읽을 교훈입니다. 두 가지가 일어나고 있습니다. 첫째, 이 테스트 집합의 절대 RMSE는 끝부분의 극히 높은 스케일 윈도우 몇 개에 지배됩니다. 그래서 전략을 비교하기에는 나쁜 렌즈입니다. 큰 스케일 윈도우의 큰 오차가 나머지를 모두 삼켜 버립니다. 둘째, ReLU 층을 가진 평범한 MLP는 그 자체로 스케일을 꽤 학습할 수 있어서, 매끄러운 합성 표류에서는 “정규화 없음”과의 격차가 작습니다. 공정하게 비교하려면 <strong>스케일 불변 지표</strong>가 필요합니다. 각 윈도우의 오차를 그 윈도우 자신의 수준으로 나누면, 5% 오차는 윈도우가 10에 있든 500에 있든 같은 값으로 계산됩니다.</p>
+<div id="scale-free" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> relative_rmse(pred, true, Xwin):</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""윈도우별 RMSE를 그 윈도우의 평균 수준으로 나눈 값(MASE와 유사한 스케일 불변 점수)."""</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    scale <span class="op">=</span> np.<span class="bu">abs</span>(Xwin).mean(axis<span class="op">=</span><span class="dv">1</span>, keepdims<span class="op">=</span><span class="va">True</span>) <span class="op">+</span> <span class="fl">1e-8</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    per_window <span class="op">=</span> np.sqrt(((pred <span class="op">-</span> true) <span class="op">**</span> <span class="dv">2</span>).mean(axis<span class="op">=</span><span class="dv">1</span>, keepdims<span class="op">=</span><span class="va">True</span>)) <span class="op">/</span> scale</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">float</span>(per_window.mean())</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"scale-free relative RMSE (lower is better):"</span>)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>scores <span class="op">=</span> {}</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> mode, p <span class="kw">in</span> preds.items():</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    scores[mode] <span class="op">=</span> relative_rmse(p, Yte, Xte)</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  </span><span class="sc">{</span>mode<span class="sc">:8s}</span><span class="ss"> </span><span class="sc">{</span>scores[mode]<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\n</span><span class="ss">RevIN vs global normalization: "</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"</span><span class="sc">{</span>(scores[<span class="st">'global'</span>] <span class="op">-</span> scores[<span class="st">'revin'</span>]) <span class="op">/</span> scores[<span class="st">'global'</span>] <span class="op">*</span> <span class="dv">100</span><span class="sc">:+.1f}</span><span class="ss">%"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>scale-free relative RMSE (lower is better):
+  none     0.0805
+  global   0.0829
+  revin    0.0804
+
+RevIN vs global normalization: +3.0%</code></pre>
+</div>
+</div>
+<p>스케일 불변 지표에서 RevIN은 전역 정규화를 몇 퍼센트 차이로 앞서고, 전역 정규화는 여기서 셋 중 실제로 가장 나쁩니다. 자기보다 훨씬 위에 놓인 윈도우들에서 고정 평균 하나를 빼는 것이 아무것도 안 하는 것보다 못한 것입니다. 이 소박하고 정직한 격차가 전형적입니다. 협조적인 모델과 깨끗한 합성 데이터에서는 효과가 실재하지만 작습니다. RevIN에 대한 공개된 근거는 실제 데이터셋과 더 강한 백본 위에서 세워졌으며, 거기서는 트랜스포머나 선형 모델 앞에서 인스턴스별 수준을 제거하는 것이 여러 지평에 걸쳐 상당하고 일관된 이득을 냅니다 <span class="citation" data-cites="kim2022revin">(<a href="#ref-kim2022revin" role="doc-biblioref">Kim 기타 2022년</a>)</span>. RevIN으로 감싼 단순한 선형 모델이 표준 벤치마크에서 훨씬 무거운 모델과 대등하거나 앞선다고 보고되기도 했습니다.</p>
+</section>
+<section id="한계-알기-수준을-제거하는-것이-신호를-제거할-때" class="level2">
+<h2 class="anchored" data-anchor-id="한계-알기-수준을-제거하는-것이-신호를-제거할-때">6. 한계 알기: 수준을 제거하는 것이 신호를 제거할 때</h2>
+<p>RevIN은 공짜가 아니며, 그 이유는 개념적으로 중요합니다. 각 윈도우의 평균과 분산을 벗겨 냄으로써, 당신은 수준과 스케일이 <em>잡음 요인(nuisance)</em> — 제거하고 복원할 정보이지 사용할 정보가 아니다 — 이라고 주장하는 것입니다. 때로 그 주장은 틀립니다. 상승하는 수준이나 분산의 변화 자체가 미래를 예측하는 정보라면, 즉 추세가 정상적인 형태로는 담을 수 없는 방식으로 지평까지 이어진다면, 그것을 정규화로 지워 버리는 것은 신호를 버리는 일입니다.</p>
+<p>이것이 <strong>Non-stationary Transformer</strong>의 비판입니다. 이 연구는 소박한 정상화가 <em>과도한 정상화(over-stationarization)</em>를 일으킬 수 있다고 관찰합니다. 모델이 구별해야 할 바로 그 비정상 사건을 지워 버릴 수 있다는 것입니다. 그래서 저자들은 정상화를, 제거된 통계량을 출력에서만이 아니라 모델 내부로 다시 주입하는 “탈정상화 어텐션(de-stationary attention)”과 짝지었습니다 <span class="citation" data-cites="liu2022nonstationary">(<a href="#ref-liu2022nonstationary" role="doc-biblioref">Liu 기타 2022년</a>)</span>. 이것은 또한 <strong>Dish-TS</strong>의 동기이기도 합니다. Dish-TS는 RevIN이 입력 윈도우와 지평 윈도우가 통계량을 공유한다고 암묵적으로 가정한다는 점 — 룩백에서 제거한 평균이 지평에서 복원할 올바른 평균이라는 가정 — 을 지적합니다. 입력 공간과 출력 공간의 분포가 정말로 다를 때(공간 간 이동), 통계량 한 벌로는 충분하지 않으며, Dish-TS는 입력 공간과 출력 공간에 대해 별도의 분포 계수를 학습합니다 <span class="citation" data-cites="fan2023dishts">(<a href="#ref-fan2023dishts" role="doc-biblioref">Fan 기타 2023년</a>)</span>.</p>
+<p>실무적 해석은 이렇습니다. 인스턴스 정규화는 흔한 경우(표류하는 수준)를 해결하는 강력하고 값싼 기본값이지만, 하나의 가정 — 수준과 스케일은 잡음 요인이고, 룩백 통계가 지평 통계를 예측한다 — 을 담고 있습니다. 그 가정은 맹목적으로 받아들이지 말고 당신의 데이터에 비추어 확인해야 합니다.</p>
+</section>
+<section id="결론" class="level2">
+<h2 class="anchored" data-anchor-id="결론">7. 결론</h2>
+<p>비정상성은 가장자리에서 잡음처럼 제거할 성가신 존재가 아닙니다. 그것은 과거에 맞춘 모델과 미래를 예측하는 모델 사이를 가로막는 중심 장애물입니다. 이 글의 전개는 분야 자체가 걸어온 전개이기도 합니다. 전역 정규화는 최적화를 안정시키지만 움직이는 평균을 따라가지 못하며, 강하게 표류하는 데이터에서는 아무것도 안 하느니만 못할 수 있습니다. 인스턴스별 가역 정규화 — 각 윈도우의 수준과 스케일을 제거하고, 정상적인 형태를 예측한 뒤, 수준을 복원하는 것 — 가 실제로 표류를 다루는 동작이며, 어떤 모델에도 감쌀 만큼 값쌉니다. 그 자신의 한계가 프런티어를 가리킵니다. 수준 <em>자체가</em> 신호일 때, 혹은 룩백과 지평의 분포가 정말로 다를 때는, 그 통계량을 단순히 제거하는 대신 다시 주입하거나 별도로 모델링하는 방법이 필요합니다. 먼저 스케일 불변 지표로 당신의 시계열이 얼마나 표류하는지 측정하고, 그 표류의 크기와 성격이 실제로 얼마나 많은 정규화 장치가 필요한지를 결정하게 하십시오.</p>
+</section>
+<section id="참고문헌" class="level2">
+<h2 class="anchored" data-anchor-id="참고문헌">참고문헌</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-fan2023dishts" class="csl-entry" role="listitem">
+Fan, Wei, Pengyang Wang, Dongkun Wang, Dongjie Wang, Yuanchun Zhou, 와/과 Yanjie Fu. 2023년. <span>“Dish-TS: A General Paradigm for Alleviating Distribution Shift in Time Series Forecasting”</span>. <em>Proceedings of the AAAI Conference on Artificial Intelligence</em> 37: 7522–29. <a href="https://doi.org/10.1609/aaai.v37i6.25914">https://doi.org/10.1609/aaai.v37i6.25914</a>.
+</div>
+<div id="ref-kim2022revin" class="csl-entry" role="listitem">
+Kim, Taesung, Jinhee Kim, Yunwon Tae, Cheonbok Park, Jang-Ho Choi, 와/과 Jaegul Choo. 2022년. <span>“Reversible Instance Normalization for Accurate Time-Series Forecasting against Distribution Shift”</span>. <em>International Conference on Learning Representations (ICLR)</em>. <a href="https://openreview.net/forum?id=cGDAkQo1C0p">https://openreview.net/forum?id=cGDAkQo1C0p</a>.
+</div>
+<div id="ref-liu2022nonstationary" class="csl-entry" role="listitem">
+Liu, Yong, Haixu Wu, Jianmin Wang, 와/과 Mingsheng Long. 2022년. <span>“Non-stationary Transformers: Exploring the Stationarity in Time Series Forecasting”</span>. <em>Advances in Neural Information Processing Systems (NeurIPS)</em> 35: 9881–93.
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "복사완료!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "복사완료!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 2026 Prof.&nbsp;Shin · ForecastAI</p>
+</div>   
+    <div class="nav-footer-center">
+<p><a href="privacy-policy.qmd">개인정보처리방침</a></p>
+</div>
+    <div class="nav-footer-right">
+<p>Powered by <a href="https://quarto.org">Quarto</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
