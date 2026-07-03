@@ -19,14 +19,14 @@ number-sections: false
 code-fold: false
 code-tools: false
 bibliography: ../../references.bib
-jupyter: nn_torch
+jupyter: python3
 execute:
   echo: true
   output: true
   eval: true
   warning: false
   message: false
-  freeze: auto
+  freeze: true
 format:
   html:
     code-copy: true
