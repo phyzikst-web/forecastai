@@ -158,7 +158,11 @@ $body-color: #333333;
 }
 
 /* 카테고리 태그 */
-.quarto-post .categories a {
+.quarto-post .categories a,
+.quarto-categories .category,
+.quarto-category,
+.category,
+.quarto-listing-category {
   display: inline-block;
   background: #eaf2fb;
   color: #2c6fad;
@@ -168,6 +172,7 @@ $body-color: #333333;
   margin: 4px 3px 0 0;
   text-decoration: none;
   font-weight: 500;
+  text-transform: none !important;
 }
 
 /* ===== 사이드바 ===== */
