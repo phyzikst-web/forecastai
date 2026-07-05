@@ -1,0 +1,209 @@
+---
+title: "Injecting Domain Knowledge into Deep Time-Series Models with Physical Constraints"
+date: "2026-07-05"
+author: "Prof. Shin"
+categories:
+  - Data Science
+  - Artificial Intelligence
+  - Time Series
+  - Scientific Machine Learning
+  - Physical Constraints
+  - Loss Function
+  - PINN
+image: "thumbnail.jpg"
+description: |
+  A practical guide to adding physical residuals, penalties, and hard parameterizations to deep time-series models without confusing soft regularization with exact constraints.
+lang: en
+toc: true
+toc-depth: 3
+number-sections: false
+code-fold: false
+code-tools: false
+execute:
+  echo: true
+  output: true
+  eval: true
+  warning: false
+  message: false
+  freeze: true
+format:
+  html:
+    code-copy: true
+    code-overflow: wrap
+---
+
+## 1. The forecasting problem is not only statistical
+
+A deep time-series model can fit past observations while producing forecasts that are physically impossible: negative rainfall, increasing radioactive decay, energy creation in a closed system, or storage levels that exceed reservoir capacity. The issue is not that the neural network is too weak. It is usually too unconstrained. If the data are sparse, noisy, or shifted away from the training distribution, empirical risk minimization can select a function that has low validation error but violates the mechanism that generated the series.
+
+Physics-informed neural networks (PINNs) made this point explicit by training neural approximators against both observed data and residuals of governing differential equations (Raissi et al., 2019). The broader theory-guided data science literature frames the same idea as using scientific consistency to restrict the hypothesis space (Karpatne et al., 2017). For time-series forecasting, the practical question is narrower: how do we inject known dynamics into a neural model without pretending that every penalty term is a hard physical law?
+
+This distinction matters. A loss penalty discourages violations; it does not make them impossible. A hard constraint is satisfied by construction, by projection, or by a constrained optimizer. In many forecasting systems the best design is hybrid: use a physical residual in the loss to shape learning, and use a structural parameterization for constraints that must never be broken.
+
+## 2. From data loss to physics residuals
+
+Let a model $f_\theta$ map a history window $\mathbf{x}_{t-L+1:t} \in \mathbb{R}^{L \times d}$ to a horizon-$H$ forecast $\hat{\mathbf{y}}_{t+1:t+H} \in \mathbb{R}^{H \times m}$. The ordinary supervised objective is
+
+$$
+\mathcal{L}_{data}(\theta)
+= \frac{1}{N}\sum_{i=1}^{N}
+\left\|
+\hat{\mathbf{y}}^{(i)}_{t+1:t+H}
+- \mathbf{y}^{(i)}_{t+1:t+H}
+\right\|_2^2 .
+$$
+
+Here $N$ is the number of training windows, $L$ is lookback length, $d$ is the number of input variables, $H$ is the forecast horizon, and $m$ is the number of target variables. This objective only asks whether the output matches labels. It says nothing about whether the transition from $\hat{\mathbf{y}}_t$ to $\hat{\mathbf{y}}_{t+1}$ respects mass balance, monotonicity, boundedness, or a differential equation.
+
+Suppose prior knowledge says that a scalar state $y(t)$ follows an approximate decay law,
+
+$$
+\frac{dy(t)}{dt} = -k y(t), \qquad k > 0.
+$$
+
+For a discrete forecast with time step $\Delta t$, a residual can be written as
+
+$$
+r_{t+1}(\theta)
+= \frac{\hat{y}_{t+1} - y_t}{\Delta t} + k y_t .
+$$
+
+The physics-augmented objective is then
+
+$$
+\mathcal{L}(\theta)
+= \mathcal{L}_{data}(\theta)
++ \lambda_{phys}
+\frac{1}{N}\sum_{i=1}^{N}
+\left\|r^{(i)}_{t+1}(\theta)\right\|_2^2 .
+$$
+
+The scalar $\lambda_{phys}$ controls the trade-off. If it is too small, the residual is cosmetic. If it is too large, the model may ignore real deviations, measurement error, forcing variables, or missing processes. Automatic differentiation is what makes this formulation convenient for continuous-time PINNs and neural differential models, because derivatives of model outputs with respect to time or state can be computed inside the training graph rather than manually derived for every architecture (Baydin et al., 2018).
+
+## 3. What is hard, soft, and operationally safe?
+
+The common implementation pattern is to add a penalty term to the loss. That is a soft constraint:
+
+$$
+\mathcal{L}_{soft}
+= \mathcal{L}_{data} + \lambda \mathcal{L}_{constraint}.
+$$
+
+It reduces violations in expectation over the sampled training points. It does not guarantee that a future forecast will satisfy the law. Hard constraints require a different mechanism.
+
+| Constraint type | Example | How it is imposed | Guarantee |
+|---|---|---|---|
+| Penalty residual | ODE/PDE residual, conservation error | Add $\lambda \|r_\theta\|^2$ to the loss | No exact guarantee |
+| Barrier or hinge penalty | Capacity $0 \le y \le C$ | Penalize $\max(0, y-C)$ or $\max(0, -y)$ | Stronger discouragement, still not exact |
+| Reparameterization | $y_{t+1}=y_t\exp(-\operatorname{softplus}(g_\theta)\Delta t)$ | Define the output form so it obeys the law | Exact for the encoded property |
+| Projection | Project forecast onto feasible set | Correct output after prediction | Exact if projection is correct |
+| Constrained optimization | Solve with equality/inequality constraints | Optimizer enforces constraints | Exact up to solver tolerance |
+
+For operational forecasting, non-negativity, monotonic decay, inventory conservation, and known bounds often deserve hard treatment. Approximate laws, uncertain coefficients, and unresolved subgrid effects are better handled as residual losses because insisting on exact satisfaction can make the model confidently wrong.
+
+## 4. A small reproducible example
+
+The code below uses synthetic data generated from noisy exponential decay. It compares three one-step forecasters: an unconstrained differentiable basis model, the same model fitted with a physics residual, and a model whose output is parameterized as a positive monotone decay. The example is intentionally small and uses only `numpy` so it can render in a lightweight Quarto environment; in an LSTM, temporal convolution, or Transformer, the same residual is added to the training objective.
+
+```{python}
+#| label: physics-constrained-decay
+#| echo: true
+#| output: true
+import numpy as np
+
+seed = 7
+rng = np.random.default_rng(seed)
+
+dt = 0.25
+k_true = 0.23
+n_steps = 96
+t = np.arange(n_steps + 1, dtype=float) * dt
+y_clean = 5.0 * np.exp(-k_true * t)
+y_obs = np.maximum(y_clean + rng.normal(0.0, 0.035, size=y_clean.shape), 1e-3)
+
+train_end = 64
+x_all = np.column_stack([
+    np.ones(n_steps),
+    t[:-1],
+    y_obs[:-1],
+    t[:-1] * y_obs[:-1],
+    y_obs[:-1] ** 2,
+])
+y_next_all = y_obs[1:]
+y_now_all = y_obs[:-1]
+
+X_train, X_test = x_all[:train_end], x_all[train_end:]
+y_train, y_test = y_next_all[:train_end], y_next_all[train_end:]
+y_now_train, y_now_test = y_now_all[:train_end], y_now_all[train_end:]
+
+def ridge_solution(X, y, alpha=1e-6):
+    p = X.shape[1]
+    return np.linalg.solve(X.T @ X + alpha * np.eye(p), X.T @ y)
+
+def physics_residual_solution(X, y_next, y_now, lam=0.5, alpha=1e-6):
+    p = X.shape[1]
+    A = X.T @ X + lam * (X.T @ X) / (dt ** 2) + alpha * np.eye(p)
+    b = X.T @ y_next + lam * X.T @ (y_now / dt - k_true * y_now) / dt
+    return np.linalg.solve(A, b)
+
+def evaluate(name, pred, y_test, y_now_test):
+    rmse = np.sqrt(np.mean((pred - y_test) ** 2))
+    violation = np.mean(pred > y_now_test)
+    negative = np.mean(pred < 0)
+    residual_mae = np.mean(np.abs((pred - y_now_test) / dt + k_true * y_now_test))
+    return name, rmse, violation, negative, residual_mae
+
+w_free = ridge_solution(X_train, y_train)
+w_phys = physics_residual_solution(X_train, y_train, y_now_train, lam=0.5)
+
+# Hard parameterization: fit a positive decay rate from the training transitions.
+ratios = np.clip(y_train / y_now_train, 1e-6, 1.0)
+k_hat = np.maximum(0.0, -np.mean(np.log(ratios)) / dt)
+
+results = [
+    evaluate("unconstrained_basis_model", X_test @ w_free, y_test, y_now_test),
+    evaluate("physics_residual_loss", X_test @ w_phys, y_test, y_now_test),
+    evaluate(
+        "hard_decay_parameterization",
+        y_now_test * np.exp(-k_hat * dt),
+        y_test,
+        y_now_test,
+    ),
+]
+
+print("model,rmse,monotonicity_violation_rate,negative_prediction_rate,ode_residual_mae")
+for row in results:
+    print(f"{row[0]},{row[1]:.4f},{row[2]:.4f},{row[3]:.4f},{row[4]:.4f}")
+```
+
+In this synthetic run, the residual-loss model improves the ODE residual compared with the unconstrained basis model. The hard parameterization removes monotonicity violations entirely because its forecast has the form $y_t\exp(-\hat{k}\Delta t)$ with $\hat{k} \ge 0$. In larger neural architectures, $k$ can be replaced by a nonnegative network output $\hat{k}_t=\operatorname{softplus}(g_\theta(\mathbf{x}_t))$. The useful lesson is unchanged: physical validity and label fit are related but not identical objectives.
+
+## 5. Choosing the constraint weight
+
+The hardest part of physics-informed training is rarely writing the residual. It is choosing how much the residual should matter. A fixed $\lambda_{phys}$ is simple, but it hides unit mismatch: the data loss may be measured in squared degrees Celsius while a conservation residual may be measured in kilograms per second. Normalizing each term by a physically meaningful scale is usually safer than tuning raw magnitudes.
+
+There are three practical checks. First, compare the residual distribution on train, validation, and test periods. A model that only satisfies physics on collocation points can still fail elsewhere. Second, inspect the Pareto curve between $\mathcal{L}_{data}$ and $\mathcal{L}_{phys}$ instead of reporting one chosen weight. Third, test extrapolation regimes: longer horizons, rare forcing, boundary values, and missing covariates. Scientific ML reviews emphasize that physical knowledge can improve data efficiency, but only when the encoded law matches the modeled regime and the optimization problem remains well conditioned (Karniadakis et al., 2021; Willard et al., 2022).
+
+## 6. When not to impose hard constraints
+
+Hard constraints are dangerous when the law is incomplete, when the measurement process differs from the state equation, or when exogenous forcing is omitted. For example, a reservoir storage model must conserve water only after accounting for rainfall, release, evaporation, infiltration, and measurement corrections. Enforcing a closed-system mass balance on an open system will create a beautifully consistent but biased forecaster.
+
+The same warning applies to time-series models in weather and environmental AI. Many constraints are scale-dependent. A PDE residual at grid scale may not describe station observations without a representativeness model. A monotonicity rule may hold for cumulative quantities but not for noisy sensor readings. In these cases, the loss should encode a tolerance or a stochastic residual rather than an exact rule.
+
+## 7. A usable recipe
+
+Start by writing the constraint in the units of the target variable. Decide whether violation is unacceptable or merely unlikely. If unacceptable, prefer reparameterization, projection, or constrained decoding. If violation is allowed because the law is approximate, use a residual loss and tune $\lambda_{phys}$ against both forecast error and residual error. Keep the time split chronological, compute residuals only from information available at prediction time, and report failure cases where the constraint helps and where it hurts.
+
+The value of domain knowledge is not that it makes deep learning less empirical. It makes the empirical problem more honest. A forecast that is accurate but physically impossible is not a deployable scientific model; a forecast that is physically elegant but ignores data is not useful either. The engineering target is the narrow region where statistical fit, physical consistency, and operational tolerance meet.
+
+## References
+
+Baydin, A. G., Pearlmutter, B. A., Radul, A. A., & Siskind, J. M. (2018). Automatic differentiation in machine learning: a survey. *Journal of Machine Learning Research, 18*(153), 1-43. https://jmlr.org/papers/v18/17-468.html
+
+Karniadakis, G. E., Kevrekidis, I. G., Lu, L., Perdikaris, P., Wang, S., & Yang, L. (2021). Physics-informed machine learning. *Nature Reviews Physics, 3*, 422-440. https://doi.org/10.1038/s42254-021-00314-5
+
+Karpatne, A., Atluri, G., Faghmous, J. H., Steinbach, M., Banerjee, A., Ganguly, A., Shekhar, S., Samatova, N., & Kumar, V. (2017). Theory-guided data science: A new paradigm for scientific discovery from data. *IEEE Transactions on Knowledge and Data Engineering, 29*(10), 2318-2331. https://doi.org/10.1109/TKDE.2017.2720168
+
+Raissi, M., Perdikaris, P., & Karniadakis, G. E. (2019). Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations. *Journal of Computational Physics, 378*, 686-707. https://doi.org/10.1016/j.jcp.2018.10.045
+
+Willard, J., Jia, X., Xu, S., Steinbach, M., & Kumar, V. (2022). Integrating scientific knowledge with machine learning for engineering and environmental systems. *ACM Computing Surveys, 55*(4), Article 66. https://doi.org/10.1145/3514228
