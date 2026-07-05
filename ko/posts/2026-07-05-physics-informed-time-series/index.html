@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Prof.&nbsp;Shin">
+<meta name="dcterms.date" content="2026-07-05">
+<meta name="description" content="딥러닝 시계열 예측에서 물리 잔차, 페널티, hard parameterization을 구분하고 물리적으로 불가능한 예측을 줄이는 구현 방법을 설명합니다.">
+
+<title>딥러닝 시계열 모델에 도메인 지식 주입하기: 물리 제약을 손실 함수에 반영하는 방법 – ForecastAI</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-de63f62b328812d8e578a4d74e282472.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-c7169bb5702ee40d3607d6e1f3f9db3c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "일치 없음",
+    "search-matching-documents-text": "일치된 문서",
+    "search-copy-link-title": "검색 링크 복사",
+    "search-hide-matches-text": "추가 검색 결과 숨기기",
+    "search-more-match-text": "추가 검색결과",
+    "search-more-matches-text": "추가 검색결과",
+    "search-clear-button-title": "제거",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "취소",
+    "search-submit-button-title": "검색",
+    "search-label": "검색"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Forecast<span style="color:#F97316;">AI</span></span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="검색"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="탐색 전환" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">HOME</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">ABOUT</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../categories.html"> 
+<span class="menu-text">CATEGORIES</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../research.html"> 
+<span class="menu-text">RESEARCH</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../contact.html"> 
+<span class="menu-text">CONTACT</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../en/"> 
+<span class="menu-text">🇺🇸 English</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/phyzikst-web"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">목차</h2>
+   
+  <ul>
+  <li><a href="#시계열-예측-문제는-통계-문제만이-아닙니다" id="toc-시계열-예측-문제는-통계-문제만이-아닙니다" class="nav-link active" data-scroll-target="#시계열-예측-문제는-통계-문제만이-아닙니다">1. 시계열 예측 문제는 통계 문제만이 아닙니다</a></li>
+  <li><a href="#데이터-손실에서-물리-잔차로" id="toc-데이터-손실에서-물리-잔차로" class="nav-link" data-scroll-target="#데이터-손실에서-물리-잔차로">2. 데이터 손실에서 물리 잔차로</a></li>
+  <li><a href="#무엇이-hard이고-무엇이-soft인가요" id="toc-무엇이-hard이고-무엇이-soft인가요" class="nav-link" data-scroll-target="#무엇이-hard이고-무엇이-soft인가요">3. 무엇이 hard이고, 무엇이 soft인가요?</a></li>
+  <li><a href="#작은-재현-예제" id="toc-작은-재현-예제" class="nav-link" data-scroll-target="#작은-재현-예제">4. 작은 재현 예제</a></li>
+  <li><a href="#제약-가중치를-어떻게-고를-것인가요" id="toc-제약-가중치를-어떻게-고를-것인가요" class="nav-link" data-scroll-target="#제약-가중치를-어떻게-고를-것인가요">5. 제약 가중치를 어떻게 고를 것인가요?</a></li>
+  <li><a href="#hard-constraint를-쓰지-말아야-할-때" id="toc-hard-constraint를-쓰지-말아야-할-때" class="nav-link" data-scroll-target="#hard-constraint를-쓰지-말아야-할-때">6. Hard constraint를 쓰지 말아야 할 때</a></li>
+  <li><a href="#실제-적용-순서" id="toc-실제-적용-순서" class="nav-link" data-scroll-target="#실제-적용-순서">7. 실제 적용 순서</a></li>
+  <li><a href="#참고문헌" id="toc-참고문헌" class="nav-link" data-scroll-target="#참고문헌">참고문헌</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">딥러닝 시계열 모델에 도메인 지식 주입하기: 물리 제약을 손실 함수에 반영하는 방법</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">데이터과학</div>
+    <div class="quarto-category">인공지능</div>
+    <div class="quarto-category">시계열</div>
+    <div class="quarto-category">과학기계학습</div>
+    <div class="quarto-category">물리 제약</div>
+    <div class="quarto-category">손실 함수</div>
+    <div class="quarto-category">PINN</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    <p>딥러닝 시계열 예측에서 물리 잔차, 페널티, hard parameterization을 구분하고 물리적으로 불가능한 예측을 줄이는 구현 방법을 설명합니다.</p>
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">저자</div>
+    <div class="quarto-title-meta-contents">
+             <p>Prof.&nbsp;Shin </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">공개</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">2026-07-05</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="시계열-예측-문제는-통계-문제만이-아닙니다" class="level2">
+<h2 class="anchored" data-anchor-id="시계열-예측-문제는-통계-문제만이-아닙니다">1. 시계열 예측 문제는 통계 문제만이 아닙니다</h2>
+<p>딥러닝 시계열 모델은 과거 관측값을 잘 맞추면서도 물리적으로 불가능한 예측을 만들 수 있습니다. 강수량이 음수가 되거나, 방사성 붕괴량이 증가하거나, 닫힌 계에서 에너지가 생성되거나, 저수지 저장량이 용량을 초과하는 식입니다. 문제는 신경망의 표현력이 부족해서가 아닙니다. 오히려 너무 자유롭기 때문에 생깁니다. 데이터가 적거나, 잡음이 크거나, 학습 분포 밖으로 예측해야 할 때 경험적 위험 최소화는 검증 오차가 낮지만 생성 메커니즘을 어기는 함수를 선택할 수 있습니다.</p>
+<p>물리 정보 신경망(Physics-Informed Neural Networks, PINNs)은 관측 데이터뿐 아니라 지배 방정식의 잔차까지 학습 목적에 넣는 방식으로 이 문제를 명확히 제기했습니다(Raissi et al., 2019). 더 넓게는 theory-guided data science가 과학적 일관성을 이용해 가설 공간을 제한하는 접근을 정리했습니다(Karpatne et al., 2017). 시계열 예측에서 실제 질문은 조금 더 구체적입니다. 알려진 동역학을 신경망에 어떻게 넣어야 하며, 모든 페널티 항을 hard constraint처럼 오해하지 않으려면 무엇을 구분해야 할까요?</p>
+<p>이 구분은 중요합니다. 손실 함수의 페널티는 위반을 억제하지만 위반을 불가능하게 만들지는 않습니다. Hard constraint는 재매개변수화, 투영, 또는 제약 최적화를 통해 만족되어야 합니다. 많은 예측 시스템에서는 두 접근을 함께 쓰는 편이 좋습니다. 물리 잔차 손실로 학습 방향을 잡고, 절대 깨지면 안 되는 조건은 구조적으로 만족하도록 설계하는 방식입니다.</p>
+</section>
+<section id="데이터-손실에서-물리-잔차로" class="level2">
+<h2 class="anchored" data-anchor-id="데이터-손실에서-물리-잔차로">2. 데이터 손실에서 물리 잔차로</h2>
+<p>모델 <span class="math inline">\(f_\theta\)</span>가 과거 창 <span class="math inline">\(\mathbf{x}_{t-L+1:t} \in \mathbb{R}^{L \times d}\)</span>를 받아 예측 구간 <span class="math inline">\(\hat{\mathbf{y}}_{t+1:t+H} \in \mathbb{R}^{H \times m}\)</span>을 출력한다고 하겠습니다. 일반적인 지도학습 목적함수는 다음과 같습니다.</p>
+<p><span class="math display">\[
+\mathcal{L}_{data}(\theta)
+= \frac{1}{N}\sum_{i=1}^{N}
+\left\|
+\hat{\mathbf{y}}^{(i)}_{t+1:t+H}
+- \mathbf{y}^{(i)}_{t+1:t+H}
+\right\|_2^2 .
+\]</span></p>
+<p>여기서 <span class="math inline">\(N\)</span>은 학습 창의 개수, <span class="math inline">\(L\)</span>은 lookback 길이, <span class="math inline">\(d\)</span>는 입력 변수 수, <span class="math inline">\(H\)</span>는 예측 horizon, <span class="math inline">\(m\)</span>은 목표 변수 수입니다. 이 목적함수는 출력이 라벨과 가까운지만 묻습니다. <span class="math inline">\(\hat{\mathbf{y}}_t\)</span>에서 <span class="math inline">\(\hat{\mathbf{y}}_{t+1}\)</span>로 넘어가는 과정이 질량 보존, 단조성, 경계 조건, 미분 방정식을 만족하는지는 묻지 않습니다.</p>
+<p>스칼라 상태 <span class="math inline">\(y(t)\)</span>가 근사적으로 다음 감쇠 법칙을 따른다고 해보겠습니다.</p>
+<p><span class="math display">\[
+\frac{dy(t)}{dt} = -k y(t), \qquad k &gt; 0.
+\]</span></p>
+<p>시간 간격이 <span class="math inline">\(\Delta t\)</span>인 이산 예측에서는 잔차를 다음처럼 쓸 수 있습니다.</p>
+<p><span class="math display">\[
+r_{t+1}(\theta)
+= \frac{\hat{y}_{t+1} - y_t}{\Delta t} + k y_t .
+\]</span></p>
+<p>그러면 물리 항을 더한 목적함수는 다음과 같습니다.</p>
+<p><span class="math display">\[
+\mathcal{L}(\theta)
+= \mathcal{L}_{data}(\theta)
++ \lambda_{phys}
+\frac{1}{N}\sum_{i=1}^{N}
+\left\|r^{(i)}_{t+1}(\theta)\right\|_2^2 .
+\]</span></p>
+<p><span class="math inline">\(\lambda_{phys}\)</span>는 데이터 적합과 물리 일관성 사이의 trade-off를 조절합니다. 너무 작으면 물리 항은 장식에 가깝고, 너무 크면 실제 편차, 관측 오차, 외부 forcing, 누락된 과정까지 억지로 지워버릴 수 있습니다. 연속시간 PINN이나 neural differential model에서 이런 구성이 편리한 이유는 자동미분 때문입니다. 시간이나 상태에 대한 모델 출력의 도함수를 아키텍처마다 손으로 유도하지 않고 학습 그래프 안에서 계산할 수 있습니다(Baydin et al., 2018).</p>
+</section>
+<section id="무엇이-hard이고-무엇이-soft인가요" class="level2">
+<h2 class="anchored" data-anchor-id="무엇이-hard이고-무엇이-soft인가요">3. 무엇이 hard이고, 무엇이 soft인가요?</h2>
+<p>가장 흔한 구현은 손실 함수에 페널티 항을 추가하는 방식입니다. 이것은 soft constraint입니다.</p>
+<p><span class="math display">\[
+\mathcal{L}_{soft}
+= \mathcal{L}_{data} + \lambda \mathcal{L}_{constraint}.
+\]</span></p>
+<p>이 방식은 표본화된 학습 지점에서 평균적인 위반을 줄입니다. 하지만 미래 예측이 반드시 법칙을 만족한다고 보장하지 않습니다. Hard constraint에는 다른 장치가 필요합니다.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>제약 유형</th>
+<th>예시</th>
+<th>부과 방법</th>
+<th>보장 수준</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>잔차 페널티</td>
+<td>ODE/PDE 잔차, 보존 오차</td>
+<td>손실에 <span class="math inline">\(\lambda \|r_\theta\|^2\)</span> 추가</td>
+<td>정확한 보장 없음</td>
+</tr>
+<tr class="even">
+<td>Barrier 또는 hinge 페널티</td>
+<td>용량 <span class="math inline">\(0 \le y \le C\)</span></td>
+<td><span class="math inline">\(\max(0, y-C)\)</span> 또는 <span class="math inline">\(\max(0, -y)\)</span> 페널티</td>
+<td>더 강한 억제, 그래도 정확하지 않음</td>
+</tr>
+<tr class="odd">
+<td>재매개변수화</td>
+<td><span class="math inline">\(y_{t+1}=y_t\exp(-\operatorname{softplus}(g_\theta)\Delta t)\)</span></td>
+<td>출력 형태 자체를 제약에 맞게 정의</td>
+<td>인코딩한 성질은 정확히 만족</td>
+</tr>
+<tr class="even">
+<td>투영</td>
+<td>feasible set으로 예측값 보정</td>
+<td>예측 후 가능한 영역으로 projection</td>
+<td>투영이 맞으면 정확히 만족</td>
+</tr>
+<tr class="odd">
+<td>제약 최적화</td>
+<td>등식/부등식 제약 포함</td>
+<td>optimizer가 제약을 직접 처리</td>
+<td>solver tolerance 내에서 만족</td>
+</tr>
+</tbody>
+</table>
+<p>운영 예측에서는 비음수성, 단조 감쇠, 재고 보존, 알려진 상한과 하한 같은 조건이 hard treatment에 적합한 경우가 많습니다. 반면 근사 법칙, 불확실한 계수, 해상도 아래의 미해결 과정은 잔차 손실로 다루는 편이 안전합니다. 정확히 만족시키려다가 모델이 자신 있게 틀릴 수 있기 때문입니다.</p>
+</section>
+<section id="작은-재현-예제" class="level2">
+<h2 class="anchored" data-anchor-id="작은-재현-예제">4. 작은 재현 예제</h2>
+<p>아래 코드는 잡음이 있는 지수 감쇠 합성 데이터로 만든 예제입니다. 세 가지 one-step forecaster를 비교합니다. 첫 번째는 무제약 differentiable basis model, 두 번째는 물리 잔차 손실을 더한 같은 모델, 세 번째는 출력이 양수 단조 감쇠 형태가 되도록 재매개변수화한 모델입니다. 예제는 Quarto의 가벼운 실행 환경에서도 렌더링되도록 <code>numpy</code>만 사용했습니다. LSTM, temporal convolution, Transformer에서도 같은 잔차 항을 학습 목적함수에 더하면 원리는 같습니다.</p>
+<div id="physics-constrained-decay" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>seed <span class="op">=</span> <span class="dv">7</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>rng <span class="op">=</span> np.random.default_rng(seed)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>dt <span class="op">=</span> <span class="fl">0.25</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>k_true <span class="op">=</span> <span class="fl">0.23</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>n_steps <span class="op">=</span> <span class="dv">96</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> np.arange(n_steps <span class="op">+</span> <span class="dv">1</span>, dtype<span class="op">=</span><span class="bu">float</span>) <span class="op">*</span> dt</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>y_clean <span class="op">=</span> <span class="fl">5.0</span> <span class="op">*</span> np.exp(<span class="op">-</span>k_true <span class="op">*</span> t)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>y_obs <span class="op">=</span> np.maximum(y_clean <span class="op">+</span> rng.normal(<span class="fl">0.0</span>, <span class="fl">0.035</span>, size<span class="op">=</span>y_clean.shape), <span class="fl">1e-3</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>train_end <span class="op">=</span> <span class="dv">64</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>x_all <span class="op">=</span> np.column_stack([</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    np.ones(n_steps),</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    t[:<span class="op">-</span><span class="dv">1</span>],</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    y_obs[:<span class="op">-</span><span class="dv">1</span>],</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    t[:<span class="op">-</span><span class="dv">1</span>] <span class="op">*</span> y_obs[:<span class="op">-</span><span class="dv">1</span>],</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    y_obs[:<span class="op">-</span><span class="dv">1</span>] <span class="op">**</span> <span class="dv">2</span>,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>])</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>y_next_all <span class="op">=</span> y_obs[<span class="dv">1</span>:]</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>y_now_all <span class="op">=</span> y_obs[:<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>X_train, X_test <span class="op">=</span> x_all[:train_end], x_all[train_end:]</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>y_train, y_test <span class="op">=</span> y_next_all[:train_end], y_next_all[train_end:]</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>y_now_train, y_now_test <span class="op">=</span> y_now_all[:train_end], y_now_all[train_end:]</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ridge_solution(X, y, alpha<span class="op">=</span><span class="fl">1e-6</span>):</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    p <span class="op">=</span> X.shape[<span class="dv">1</span>]</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.linalg.solve(X.T <span class="op">@</span> X <span class="op">+</span> alpha <span class="op">*</span> np.eye(p), X.T <span class="op">@</span> y)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> physics_residual_solution(X, y_next, y_now, lam<span class="op">=</span><span class="fl">0.5</span>, alpha<span class="op">=</span><span class="fl">1e-6</span>):</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    p <span class="op">=</span> X.shape[<span class="dv">1</span>]</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>    A <span class="op">=</span> X.T <span class="op">@</span> X <span class="op">+</span> lam <span class="op">*</span> (X.T <span class="op">@</span> X) <span class="op">/</span> (dt <span class="op">**</span> <span class="dv">2</span>) <span class="op">+</span> alpha <span class="op">*</span> np.eye(p)</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    b <span class="op">=</span> X.T <span class="op">@</span> y_next <span class="op">+</span> lam <span class="op">*</span> X.T <span class="op">@</span> (y_now <span class="op">/</span> dt <span class="op">-</span> k_true <span class="op">*</span> y_now) <span class="op">/</span> dt</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.linalg.solve(A, b)</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> evaluate(name, pred, y_test, y_now_test):</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>    rmse <span class="op">=</span> np.sqrt(np.mean((pred <span class="op">-</span> y_test) <span class="op">**</span> <span class="dv">2</span>))</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>    violation <span class="op">=</span> np.mean(pred <span class="op">&gt;</span> y_now_test)</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>    negative <span class="op">=</span> np.mean(pred <span class="op">&lt;</span> <span class="dv">0</span>)</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>    residual_mae <span class="op">=</span> np.mean(np.<span class="bu">abs</span>((pred <span class="op">-</span> y_now_test) <span class="op">/</span> dt <span class="op">+</span> k_true <span class="op">*</span> y_now_test))</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> name, rmse, violation, negative, residual_mae</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>w_free <span class="op">=</span> ridge_solution(X_train, y_train)</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>w_phys <span class="op">=</span> physics_residual_solution(X_train, y_train, y_now_train, lam<span class="op">=</span><span class="fl">0.5</span>)</span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co"># Hard parameterization: fit a positive decay rate from the training transitions.</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>ratios <span class="op">=</span> np.clip(y_train <span class="op">/</span> y_now_train, <span class="fl">1e-6</span>, <span class="fl">1.0</span>)</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>k_hat <span class="op">=</span> np.maximum(<span class="fl">0.0</span>, <span class="op">-</span>np.mean(np.log(ratios)) <span class="op">/</span> dt)</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> [</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>    evaluate(<span class="st">"unconstrained_basis_model"</span>, X_test <span class="op">@</span> w_free, y_test, y_now_test),</span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>    evaluate(<span class="st">"physics_residual_loss"</span>, X_test <span class="op">@</span> w_phys, y_test, y_now_test),</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>    evaluate(</span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>        <span class="st">"hard_decay_parameterization"</span>,</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>        y_now_test <span class="op">*</span> np.exp(<span class="op">-</span>k_hat <span class="op">*</span> dt),</span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>        y_test,</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>        y_now_test,</span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>]</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"model,rmse,monotonicity_violation_rate,negative_prediction_rate,ode_residual_mae"</span>)</span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> row <span class="kw">in</span> results:</span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>row[<span class="dv">0</span>]<span class="sc">}</span><span class="ss">,</span><span class="sc">{</span>row[<span class="dv">1</span>]<span class="sc">:.4f}</span><span class="ss">,</span><span class="sc">{</span>row[<span class="dv">2</span>]<span class="sc">:.4f}</span><span class="ss">,</span><span class="sc">{</span>row[<span class="dv">3</span>]<span class="sc">:.4f}</span><span class="ss">,</span><span class="sc">{</span>row[<span class="dv">4</span>]<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>model,rmse,monotonicity_violation_rate,negative_prediction_rate,ode_residual_mae
+unconstrained_basis_model,0.1931,0.0625,0.7500,0.6713
+physics_residual_loss,0.0402,0.0312,0.1875,0.0746
+hard_decay_parameterization,0.0385,0.0000,0.0000,0.0047</code></pre>
+</div>
+</div>
+<p>이 합성 데이터 실행에서는 잔차 손실 모델이 무제약 basis model보다 ODE 잔차를 줄입니다. Hard parameterization 모델은 예측 형태가 <span class="math inline">\(y_t\exp(-\hat{k}\Delta t)\)</span>이고 <span class="math inline">\(\hat{k} \ge 0\)</span>이므로 단조성 위반을 완전히 제거합니다. 더 큰 신경망에서는 <span class="math inline">\(k\)</span>를 비음수 네트워크 출력 <span class="math inline">\(\hat{k}_t=\operatorname{softplus}(g_\theta(\mathbf{x}_t))\)</span>로 바꿀 수 있습니다. 핵심은 그대로입니다. 물리적 타당성과 라벨 적합은 관련되어 있지만 같은 목표가 아닙니다.</p>
+</section>
+<section id="제약-가중치를-어떻게-고를-것인가요" class="level2">
+<h2 class="anchored" data-anchor-id="제약-가중치를-어떻게-고를-것인가요">5. 제약 가중치를 어떻게 고를 것인가요?</h2>
+<p>물리 정보를 넣은 학습에서 가장 어려운 부분은 잔차를 쓰는 일이 아닙니다. 잔차가 얼마나 중요해야 하는지 정하는 일입니다. 고정된 <span class="math inline">\(\lambda_{phys}\)</span>는 단순하지만 단위 불일치를 감춥니다. 데이터 손실은 섭씨 온도의 제곱일 수 있고, 보존 잔차는 초당 킬로그램 단위일 수 있습니다. 원래 물리량의 스케일로 각 항을 정규화하는 편이 raw magnitude를 직접 튜닝하는 것보다 안전합니다.</p>
+<p>실무적으로는 세 가지를 확인해야 합니다. 첫째, train, validation, test 기간의 잔차 분포를 비교합니다. Collocation point에서만 물리를 만족하는 모델은 다른 지점에서 실패할 수 있습니다. 둘째, 하나의 가중치 결과만 보고하지 말고 <span class="math inline">\(\mathcal{L}_{data}\)</span>와 <span class="math inline">\(\mathcal{L}_{phys}\)</span> 사이의 Pareto curve를 확인합니다. 셋째, 더 긴 horizon, 드문 forcing, 경계값, 누락된 공변량처럼 외삽에 가까운 구간을 따로 시험합니다. Scientific ML 리뷰들은 물리 지식이 데이터 효율성을 높일 수 있다고 설명하지만, 그 효과는 인코딩한 법칙이 해당 regime에 맞고 최적화 문제가 잘 조건화되어 있을 때에 달려 있습니다(Karniadakis et al., 2021; Willard et al., 2022).</p>
+</section>
+<section id="hard-constraint를-쓰지-말아야-할-때" class="level2">
+<h2 class="anchored" data-anchor-id="hard-constraint를-쓰지-말아야-할-때">6. Hard constraint를 쓰지 말아야 할 때</h2>
+<p>Hard constraint는 법칙이 불완전하거나, 관측 과정이 상태 방정식과 다르거나, 외생 forcing이 빠져 있을 때 위험합니다. 예를 들어 저수지 저장량 모델은 강수, 방류, 증발, 침투, 관측 보정까지 고려한 뒤에야 물 보존을 만족해야 합니다. 열린 시스템에 닫힌 시스템의 질량 보존을 강제하면 일관성은 아름답지만 편향된 예측기가 됩니다.</p>
+<p>기상·환경 AI에서도 같은 주의가 필요합니다. 많은 제약은 해상도에 의존합니다. 격자 규모의 PDE 잔차가 관측소 자료를 직접 설명하려면 representativeness model이 필요할 수 있습니다. 단조성 규칙은 누적량에는 맞지만 잡음이 있는 센서값에는 맞지 않을 수 있습니다. 이런 경우에는 정확한 규칙보다 허용 오차가 있는 잔차나 확률적 잔차를 손실 함수에 넣는 편이 낫습니다.</p>
+</section>
+<section id="실제-적용-순서" class="level2">
+<h2 class="anchored" data-anchor-id="실제-적용-순서">7. 실제 적용 순서</h2>
+<p>먼저 제약을 목표 변수의 단위로 씁니다. 그다음 위반이 절대 허용되지 않는지, 아니면 드물지만 가능한지 결정합니다. 절대 허용되지 않는다면 재매개변수화, 투영, 제약 decoding을 우선 고려합니다. 법칙이 근사적이라면 잔차 손실을 쓰고, forecast error와 residual error를 함께 보면서 <span class="math inline">\(\lambda_{phys}\)</span>를 조정합니다. 시계열 분할은 시간 순서를 유지해야 하며, 잔차 계산에는 예측 시점에 사용할 수 있는 정보만 넣어야 합니다. 마지막으로 제약이 도움이 되는 조건과 오히려 해로운 조건을 모두 보고해야 합니다.</p>
+<p>도메인 지식의 가치는 딥러닝을 덜 경험적으로 만드는 데 있지 않습니다. 경험적 문제를 더 정직하게 만드는 데 있습니다. 정확하지만 물리적으로 불가능한 예측은 배포 가능한 과학 모델이 아닙니다. 반대로 물리적으로 우아하지만 데이터를 무시하는 예측도 쓸모가 없습니다. 실제 목표는 통계적 적합, 물리적 일관성, 운영상 허용 범위가 만나는 좁은 영역을 찾는 것입니다.</p>
+</section>
+<section id="참고문헌" class="level2">
+<h2 class="anchored" data-anchor-id="참고문헌">참고문헌</h2>
+<p>Baydin, A. G., Pearlmutter, B. A., Radul, A. A., &amp; Siskind, J. M. (2018). Automatic differentiation in machine learning: a survey. <em>Journal of Machine Learning Research, 18</em>(153), 1-43. https://jmlr.org/papers/v18/17-468.html</p>
+<p>Karniadakis, G. E., Kevrekidis, I. G., Lu, L., Perdikaris, P., Wang, S., &amp; Yang, L. (2021). Physics-informed machine learning. <em>Nature Reviews Physics, 3</em>, 422-440. https://doi.org/10.1038/s42254-021-00314-5</p>
+<p>Karpatne, A., Atluri, G., Faghmous, J. H., Steinbach, M., Banerjee, A., Ganguly, A., Shekhar, S., Samatova, N., &amp; Kumar, V. (2017). Theory-guided data science: A new paradigm for scientific discovery from data. <em>IEEE Transactions on Knowledge and Data Engineering, 29</em>(10), 2318-2331. https://doi.org/10.1109/TKDE.2017.2720168</p>
+<p>Raissi, M., Perdikaris, P., &amp; Karniadakis, G. E. (2019). Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations. <em>Journal of Computational Physics, 378</em>, 686-707. https://doi.org/10.1016/j.jcp.2018.10.045</p>
+<p>Willard, J., Jia, X., Xu, S., Steinbach, M., &amp; Kumar, V. (2022). Integrating scientific knowledge with machine learning for engineering and environmental systems. <em>ACM Computing Surveys, 55</em>(4), Article 66. https://doi.org/10.1145/3514228</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "복사완료!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "복사완료!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 2026 Prof.&nbsp;Shin · ForecastAI</p>
+</div>   
+    <div class="nav-footer-center">
+<p><a href="privacy-policy.qmd">개인정보처리방침</a></p>
+</div>
+    <div class="nav-footer-right">
+<p>Powered by <a href="https://quarto.org">Quarto</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
