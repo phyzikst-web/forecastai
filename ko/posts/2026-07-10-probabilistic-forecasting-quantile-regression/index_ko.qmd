@@ -1,0 +1,348 @@
+---
+title: "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유"
+date: "2026-07-10"
+author: "Prof. Shin (phyzik)"
+categories:
+  - 데이터과학
+  - 인공지능
+  - 시계열
+image: "thumbnail.png"
+description: |
+  예측값 하나는 의사결정이 가장 필요로 하는 것, 즉 일어날 수 있는 일의 범위를
+  숨깁니다. 이 글은 핀볼 손실부터 확률적 예측을 쌓아 올리고, 이분산 데이터에서
+  점 예측과 고정 구간이 왜 실패하는지 실행 코드로 보이며, 교정·분위수 교차·CRPS를
+  다룹니다.
+lang: ko
+toc: true
+toc-depth: 3
+number-sections: true
+code-fold: false
+code-tools: true
+bibliography: ../../references.bib
+execute:
+  echo: true
+  output: true
+  eval: true
+  warning: false
+  message: false
+  freeze: auto
+format:
+  html:
+    code-copy: true
+    code-overflow: wrap
+---
+
+## 1. 충분하지 않은 숫자 하나
+
+예측 모델에게 "다음 주에 몇 개나 팔릴까?"라고 물으면, 점 예측(point forecast)은
+숫자 하나로, 이를테면 1,000으로 답합니다. 그러나 그 숫자는 정작 기획자가 답해야 할
+질문에 대해 침묵합니다. 700이 되어 품절을 일으킬 수도 있는가, 아니면 1,400이 되어
+값비싼 과잉재고를 일으킬 수도 있는가? 점 예측은 가능한 미래들의 분포 전체를 그
+중심 하나로 붕괴시키고, 그 과정에서 모든 후속 의사결정 — 안전재고, 인력 배치, 자본
+준비금, 전력망 용량 — 이 딛고 서는 정보를 버립니다. **확률적 예측(probabilistic
+forecasting)**은 값 하나 대신 분포, 또는 그 분포의 여러 분위수를 예측함으로써 그
+정보를 지킵니다.
+
+확률적 예측으로 가는 가장 깔끔한 경로이자, Temporal Fusion Transformer 같은 현대
+딥러닝 예측기의 바탕이 되는 것은 **분위수 회귀(quantile regression)**입니다. 목표
+변수의 조건부 분포에서 여러 분위수를 직접 예측하는 방식입니다 [@lim2021tft]. 딥러닝
+이전에, 이것이 애초에 가능한 이유는 1978년의 손실 함수 하나에 기대고 있습니다. 그
+함수를 이해하는 것이 토대 전부이므로, 코드로 거기서부터 시작합니다.
+
+## 2. 핀볼 손실, 기초부터
+
+보통의 회귀는 제곱오차를 최소화하며, 그 최소해는 조건부 *평균*입니다. 대신 조건부
+*분위수*를 추정하려면, 최소해가 분위수가 되는 손실이 필요합니다. 그 손실이
+**핀볼 손실(pinball loss)**(분위수 손실 또는 체크 손실이라고도 함)이며,
+@koenker1978 이 도입했습니다. 목표 $y$, 예측 $\hat{q}$, 분위수 수준 $\tau \in
+(0, 1)$에 대해 오차 $u = y - \hat{q}$를 정의하면
+
+$$
+\rho_\tau(u) =
+\begin{cases}
+\tau \, u & u \ge 0 \\
+(\tau - 1)\, u & u < 0
+\end{cases}
+\;=\; \max\big(\tau u,\ (\tau-1)u\big).
+$$ {#eq-pinball}
+
+핵심 아이디어 전체가 이 비대칭성에 있습니다. $\tau = 0.9$일 때, 과소예측($u > 0$,
+진값이 추정값보다 위)은 $0.9$로 가중되고 과대예측은 $0.1$로만 가중됩니다. 그래서
+손실은 관측치의 약 90%가 추정값 아래로 떨어질 때까지 추정값을 위로 밀어 올리는데,
+이것이 바로 90분위수의 정의입니다. 핵심 이론적 사실은, 기대 핀볼 손실이 참
+분위수 $q_\tau^\ast = F_Y^{-1}(\tau)$에서 최소화된다는 것입니다 [@koenker1978].
+이 주장을 믿고 넘어가는 대신 실증적으로 확인해 봅니다.
+
+```{python}
+#| label: pinball-verify
+import numpy as np
+np.random.seed(0)
+
+def pinball(y, q, tau):
+    """핀볼 손실(eq-pinball). 스칼라/배열 입력 모두 지원. u = y - q."""
+    u = y - q
+    return np.maximum(tau * u, (tau - 1) * u)
+
+# 알려진 분포에서 표본을 뽑아, 평균 핀볼 손실을 최소화하는 q를 찾는다.
+sample = np.random.normal(loc=5.0, scale=2.0, size=200_000)
+
+for tau in [0.1, 0.5, 0.9]:
+    grid = np.linspace(0, 10, 2001)
+    mean_loss = [pinball(sample, q, tau).mean() for q in grid]
+    q_hat = grid[int(np.argmin(mean_loss))]
+    q_true = np.quantile(sample, tau)      # 경험적 진값
+    print(f"tau={tau}: pinball-minimizing q={q_hat:.3f}  |  true quantile={q_true:.3f}")
+```
+
+평균 핀볼 손실을 최소화하는 값이 모든 수준에서 경험적 분위수에 정확히 안착합니다.
+이것은 외워야 할 우연이 아니라, 분위수 회귀가 작동하는 *이유* 그 자체입니다.
+제곱 손실을 핀볼 손실로 바꾸기만 하면 경사하강법이 평균 대신 분위수를 쫓습니다.
+모델의 나머지는 아무것도 바꿀 필요가 없습니다.
+
+## 3. 점 예측에 고정 구간을 더하는 방식이 실패하는 이유
+
+흔한 지름길은 점 예측을 유지한 채 나중에 구간을 덧붙이는 것입니다. 제곱오차로
+평균을 예측하고, 잔차의 표준편차를 측정한 뒤, 정규성을 가정해 80% 구간으로
+$\pm 1.28\sigma$를 긋습니다. 이것은 빠르고, 등분산 데이터에서는 괜찮습니다. 그러나
+불확실성이 가장 흥미로운 바로 그때, 즉 목표의 산포가 입력에 따라 달라질 때
+(**이분산성, heteroscedasticity**) 실패합니다. 이분산성은 실제 시계열에서 오히려
+정상입니다. 수요는 프로모션 기간에 더 변동하고, 부하는 극한 기상에서 더 요동칩니다.
+
+실패를 구체적으로 보이기 위해, 잡음이 $|x|$에 따라 커지는 데이터셋을 만들고 그
+위에서 두 접근을 비교합니다. 먼저 데이터와 두 모델입니다.
+
+```{python}
+#| label: data-and-models
+import torch
+import torch.nn as nn
+torch.manual_seed(0)
+np.random.seed(0)
+
+def make_data(N=3000):
+    """이분산 데이터: 잡음 스케일이 x에 의존하므로, y의 *산포*가
+    상수가 아니라 입력의 함수다."""
+    x = np.random.uniform(-3, 3, N).astype(np.float32)
+    sigma = 0.3 + 0.6 * np.abs(x)                       # |x|에 따라 산포 증가
+    y = (np.sin(x) + 0.3 * x + sigma * np.random.randn(N)).astype(np.float32)
+    return x, y
+
+x, y = make_data()
+xt = torch.tensor(x).unsqueeze(1)
+yt = torch.tensor(y).unsqueeze(1)
+split = int(len(x) * 0.8)
+Xtr, Ytr, Xte, Yte = xt[:split], yt[:split], xt[split:], yt[split:]
+
+QUANTILES = [0.1, 0.5, 0.9]
+
+def pinball_loss(pred, target, quantiles):
+    """다중 분위수 핀볼 손실. pred: (B, Q), target: (B, 1).
+    요청한 분위수 수준들에 대해 eq-pinball을 합산한다."""
+    losses = []
+    for i, q in enumerate(quantiles):
+        e = target[:, 0] - pred[:, i]
+        losses.append(torch.max(q * e, (q - 1) * e))
+    return torch.stack(losses, dim=1).mean()
+
+class QuantileNet(nn.Module):
+    """네트워크 하나, 출력 Q개 — 분위수 수준마다 하나씩."""
+    def __init__(self, n_q):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(1, 64), nn.ReLU(),
+                                 nn.Linear(64, 64), nn.ReLU(),
+                                 nn.Linear(64, n_q))
+    def forward(self, x):
+        return self.net(x)
+
+class PointNet(nn.Module):
+    """보통의 MSE로 학습하는 점 예측기(단일 출력)."""
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(1, 64), nn.ReLU(),
+                                 nn.Linear(64, 64), nn.ReLU(),
+                                 nn.Linear(64, 1))
+    def forward(self, x):
+        return self.net(x)
+```
+
+이제 둘을 학습합니다. 분위수 네트워크는 핀볼 손실로, 점 네트워크는 MSE로
+학습하고, 점 네트워크의 80% 구간은 하나의 전역 잔차 표준편차로 만듭니다.
+
+```{python}
+#| label: train-both
+def train(model, loss_kind, epochs=400, lr=5e-3):
+    opt = torch.optim.Adam(model.parameters(), lr=lr)
+    mse = nn.MSELoss()
+    for _ in range(epochs):
+        model.train(); opt.zero_grad()
+        out = model(Xtr)
+        loss = pinball_loss(out, Ytr, QUANTILES) if loss_kind == "pinball" else mse(out, Ytr)
+        loss.backward(); opt.step()
+    model.eval()
+    return model
+
+qnet = train(QuantileNet(len(QUANTILES)), "pinball")
+pnet = train(PointNet(), "mse")
+
+with torch.no_grad():
+    P = qnet(Xte).numpy()                       # (n_test, 3): q10, q50, q90
+    mu = pnet(Xte).numpy()[:, 0]
+    resid = (Ytr.numpy()[:, 0] - pnet(Xtr).detach().numpy()[:, 0])
+sigma_global = resid.std()                       # 모든 입력에 대해 숫자 하나
+lo_pt = mu - 1.2816 * sigma_global               # 정규성 가정 80% 구간
+hi_pt = mu + 1.2816 * sigma_global
+Yte_np = Yte.numpy()[:, 0]
+
+print(f"global residual std used by the point model: {sigma_global:.3f}")
+```
+
+어떤 구간이든 결정적인 시험은 **교정(calibration)**입니다. 80% 커버리지를 주장하는
+구간은 실제로 약 80%의 경우에 진값을 담아야 합니다. 그리고 평균적으로만이 아니라
+*어디에서나* 그래야 합니다. 전체 커버리지를 확인한 뒤, 테스트 집합을 저분산
+영역(작은 $|x|$)과 고분산 영역(큰 $|x|$)으로 나눠 봅니다.
+
+```{python}
+#| label: coverage
+xte = Xte.numpy()[:, 0]
+low_var = np.abs(xte) < 1.0
+high_var = np.abs(xte) > 2.0
+
+def coverage(mask, lo, hi):
+    return np.mean((Yte_np[mask] >= lo[mask]) & (Yte_np[mask] <= hi[mask]))
+
+full = np.ones_like(xte, dtype=bool)
+print("empirical coverage of nominal 80% intervals (target ~0.80):")
+print(f"  quantile   overall={coverage(full, P[:,0], P[:,2]):.3f}  "
+      f"low-var={coverage(low_var, P[:,0], P[:,2]):.3f}  "
+      f"high-var={coverage(high_var, P[:,0], P[:,2]):.3f}")
+print(f"  point+gauss overall={coverage(full, lo_pt, hi_pt):.3f}  "
+      f"low-var={coverage(low_var, lo_pt, hi_pt):.3f}  "
+      f"high-var={coverage(high_var, lo_pt, hi_pt):.3f}")
+
+print("\naverage 80% interval width:")
+print(f"  quantile   low-var={ (P[low_var,2]-P[low_var,0]).mean():.2f}  "
+      f"high-var={ (P[high_var,2]-P[high_var,0]).mean():.2f}")
+print(f"  point+gauss constant {hi_pt[0]-lo_pt[0]:.2f} everywhere")
+```
+
+숫자를 주의 깊게 읽어야 합니다. 이것이 논증 전체이기 때문입니다. 점+고정 구간은
+*전체적으로는* 80%에 가까워 받아들일 만해 보입니다. 그러나 그 평균이 위험한 실패를
+숨깁니다. 저분산 영역에서는 80%보다 훨씬 많이 담고(불필요하게 넓은 구간, 안전재고에
+자본을 낭비), 고분산 영역에서는 80%보다 훨씬 *적게* 담습니다(위험이 가장 높은 바로
+그곳에서 위험하게 좁은 구간). 반면 분위수 모델은 입력에 따라 구간을 넓히고
+좁힙니다. 데이터가 잔잔한 곳에서는 좁게, 요동치는 곳에서는 넓게. 그래서 두 영역
+모두에서 커버리지가 목표 근처에 머뭅니다. 전역 $\sigma$ 하나로는 입력 의존적
+불확실성을 표현할 수 없지만, 분위수 회귀는 각 분위수가 입력의 완전한 함수이므로
+그것을 표현할 수 있습니다.
+
+## 4. 분위수 교차: 반드시 지켜봐야 할 하나의 실패 양상
+
+각 분위수를 적합하는 것으로 이야기가 끝나지는 않습니다. 분위수 수준들이 함께
+학습되지만 그 순서를 구조적으로 강제하는 것은 없으므로, 모델이 이따금
+$\hat{q}_{0.1} > \hat{q}_{0.9}$를 출력할 수 있습니다. **분위수 교차(quantile
+crossing)**입니다. 실제 분위수에서는 논리적으로 불가능하며, 폭이 음수인 구간을
+만듭니다. 없다고 가정하기보다 측정할 가치가 있습니다.
+
+```{python}
+#| label: crossing
+crossing = np.mean((P[:, 0] > P[:, 1]) | (P[:, 1] > P[:, 2]))
+print(f"fraction of test points with quantile crossing: {crossing:.4f}")
+
+# 표준적인 값싼 처방: 행마다 예측 분위수를 정렬한다.
+P_sorted = np.sort(P, axis=1)
+crossing_after = np.mean((P_sorted[:, 0] > P_sorted[:, 1]) |
+                         (P_sorted[:, 1] > P_sorted[:, 2]))
+print(f"after post-hoc sorting: {crossing_after:.4f}")
+```
+
+이 데이터셋에서는 교차가 드물지만, 더 어려운 문제에서는 흔할 만큼 발생합니다.
+실무에서는 위처럼 출력을 사후에 정렬하거나, 연속한 분위수 사이의 증분이 음이 아니게
+모델을 설계해 순서가 구성상 성립하도록 합니다. 후자는 다중 지평 분위수 예측기가
+취한 접근입니다 [@wen2017mqrnn]. 정렬은 분포 가정 없이 유효한 수선입니다. 분위수를
+재정렬하는 것은 결코 핀볼 손실을 증가시키지 않기 때문입니다.
+
+## 5. 분포 전체를 채점하기: CRPS
+
+커버리지는 교정을 확인하지만, 좋은 확률적 예측은 **선명(sharp)**하기도 해야
+합니다. 교정을 유지하면서도 가능한 한 집중되어 있어야 한다는 뜻입니다. 이 둘을 함께
+포착하는 표준적인 단일 수치가 **연속 순위 확률 점수(Continuous Ranked Probability
+Score, CRPS)**입니다 [@gneiting2007]. 분위수 모델에서의 실용적 매력은 하나의
+항등식에 있습니다. CRPS는 모든 분위수 수준에 대해 균일하게 적분한 핀볼 손실의 두
+배와 같습니다 [@gneiting2007]. 그러니 당신이 학습에 쓴 바로 그 손실을 촘촘한 분위수
+격자에 걸쳐 평균한 것이 *곧* 당신의 적절한 점수(proper score)입니다. CRPS가
+과분산 예측보다 교정된 예측을 보상하는지 확인합니다.
+
+```{python}
+#| label: crps
+from scipy.stats import norm
+np.random.seed(1)
+
+grid = np.linspace(0.01, 0.99, 99)
+obs = np.random.randn(20_000)          # 진값 ~ N(0, 1)
+
+def crps_from_quantiles(pred_q, y):
+    """분위수 적분 항등식으로 CRPS 계산: 균일 격자에서 2 * 평균 핀볼 손실."""
+    total = 0.0
+    for i, tau in enumerate(grid):
+        total += pinball(y, pred_q[:, i], tau).mean()
+    return 2 * total / len(grid)
+
+q_calib = np.array([norm.ppf(g, 0, 1) for g in grid])[None, :].repeat(len(obs), 0)
+q_wide  = np.array([norm.ppf(g, 0, 2) for g in grid])[None, :].repeat(len(obs), 0)
+
+print(f"CRPS, calibrated forecast N(0,1)   = {crps_from_quantiles(q_calib, obs):.4f}")
+print(f"CRPS, over-dispersed forecast N(0,2) = {crps_from_quantiles(q_wide, obs):.4f}")
+```
+
+교정된 예측이 더 낮은(더 좋은) 점수를 받습니다. 아주 넓은 예측은 소박한 커버리지
+검사는 쉽게 통과하겠지만, CRPS는 과분산 예측이 쓸데없이 모호하다는 이유로 벌점을
+줍니다. 바로 이 때문에 CRPS와 커버리지를 *함께* 보고합니다. 커버리지는 과신을,
+CRPS는 쓸모없이 넓은 헤징을 각각 방어합니다.
+
+## 6. 손실에서 모델로: DeepAR, TFT, 그리고 두 계열
+
+위의 모든 것은 *손실*만 유일한 변수가 되도록 자명한 MLP를 씁니다. 실제 확률적
+예측기는 이 장치를 시퀀스 모델로 바꾸는 방식에서 갈리며, 두 계열로 나뉩니다.
+**분위수 회귀 계열**은 핀볼 손실로 고정된 분위수 집합을 직접 예측합니다. 다중 지평
+분위수 순환 예측기(MQ-RNN)가 그 패턴을 세웠고 [@wen2017mqrnn], **Temporal Fusion
+Transformer**는 그것을 완전한 어텐션 기반 아키텍처의 출력층으로 삼아
+$\{0.1, 0.5, 0.9\}$ 같은 수준들에 대한 분위수 손실 합을 최소화하면서, 해석 가능한
+변수 선택과 다중 지평 어텐션을 더했습니다 [@lim2021tft]. **모수적 계열**은
+**DeepAR**이 대표적이며, 네트워크가 선택한 분포의 *모수*(예: 가우시안의 평균과
+분산, 또는 음이항 분포의 모수)를 출력하게 하고 최대우도로 학습한 뒤, 적합된
+분포에서 표본을 뽑아 확률적 예측을 생성합니다 [@salinas2020deepar].
+
+두 계열의 트레이드오프는 깔끔합니다. 분위수 회귀는 분포 가정이 없습니다. 어떤
+모수 형태도 가정하지 않으므로 왜도와 두꺼운 꼬리에 적응합니다. 그러나 당신이 요청한
+분위수만 주고, 교차 수선이 필요합니다. 모수적 접근은 어떤 통계량이든 표본으로 뽑을
+수 있는 완전하고 일관된 분포를 주지만, 오직 당신이 고른 분포족이 현실과 맞을
+때에만 그렇습니다. 틀린 분포족은 틀린 형태를 미리 박아 넣습니다. 어느 쪽을 고를지는
+당신의 데이터에 대해 분포 형태를 확정할 수 있는지에 달려 있습니다.
+
+## 7. 한계
+
+여기 실험은 각 지표의 작동 원리가 보이도록 단일 특징의 합성 데이터를 씁니다.
+절댓값은 데이터와 작은 모델에 의존하며, 실제 배포에는 설명을 위해 쓴 i.i.d. 분할이
+아니라 제대로 된 시간순 검증과 다중 지평 평가가 필요합니다. 여기서 보인 분위수
+회귀는 고정된 분위수 격자를 독립적으로 추정하므로 교차가 생길 수 있습니다. 또한 그
+자체로는 분포 이동 하에서 미래 데이터에 대한 교정을 보장하지 않는데, 바로 이
+지점에서 분위수 모델을 감싸 유한 표본 커버리지 보장을 주는 컨포멀(conformal)
+방법이 유의미해집니다. 끝으로, 핀볼 기반 CRPS 추정은 분위수 격자가 촘촘한 만큼만
+정확하며, 이 어떤 점수도 구간 폭이 당면한 의사결정에 실제로 실행 가능한지 확인하는
+일을 대신해 주지는 않습니다.
+
+## 8. 결론
+
+점 예측은 어떤 기획자도 실제로 던지지 않은 질문에 답합니다. 확률적 예측으로 가는
+발걸음은 보기보다 작습니다. 제곱 손실을 핀볼 손실로 바꾸면, 같은 아키텍처와 같은
+옵티마이저로 모델이 평균 대신 분위수를 예측하기 시작합니다. 그 대가는 가장 중요한
+데이터에서 결정적입니다. 불확실성이 입력에 의존하는 곳에서, 고정 구간을 단 점
+예측은 데이터가 잔잔한 곳에서는 너무 넓고 요동치는 곳에서는 너무 좁은 반면, 분위수
+회귀는 구간을 적응시키며 영역 전반에서 교정을 유지합니다. 커버리지와 CRPS를 함께
+보고하고, 분위수 교차를 지켜보며, 분포 형태를 확정할 수 있는지에 따라 분위수 회귀
+계열과 모수적 계열 사이에서 선택하십시오. 숫자만이 아니라 범위를 예측하십시오.
+의사결정이 필요로 하는 것은 그 범위입니다.
+
+## 참고문헌
+
+::: {#refs}
+:::

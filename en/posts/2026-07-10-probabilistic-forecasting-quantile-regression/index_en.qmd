@@ -1,0 +1,367 @@
+---
+title: "Beyond the Point Forecast: Why Quantile Regression Matters for Probabilistic Forecasting"
+date: "2026-07-10"
+author: "Prof. Shin (phyzik)"
+categories:
+  - Data Science
+  - Artificial Intelligence
+  - Time Series
+image: "thumbnail.png"
+description: |
+  A single predicted number hides the one thing decisions need most: the range of
+  what could happen. This article builds probabilistic forecasting from the pinball
+  loss up, shows with runnable code why a point forecast plus a constant interval
+  fails on heteroscedastic data, and covers calibration, quantile crossing, and CRPS.
+lang: en
+toc: true
+toc-depth: 3
+number-sections: true
+code-fold: false
+code-tools: true
+bibliography: ../../references.bib
+execute:
+  echo: true
+  output: true
+  eval: true
+  warning: false
+  message: false
+  freeze: auto
+format:
+  html:
+    code-copy: true
+    code-overflow: wrap
+---
+
+## 1. The number that isn't enough
+
+Ask a forecasting model "how many units will we sell next week?" and a point
+forecast answers with one number, say 1,000. That number is silent about the
+question a planner actually has to answer: could it be 700, forcing a stockout, or
+1,400, forcing a costly overstock? A point forecast collapses an entire
+distribution of possible futures into its center, and in doing so throws away the
+information that every downstream decision — safety stock, staffing, capital
+reserves, grid capacity — is built on. **Probabilistic forecasting** keeps that
+information by predicting a distribution, or a set of quantiles of it, instead of
+a single value.
+
+The cleanest route to probabilistic forecasts, and the one that underlies modern
+deep forecasters like the Temporal Fusion Transformer, is **quantile regression**:
+directly predict several quantiles of the target's conditional distribution
+[@lim2021tft]. Before any deep learning, the reason this is even possible rests on
+one loss function from 1978, and understanding it is the whole foundation, so we
+start there — in code.
+
+## 2. The pinball loss, from first principles
+
+Ordinary regression minimizes squared error, and the minimizer is the conditional
+*mean*. To estimate a conditional *quantile* instead, we need a loss whose
+minimizer is the quantile. That loss is the **pinball loss** (also called the
+quantile loss or check loss), introduced by @koenker1978. For a target $y$, a
+prediction $\hat{q}$, and a quantile level $\tau \in (0, 1)$, define the error
+$u = y - \hat{q}$ and
+
+$$
+\rho_\tau(u) =
+\begin{cases}
+\tau \, u & u \ge 0 \\
+(\tau - 1)\, u & u < 0
+\end{cases}
+\;=\; \max\big(\tau u,\ (\tau-1)u\big).
+$$ {#eq-pinball}
+
+The whole idea lives in the asymmetry. When $\tau = 0.9$, an under-prediction
+($u > 0$, truth above the estimate) is weighted by $0.9$, while an over-prediction
+is weighted by only $0.1$ — so the loss pushes the estimate up until roughly 90%
+of observations fall below it, which is exactly the definition of the 90th
+percentile. The key theoretical fact is that the expected pinball loss is
+minimized at the true quantile $q_\tau^\ast = F_Y^{-1}(\tau)$ [@koenker1978]. Let
+us verify that claim empirically rather than take it on faith:
+
+```{python}
+#| label: pinball-verify
+import numpy as np
+np.random.seed(0)
+
+def pinball(y, q, tau):
+    """Pinball loss (eq-pinball) for scalar/array inputs. u = y - q."""
+    u = y - q
+    return np.maximum(tau * u, (tau - 1) * u)
+
+# Draw samples from a known distribution and find the q that minimizes mean pinball.
+sample = np.random.normal(loc=5.0, scale=2.0, size=200_000)
+
+for tau in [0.1, 0.5, 0.9]:
+    grid = np.linspace(0, 10, 2001)
+    mean_loss = [pinball(sample, q, tau).mean() for q in grid]
+    q_hat = grid[int(np.argmin(mean_loss))]
+    q_true = np.quantile(sample, tau)      # empirical truth
+    print(f"tau={tau}: pinball-minimizing q={q_hat:.3f}  |  true quantile={q_true:.3f}")
+```
+
+The value that minimizes the average pinball loss lands on the empirical quantile
+for every level. This is not a coincidence to memorize — it is *why* quantile
+regression works: swap the squared loss for the pinball loss and gradient descent
+will chase quantiles instead of the mean. Nothing else about the model has to
+change.
+
+## 3. Why a point forecast plus a constant interval fails
+
+A common shortcut is to keep a point forecast and bolt on an interval afterward:
+predict the mean with squared error, measure the residual standard deviation, and
+draw $\pm 1.28\sigma$ for an 80% interval assuming normality. This is fast, and on
+homoscedastic data it is fine. It fails exactly when uncertainty is most
+interesting — when the spread of the target depends on the input
+(**heteroscedasticity**), which is the norm in real series: demand is more
+volatile during promotions, load more variable in extreme weather.
+
+To show the failure concretely we build a dataset whose noise grows with $|x|$,
+then compare two approaches on it. First, the data and the two models.
+
+```{python}
+#| label: data-and-models
+import torch
+import torch.nn as nn
+torch.manual_seed(0)
+np.random.seed(0)
+
+def make_data(N=3000):
+    """Heteroscedastic data: the noise scale depends on x, so the *spread*
+    of y is a function of the input, not a constant."""
+    x = np.random.uniform(-3, 3, N).astype(np.float32)
+    sigma = 0.3 + 0.6 * np.abs(x)                       # spread grows with |x|
+    y = (np.sin(x) + 0.3 * x + sigma * np.random.randn(N)).astype(np.float32)
+    return x, y
+
+x, y = make_data()
+xt = torch.tensor(x).unsqueeze(1)
+yt = torch.tensor(y).unsqueeze(1)
+split = int(len(x) * 0.8)
+Xtr, Ytr, Xte, Yte = xt[:split], yt[:split], xt[split:], yt[split:]
+
+QUANTILES = [0.1, 0.5, 0.9]
+
+def pinball_loss(pred, target, quantiles):
+    """Multi-quantile pinball loss. pred: (B, Q), target: (B, 1).
+    Sums eq-pinball over the requested quantile levels."""
+    losses = []
+    for i, q in enumerate(quantiles):
+        e = target[:, 0] - pred[:, i]
+        losses.append(torch.max(q * e, (q - 1) * e))
+    return torch.stack(losses, dim=1).mean()
+
+class QuantileNet(nn.Module):
+    """One network, Q outputs — one per quantile level."""
+    def __init__(self, n_q):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(1, 64), nn.ReLU(),
+                                 nn.Linear(64, 64), nn.ReLU(),
+                                 nn.Linear(64, n_q))
+    def forward(self, x):
+        return self.net(x)
+
+class PointNet(nn.Module):
+    """Ordinary MSE-trained point forecaster (single output)."""
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(1, 64), nn.ReLU(),
+                                 nn.Linear(64, 64), nn.ReLU(),
+                                 nn.Linear(64, 1))
+    def forward(self, x):
+        return self.net(x)
+```
+
+Now train both: the quantile network on the pinball loss, the point network on
+MSE, and build the point network's 80% interval from a single global residual
+standard deviation.
+
+```{python}
+#| label: train-both
+def train(model, loss_kind, epochs=400, lr=5e-3):
+    opt = torch.optim.Adam(model.parameters(), lr=lr)
+    mse = nn.MSELoss()
+    for _ in range(epochs):
+        model.train(); opt.zero_grad()
+        out = model(Xtr)
+        loss = pinball_loss(out, Ytr, QUANTILES) if loss_kind == "pinball" else mse(out, Ytr)
+        loss.backward(); opt.step()
+    model.eval()
+    return model
+
+qnet = train(QuantileNet(len(QUANTILES)), "pinball")
+pnet = train(PointNet(), "mse")
+
+with torch.no_grad():
+    P = qnet(Xte).numpy()                       # (n_test, 3): q10, q50, q90
+    mu = pnet(Xte).numpy()[:, 0]
+    resid = (Ytr.numpy()[:, 0] - pnet(Xtr).detach().numpy()[:, 0])
+sigma_global = resid.std()                       # single number for all inputs
+lo_pt = mu - 1.2816 * sigma_global               # 80% interval under normality
+hi_pt = mu + 1.2816 * sigma_global
+Yte_np = Yte.numpy()[:, 0]
+
+print(f"global residual std used by the point model: {sigma_global:.3f}")
+```
+
+The decisive test for any interval is **calibration**: an interval claiming 80%
+coverage should actually contain the truth about 80% of the time. And it must do
+so *everywhere*, not just on average. We check overall coverage, then split the
+test set into a low-variance region (small $|x|$) and a high-variance region
+(large $|x|$).
+
+```{python}
+#| label: coverage
+xte = Xte.numpy()[:, 0]
+low_var = np.abs(xte) < 1.0
+high_var = np.abs(xte) > 2.0
+
+def coverage(mask, lo, hi):
+    return np.mean((Yte_np[mask] >= lo[mask]) & (Yte_np[mask] <= hi[mask]))
+
+full = np.ones_like(xte, dtype=bool)
+print("empirical coverage of nominal 80% intervals (target ~0.80):")
+print(f"  quantile   overall={coverage(full, P[:,0], P[:,2]):.3f}  "
+      f"low-var={coverage(low_var, P[:,0], P[:,2]):.3f}  "
+      f"high-var={coverage(high_var, P[:,0], P[:,2]):.3f}")
+print(f"  point+gauss overall={coverage(full, lo_pt, hi_pt):.3f}  "
+      f"low-var={coverage(low_var, lo_pt, hi_pt):.3f}  "
+      f"high-var={coverage(high_var, lo_pt, hi_pt):.3f}")
+
+print("\naverage 80% interval width:")
+print(f"  quantile   low-var={ (P[low_var,2]-P[low_var,0]).mean():.2f}  "
+      f"high-var={ (P[high_var,2]-P[high_var,0]).mean():.2f}")
+print(f"  point+gauss constant {hi_pt[0]-lo_pt[0]:.2f} everywhere")
+```
+
+Read the numbers carefully, because they are the whole argument. The point-plus-
+constant interval looks acceptable *overall* — close to 80% — but that average
+hides a dangerous failure. In the low-variance region it covers far more than 80%
+(a needlessly wide interval, wasting capital on safety stock), and in the
+high-variance region it covers far *less* than 80% (a dangerously narrow interval
+exactly where risk is highest). The quantile model instead widens and narrows its
+interval with the input — narrow where the data is calm, wide where it is
+volatile — so coverage stays near target in both regions. A single global $\sigma$
+cannot represent input-dependent uncertainty; quantile regression can, because
+each quantile is a full function of the input.
+
+## 4. Quantile crossing: the one failure mode to watch
+
+Fitting each quantile is not quite the end of the story. Because the quantile
+levels are trained together but nothing structurally forces their order, a model
+can occasionally output $\hat{q}_{0.1} > \hat{q}_{0.9}$ — a **quantile crossing**,
+which is logically impossible for real quantiles and produces intervals with
+negative width. It is worth measuring rather than assuming away:
+
+```{python}
+#| label: crossing
+crossing = np.mean((P[:, 0] > P[:, 1]) | (P[:, 1] > P[:, 2]))
+print(f"fraction of test points with quantile crossing: {crossing:.4f}")
+
+# The standard cheap fix: sort the predicted quantiles per row.
+P_sorted = np.sort(P, axis=1)
+crossing_after = np.mean((P_sorted[:, 0] > P_sorted[:, 1]) |
+                         (P_sorted[:, 1] > P_sorted[:, 2]))
+print(f"after post-hoc sorting: {crossing_after:.4f}")
+```
+
+On this dataset crossing is rare, but on harder problems it is common enough that
+practitioners either sort the outputs post-hoc (as above), or design the model to
+predict non-negative increments between consecutive quantiles so the ordering
+holds by construction — the approach taken by multi-horizon quantile forecasters
+[@wen2017mqrnn]. Sorting is a valid, distribution-free repair because reordering
+quantiles never increases the pinball loss.
+
+## 5. Scoring a whole distribution: CRPS
+
+Coverage checks calibration, but a good probabilistic forecast should also be
+**sharp** — as concentrated as possible while staying calibrated. The standard
+single number that captures both is the **Continuous Ranked Probability Score
+(CRPS)** [@gneiting2007]. Its practical charm for quantile models is an identity:
+the CRPS equals twice the pinball loss integrated uniformly over all quantile
+levels [@gneiting2007]. So the very loss you trained on, averaged across a dense
+quantile grid, *is* your proper score. We verify that CRPS rewards a calibrated
+forecast over an over-dispersed one:
+
+```{python}
+#| label: crps
+from scipy.stats import norm
+np.random.seed(1)
+
+grid = np.linspace(0.01, 0.99, 99)
+obs = np.random.randn(20_000)          # truth ~ N(0, 1)
+
+def crps_from_quantiles(pred_q, y):
+    """CRPS via the quantile-integral identity: 2 * mean pinball over a uniform grid."""
+    total = 0.0
+    for i, tau in enumerate(grid):
+        total += pinball(y, pred_q[:, i], tau).mean()
+    return 2 * total / len(grid)
+
+q_calib = np.array([norm.ppf(g, 0, 1) for g in grid])[None, :].repeat(len(obs), 0)
+q_wide  = np.array([norm.ppf(g, 0, 2) for g in grid])[None, :].repeat(len(obs), 0)
+
+print(f"CRPS, calibrated forecast N(0,1)   = {crps_from_quantiles(q_calib, obs):.4f}")
+print(f"CRPS, over-dispersed forecast N(0,2) = {crps_from_quantiles(q_wide, obs):.4f}")
+```
+
+The calibrated forecast scores lower (better). CRPS penalizes the over-dispersed
+forecast for being needlessly vague even though a very wide forecast would ace a
+naive coverage check — which is precisely why you report CRPS *and* coverage
+together: coverage guards against overconfidence, CRPS guards against uselessly
+wide hedging.
+
+## 6. From loss to models: DeepAR, TFT, and the two families
+
+Everything above uses a trivial MLP so the *loss* is the only moving part. Real
+probabilistic forecasters differ in how they turn this machinery into sequence
+models, and they fall into two families. The **quantile-regression family**
+predicts a fixed set of quantiles directly with the pinball loss: the
+Multi-horizon Quantile Recurrent forecaster established the pattern
+[@wen2017mqrnn], and the **Temporal Fusion Transformer** made it the output layer
+of a full attention-based architecture, minimizing the summed quantile loss over
+levels such as $\{0.1, 0.5, 0.9\}$ while adding interpretable variable selection
+and multi-horizon attention [@lim2021tft]. The **parametric family**, exemplified
+by **DeepAR**, instead has the network output the *parameters* of a chosen
+distribution (e.g. the mean and variance of a Gaussian or the parameters of a
+negative binomial) and trains by maximum likelihood, generating probabilistic
+forecasts by sampling from the fitted distribution [@salinas2020deepar].
+
+The trade-off between the families is clean. Quantile regression is
+distribution-free — it assumes no parametric form, so it adapts to skew and
+heavy tails — but it only gives you the quantiles you asked for and needs the
+crossing fix. The parametric approach gives a full, coherent distribution you can
+sample any statistic from, but only if the distributional family you picked
+matches reality; the wrong family bakes in a wrong shape. Which to choose depends
+on whether you can commit to a distributional form for your data.
+
+## 7. Limitations
+
+The experiments here use a single-feature synthetic dataset so the mechanics of
+each metric are visible; absolute numbers depend on the data and the small model,
+and a real deployment needs proper time-ordered validation and multi-horizon
+evaluation rather than the i.i.d. split used for exposition. Quantile regression
+as shown estimates a fixed grid of quantiles independently and can cross; it also
+does not, by itself, guarantee calibration on future data under distribution
+shift, which is where conformal methods that wrap quantile models to give
+finite-sample coverage guarantees become relevant. Finally, the pinball-based CRPS
+estimate is only as good as the quantile grid is dense, and none of these scores
+substitutes for checking that the interval widths are actually actionable for the
+decision at hand.
+
+## 8. Conclusion
+
+A point forecast answers a question no planner actually asked. The step to
+probabilistic forecasting is smaller than it looks: replace the squared loss with
+the pinball loss and a model starts predicting quantiles instead of the mean,
+with the same architecture and the same optimizer. The payoff is decisive on the
+data that matters most — where uncertainty depends on the input, a point forecast
+with a constant interval is simultaneously too wide where the data is calm and too
+narrow where it is volatile, while quantile regression adapts its interval and
+stays calibrated across regions. Report coverage and CRPS together, watch for
+quantile crossing, and choose between the quantile-regression and parametric
+families based on whether you are willing to commit to a distributional form.
+Predict the range, not just the number — the range is what the decision needs.
+
+## References
+
+::: {#refs}
+:::
