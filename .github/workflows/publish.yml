@@ -23,7 +23,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python dependencies
-        run: pip install jupyter matplotlib numpy pandas torch
+        run: pip install jupyter matplotlib numpy pandas torch scipy
 
       # 한글 사이트 빌드
       - name: Render Korean site
