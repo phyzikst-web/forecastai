@@ -1,7 +1,7 @@
 ---
 title: "Beyond the Point Forecast: Why Quantile Regression Matters for Probabilistic Forecasting"
 date: "2026-07-10"
-author: "Prof. Shin (phyzik)"
+author: "Prof. Shin"
 categories:
   - Data Science
   - Artificial Intelligence
@@ -32,7 +32,7 @@ format:
     code-overflow: wrap
 ---
 
-## 1. The number that isn't enough
+## The number that isn't enough
 
 Ask a forecasting model "how many units will we sell next week?" and a point
 forecast answers with one number, say 1,000. That number is silent about the
@@ -51,7 +51,7 @@ directly predict several quantiles of the target's conditional distribution
 one loss function from 1978, and understanding it is the whole foundation, so we
 start there — in code.
 
-## 2. The pinball loss, from first principles
+## The pinball loss, from first principles
 
 Ordinary regression minimizes squared error, and the minimizer is the conditional
 *mean*. To estimate a conditional *quantile* instead, we need a loss whose
@@ -104,7 +104,7 @@ regression works: swap the squared loss for the pinball loss and gradient descen
 will chase quantiles instead of the mean. Nothing else about the model has to
 change.
 
-## 3. Why a point forecast plus a constant interval fails
+## Why a point forecast plus a constant interval fails
 
 A common shortcut is to keep a point forecast and bolt on an interval afterward:
 predict the mean with squared error, measure the residual standard deviation, and
@@ -243,7 +243,7 @@ volatile — so coverage stays near target in both regions. A single global $\si
 cannot represent input-dependent uncertainty; quantile regression can, because
 each quantile is a full function of the input.
 
-## 4. Quantile crossing: the one failure mode to watch
+## Quantile crossing: the one failure mode to watch
 
 Fitting each quantile is not quite the end of the story. Because the quantile
 levels are trained together but nothing structurally forces their order, a model
@@ -270,7 +270,7 @@ holds by construction — the approach taken by multi-horizon quantile forecaste
 [@wen2017mqrnn]. Sorting is a valid, distribution-free repair because reordering
 quantiles never increases the pinball loss.
 
-## 5. Scoring a whole distribution: CRPS
+## Scoring a whole distribution: CRPS
 
 Coverage checks calibration, but a good probabilistic forecast should also be
 **sharp** — as concentrated as possible while staying calibrated. The standard
@@ -309,7 +309,7 @@ naive coverage check — which is precisely why you report CRPS *and* coverage
 together: coverage guards against overconfidence, CRPS guards against uselessly
 wide hedging.
 
-## 6. From loss to models: DeepAR, TFT, and the two families
+## From loss to models: DeepAR, TFT, and the two families
 
 Everything above uses a trivial MLP so the *loss* is the only moving part. Real
 probabilistic forecasters differ in how they turn this machinery into sequence
@@ -333,7 +333,7 @@ sample any statistic from, but only if the distributional family you picked
 matches reality; the wrong family bakes in a wrong shape. Which to choose depends
 on whether you can commit to a distributional form for your data.
 
-## 7. Limitations
+## Limitations
 
 The experiments here use a single-feature synthetic dataset so the mechanics of
 each metric are visible; absolute numbers depend on the data and the small model,
@@ -347,7 +347,7 @@ estimate is only as good as the quantile grid is dense, and none of these scores
 substitutes for checking that the interval widths are actually actionable for the
 decision at hand.
 
-## 8. Conclusion
+## Conclusion
 
 A point forecast answers a question no planner actually asked. The step to
 probabilistic forecasting is smaller than it looks: replace the squared loss with
