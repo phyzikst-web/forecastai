@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_en.html",
       "/posts/2026-07-05-physics-informed-time-series/index.html",
       "/posts/2026-07-03-non-stationary-time-series-revin/index.html",
       "/posts/2026-07-02-informer-patchtst-attention-bottleneck/index.html",
@@ -11,6 +12,7 @@
   {
     "listing": "/categories.html",
     "items": [
+      "/posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_en.html",
       "/posts/2026-07-05-physics-informed-time-series/index.html",
       "/posts/2026-07-03-non-stationary-time-series-revin/index.html",
       "/posts/2026-07-02-informer-patchtst-attention-bottleneck/index.html",

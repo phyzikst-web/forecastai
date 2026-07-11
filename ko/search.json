@@ -189,27 +189,6 @@
     "text": "참고문헌\n\n\nNie, Yuqi, Nam H. Nguyen, Phanwadee Sinthong, 와/과 Jayant Kalagnanam. 2023년. “A Time Series is Worth 64 Words: Long-term Forecasting with Transformers”. International Conference on Learning Representations (ICLR).\n\n\nZeng, Ailing, Muxi Chen, Lei Zhang, 와/과 Qiang Xu. 2023년. “Are Transformers Effective for Time Series Forecasting?” Proceedings of the AAAI Conference on Artificial Intelligence 37: 11121–28. https://doi.org/10.1609/aaai.v37i9.26317.\n\n\nZhou, Haoyi, Shanghang Zhang, Jieqi Peng, 기타. 2021년. “Informer: Beyond Efficient Transformer for Long Sequence Time-Series Forecasting”. Proceedings of the AAAI Conference on Artificial Intelligence 35: 11106–15. https://doi.org/10.1609/aaai.v35i12.17325."
   },
   {
-    "objectID": "contact.html",
-    "href": "contact.html",
-    "title": "연락처",
-    "section": "",
-    "text": "GitHub: github.com/phyzikst-web\n\n문의 사항이 있으시면 이메일로 연락 주세요."
-  },
-  {
-    "objectID": "contact.html#연락처",
-    "href": "contact.html#연락처",
-    "title": "연락처",
-    "section": "",
-    "text": "GitHub: github.com/phyzikst-web\n\n문의 사항이 있으시면 이메일로 연락 주세요."
-  },
-  {
-    "objectID": "categories.html",
-    "href": "categories.html",
-    "title": "카테고리",
-    "section": "",
-    "text": "딥러닝 시계열 모델에 도메인 지식 주입하기: 물리 제약을 손실 함수에 반영하는 방법\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n과학기계학습\n\n물리 제약\n\n손실 함수\n\nPINN\n\n\n\n딥러닝 시계열 예측에서 물리 잔차, 페널티, hard parameterization을 구분하고 물리적으로 불가능한 예측을 줄이는 구현 방법을 설명합니다.\n\n\n\n\n\n2026-07-05\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\n비정상 시계열 길들이기: 표류와 지수적 성장에 맞서는 가역 정규화\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n비정상 시계열\n\n가역 정규화\n\nRevIN\n\n\n\n시계열의 평균과 분산이 시간에 따라 표류하면, 과거로 학습한 모델은 스케일조차 본 적 없는 테스트 데이터를 만납니다. 이 글은 비정상성과 개념 표류를 바닥부터 설명하고, 실행 가능한 코드로 소박한 정규화에서 가역 인스턴스 정규화(RevIN)까지 쌓아 올립니다.\n\n\n\n\n\n2026-07-03\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nInformer와 PatchTST는 어떻게 어텐션의 이차 복잡도 병목을 깼는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n어텐션 병목\n\nInformer\n\nPatchTST\n\n\n\n셀프 어텐션은 시퀀스 길이에 대해 O(L^2) 비용이 들며, 이는 긴 시계열에 치명적입니다. 이 글은 그 비용을 벗어나는 매우 다른 두 경로 — Informer의 ProbSparse 어텐션과 PatchTST의 패칭 — 을, 절감이 실제로 어디서 나오는지 측정하는 실행 가능한 코드와 함께 살펴봅니다.\n\n\n\n\n\n2026-07-02\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nRecursive, Direct, Joint: 멀티 스텝 예측 전략은 무엇을 포기하는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n멀티스텝 예측\n\nRecursive\n\nDirect\n\nJoint\n\n\n\nH-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 실행 가능한 코드와 함께 비교합니다.\n\n\n\n\n\n2026-06-30\n\n\nProf. Shin\n\n\n\n\n\n일치 없음"
-  },
-  {
     "objectID": "posts/2026-07-03-non-stationary-time-series-revin/index.html",
     "href": "posts/2026-07-03-non-stationary-time-series-revin/index.html",
     "title": "비정상 시계열 길들이기: 표류와 지수적 성장에 맞서는 가역 정규화",
@@ -271,6 +250,97 @@
     "title": "비정상 시계열 길들이기: 표류와 지수적 성장에 맞서는 가역 정규화",
     "section": "참고문헌",
     "text": "참고문헌\n\n\nFan, Wei, Pengyang Wang, Dongkun Wang, Dongjie Wang, Yuanchun Zhou, 와/과 Yanjie Fu. 2023년. “Dish-TS: A General Paradigm for Alleviating Distribution Shift in Time Series Forecasting”. Proceedings of the AAAI Conference on Artificial Intelligence 37: 7522–29. https://doi.org/10.1609/aaai.v37i6.25914.\n\n\nKim, Taesung, Jinhee Kim, Yunwon Tae, Cheonbok Park, Jang-Ho Choi, 와/과 Jaegul Choo. 2022년. “Reversible Instance Normalization for Accurate Time-Series Forecasting against Distribution Shift”. International Conference on Learning Representations (ICLR). https://openreview.net/forum?id=cGDAkQo1C0p.\n\n\nLiu, Yong, Haixu Wu, Jianmin Wang, 와/과 Mingsheng Long. 2022년. “Non-stationary Transformers: Exploring the Stationarity in Time Series Forecasting”. Advances in Neural Information Processing Systems (NeurIPS) 35: 9881–93."
+  },
+  {
+    "objectID": "categories.html",
+    "href": "categories.html",
+    "title": "카테고리",
+    "section": "",
+    "text": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n\n\n예측값 하나는 의사결정이 가장 필요로 하는 것, 즉 일어날 수 있는 일의 범위를 숨깁니다. 이 글은 핀볼 손실부터 확률적 예측을 쌓아 올리고, 이분산 데이터에서 점 예측과 고정 구간이 왜 실패하는지 실행 코드로 보이며, 교정·분위수 교차·CRPS를 다룹니다.\n\n\n\n\n\n2026-07-10\n\n\nProf. Shin (phyzik)\n\n\n\n\n\n\n\n\n\n\n\n\n딥러닝 시계열 모델에 도메인 지식 주입하기: 물리 제약을 손실 함수에 반영하는 방법\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n과학기계학습\n\n물리 제약\n\n손실 함수\n\nPINN\n\n\n\n딥러닝 시계열 예측에서 물리 잔차, 페널티, hard parameterization을 구분하고 물리적으로 불가능한 예측을 줄이는 구현 방법을 설명합니다.\n\n\n\n\n\n2026-07-05\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\n비정상 시계열 길들이기: 표류와 지수적 성장에 맞서는 가역 정규화\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n비정상 시계열\n\n가역 정규화\n\nRevIN\n\n\n\n시계열의 평균과 분산이 시간에 따라 표류하면, 과거로 학습한 모델은 스케일조차 본 적 없는 테스트 데이터를 만납니다. 이 글은 비정상성과 개념 표류를 바닥부터 설명하고, 실행 가능한 코드로 소박한 정규화에서 가역 인스턴스 정규화(RevIN)까지 쌓아 올립니다.\n\n\n\n\n\n2026-07-03\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nInformer와 PatchTST는 어떻게 어텐션의 이차 복잡도 병목을 깼는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n어텐션 병목\n\nInformer\n\nPatchTST\n\n\n\n셀프 어텐션은 시퀀스 길이에 대해 O(L^2) 비용이 들며, 이는 긴 시계열에 치명적입니다. 이 글은 그 비용을 벗어나는 매우 다른 두 경로 — Informer의 ProbSparse 어텐션과 PatchTST의 패칭 — 을, 절감이 실제로 어디서 나오는지 측정하는 실행 가능한 코드와 함께 살펴봅니다.\n\n\n\n\n\n2026-07-02\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nRecursive, Direct, Joint: 멀티 스텝 예측 전략은 무엇을 포기하는가\n\n\n\n데이터과학\n\n인공지능\n\n시계열\n\n멀티스텝 예측\n\nRecursive\n\nDirect\n\nJoint\n\n\n\nH-스텝 예측을 어떻게 만들어 내는지는 그 자체로 하나의 모델링 결정입니다. 재귀(Recursive), 직접(Direct), 결합(Joint, MIMO) 전략을 오차 누적, 편향-분산 트레이드오프, 계산 비용, 그리고 각 전략이 유리해지는 조건의 관점에서 실행 가능한 코드와 함께 비교합니다.\n\n\n\n\n\n2026-06-30\n\n\nProf. Shin\n\n\n\n\n\n일치 없음"
+  },
+  {
+    "objectID": "contact.html",
+    "href": "contact.html",
+    "title": "연락처",
+    "section": "",
+    "text": "GitHub: github.com/phyzikst-web\n\n문의 사항이 있으시면 이메일로 연락 주세요."
+  },
+  {
+    "objectID": "contact.html#연락처",
+    "href": "contact.html#연락처",
+    "title": "연락처",
+    "section": "",
+    "text": "GitHub: github.com/phyzikst-web\n\n문의 사항이 있으시면 이메일로 연락 주세요."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "",
+    "text": "예측 모델에게 “다음 주에 몇 개나 팔릴까?”라고 물으면, 점 예측(point forecast)은 숫자 하나로, 이를테면 1,000으로 답합니다. 그러나 그 숫자는 정작 기획자가 답해야 할 질문에 대해 침묵합니다. 700이 되어 품절을 일으킬 수도 있는가, 아니면 1,400이 되어 값비싼 과잉재고를 일으킬 수도 있는가? 점 예측은 가능한 미래들의 분포 전체를 그 중심 하나로 붕괴시키고, 그 과정에서 모든 후속 의사결정 — 안전재고, 인력 배치, 자본 준비금, 전력망 용량 — 이 딛고 서는 정보를 버립니다. 확률적 예측(probabilistic forecasting)은 값 하나 대신 분포, 또는 그 분포의 여러 분위수를 예측함으로써 그 정보를 지킵니다.\n확률적 예측으로 가는 가장 깔끔한 경로이자, Temporal Fusion Transformer 같은 현대 딥러닝 예측기의 바탕이 되는 것은 분위수 회귀(quantile regression)입니다. 목표 변수의 조건부 분포에서 여러 분위수를 직접 예측하는 방식입니다 (Lim 기타 2021년). 딥러닝 이전에, 이것이 애초에 가능한 이유는 1978년의 손실 함수 하나에 기대고 있습니다. 그 함수를 이해하는 것이 토대 전부이므로, 코드로 거기서부터 시작합니다."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#충분하지-않은-숫자-하나",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#충분하지-않은-숫자-하나",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "",
+    "text": "예측 모델에게 “다음 주에 몇 개나 팔릴까?”라고 물으면, 점 예측(point forecast)은 숫자 하나로, 이를테면 1,000으로 답합니다. 그러나 그 숫자는 정작 기획자가 답해야 할 질문에 대해 침묵합니다. 700이 되어 품절을 일으킬 수도 있는가, 아니면 1,400이 되어 값비싼 과잉재고를 일으킬 수도 있는가? 점 예측은 가능한 미래들의 분포 전체를 그 중심 하나로 붕괴시키고, 그 과정에서 모든 후속 의사결정 — 안전재고, 인력 배치, 자본 준비금, 전력망 용량 — 이 딛고 서는 정보를 버립니다. 확률적 예측(probabilistic forecasting)은 값 하나 대신 분포, 또는 그 분포의 여러 분위수를 예측함으로써 그 정보를 지킵니다.\n확률적 예측으로 가는 가장 깔끔한 경로이자, Temporal Fusion Transformer 같은 현대 딥러닝 예측기의 바탕이 되는 것은 분위수 회귀(quantile regression)입니다. 목표 변수의 조건부 분포에서 여러 분위수를 직접 예측하는 방식입니다 (Lim 기타 2021년). 딥러닝 이전에, 이것이 애초에 가능한 이유는 1978년의 손실 함수 하나에 기대고 있습니다. 그 함수를 이해하는 것이 토대 전부이므로, 코드로 거기서부터 시작합니다."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#핀볼-손실-기초부터",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#핀볼-손실-기초부터",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "2 2. 핀볼 손실, 기초부터",
+    "text": "2 2. 핀볼 손실, 기초부터\n보통의 회귀는 제곱오차를 최소화하며, 그 최소해는 조건부 평균입니다. 대신 조건부 분위수를 추정하려면, 최소해가 분위수가 되는 손실이 필요합니다. 그 손실이 핀볼 손실(pinball loss)(분위수 손실 또는 체크 손실이라고도 함)이며, Koenker 와/과 Bassett (1978년) 이 도입했습니다. 목표 \\(y\\), 예측 \\(\\hat{q}\\), 분위수 수준 \\(\\tau \\in\n(0, 1)\\)에 대해 오차 \\(u = y - \\hat{q}\\)를 정의하면\n\\[\n\\rho_\\tau(u) =\n\\begin{cases}\n\\tau \\, u & u \\ge 0 \\\\\n(\\tau - 1)\\, u & u &lt; 0\n\\end{cases}\n\\;=\\; \\max\\big(\\tau u,\\ (\\tau-1)u\\big).\n\\tag{1}\\]\n핵심 아이디어 전체가 이 비대칭성에 있습니다. \\(\\tau = 0.9\\)일 때, 과소예측(\\(u &gt; 0\\), 진값이 추정값보다 위)은 \\(0.9\\)로 가중되고 과대예측은 \\(0.1\\)로만 가중됩니다. 그래서 손실은 관측치의 약 90%가 추정값 아래로 떨어질 때까지 추정값을 위로 밀어 올리는데, 이것이 바로 90분위수의 정의입니다. 핵심 이론적 사실은, 기대 핀볼 손실이 참 분위수 \\(q_\\tau^\\ast = F_Y^{-1}(\\tau)\\)에서 최소화된다는 것입니다 (Koenker 와/과 Bassett 1978년). 이 주장을 믿고 넘어가는 대신 실증적으로 확인해 봅니다.\n\nimport numpy as np\nnp.random.seed(0)\n\ndef pinball(y, q, tau):\n    \"\"\"핀볼 손실(eq-pinball). 스칼라/배열 입력 모두 지원. u = y - q.\"\"\"\n    u = y - q\n    return np.maximum(tau * u, (tau - 1) * u)\n\n# 알려진 분포에서 표본을 뽑아, 평균 핀볼 손실을 최소화하는 q를 찾는다.\nsample = np.random.normal(loc=5.0, scale=2.0, size=200_000)\n\nfor tau in [0.1, 0.5, 0.9]:\n    grid = np.linspace(0, 10, 2001)\n    mean_loss = [pinball(sample, q, tau).mean() for q in grid]\n    q_hat = grid[int(np.argmin(mean_loss))]\n    q_true = np.quantile(sample, tau)      # 경험적 진값\n    print(f\"tau={tau}: pinball-minimizing q={q_hat:.3f}  |  true quantile={q_true:.3f}\")\n\ntau=0.1: pinball-minimizing q=2.450  |  true quantile=2.451\ntau=0.5: pinball-minimizing q=5.010  |  true quantile=5.008\ntau=0.9: pinball-minimizing q=7.555  |  true quantile=7.555\n\n\n평균 핀볼 손실을 최소화하는 값이 모든 수준에서 경험적 분위수에 정확히 안착합니다. 이것은 외워야 할 우연이 아니라, 분위수 회귀가 작동하는 이유 그 자체입니다. 제곱 손실을 핀볼 손실로 바꾸기만 하면 경사하강법이 평균 대신 분위수를 쫓습니다. 모델의 나머지는 아무것도 바꿀 필요가 없습니다."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#점-예측에-고정-구간을-더하는-방식이-실패하는-이유",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#점-예측에-고정-구간을-더하는-방식이-실패하는-이유",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "3 3. 점 예측에 고정 구간을 더하는 방식이 실패하는 이유",
+    "text": "3 3. 점 예측에 고정 구간을 더하는 방식이 실패하는 이유\n흔한 지름길은 점 예측을 유지한 채 나중에 구간을 덧붙이는 것입니다. 제곱오차로 평균을 예측하고, 잔차의 표준편차를 측정한 뒤, 정규성을 가정해 80% 구간으로 \\(\\pm 1.28\\sigma\\)를 긋습니다. 이것은 빠르고, 등분산 데이터에서는 괜찮습니다. 그러나 불확실성이 가장 흥미로운 바로 그때, 즉 목표의 산포가 입력에 따라 달라질 때 (이분산성, heteroscedasticity) 실패합니다. 이분산성은 실제 시계열에서 오히려 정상입니다. 수요는 프로모션 기간에 더 변동하고, 부하는 극한 기상에서 더 요동칩니다.\n실패를 구체적으로 보이기 위해, 잡음이 \\(|x|\\)에 따라 커지는 데이터셋을 만들고 그 위에서 두 접근을 비교합니다. 먼저 데이터와 두 모델입니다.\n\nimport torch\nimport torch.nn as nn\ntorch.manual_seed(0)\nnp.random.seed(0)\n\ndef make_data(N=3000):\n    \"\"\"이분산 데이터: 잡음 스케일이 x에 의존하므로, y의 *산포*가\n    상수가 아니라 입력의 함수다.\"\"\"\n    x = np.random.uniform(-3, 3, N).astype(np.float32)\n    sigma = 0.3 + 0.6 * np.abs(x)                       # |x|에 따라 산포 증가\n    y = (np.sin(x) + 0.3 * x + sigma * np.random.randn(N)).astype(np.float32)\n    return x, y\n\nx, y = make_data()\nxt = torch.tensor(x).unsqueeze(1)\nyt = torch.tensor(y).unsqueeze(1)\nsplit = int(len(x) * 0.8)\nXtr, Ytr, Xte, Yte = xt[:split], yt[:split], xt[split:], yt[split:]\n\nQUANTILES = [0.1, 0.5, 0.9]\n\ndef pinball_loss(pred, target, quantiles):\n    \"\"\"다중 분위수 핀볼 손실. pred: (B, Q), target: (B, 1).\n    요청한 분위수 수준들에 대해 eq-pinball을 합산한다.\"\"\"\n    losses = []\n    for i, q in enumerate(quantiles):\n        e = target[:, 0] - pred[:, i]\n        losses.append(torch.max(q * e, (q - 1) * e))\n    return torch.stack(losses, dim=1).mean()\n\nclass QuantileNet(nn.Module):\n    \"\"\"네트워크 하나, 출력 Q개 — 분위수 수준마다 하나씩.\"\"\"\n    def __init__(self, n_q):\n        super().__init__()\n        self.net = nn.Sequential(nn.Linear(1, 64), nn.ReLU(),\n                                 nn.Linear(64, 64), nn.ReLU(),\n                                 nn.Linear(64, n_q))\n    def forward(self, x):\n        return self.net(x)\n\nclass PointNet(nn.Module):\n    \"\"\"보통의 MSE로 학습하는 점 예측기(단일 출력).\"\"\"\n    def __init__(self):\n        super().__init__()\n        self.net = nn.Sequential(nn.Linear(1, 64), nn.ReLU(),\n                                 nn.Linear(64, 64), nn.ReLU(),\n                                 nn.Linear(64, 1))\n    def forward(self, x):\n        return self.net(x)\n\n이제 둘을 학습합니다. 분위수 네트워크는 핀볼 손실로, 점 네트워크는 MSE로 학습하고, 점 네트워크의 80% 구간은 하나의 전역 잔차 표준편차로 만듭니다.\n\ndef train(model, loss_kind, epochs=400, lr=5e-3):\n    opt = torch.optim.Adam(model.parameters(), lr=lr)\n    mse = nn.MSELoss()\n    for _ in range(epochs):\n        model.train(); opt.zero_grad()\n        out = model(Xtr)\n        loss = pinball_loss(out, Ytr, QUANTILES) if loss_kind == \"pinball\" else mse(out, Ytr)\n        loss.backward(); opt.step()\n    model.eval()\n    return model\n\nqnet = train(QuantileNet(len(QUANTILES)), \"pinball\")\npnet = train(PointNet(), \"mse\")\n\nwith torch.no_grad():\n    P = qnet(Xte).numpy()                       # (n_test, 3): q10, q50, q90\n    mu = pnet(Xte).numpy()[:, 0]\n    resid = (Ytr.numpy()[:, 0] - pnet(Xtr).detach().numpy()[:, 0])\nsigma_global = resid.std()                       # 모든 입력에 대해 숫자 하나\nlo_pt = mu - 1.2816 * sigma_global               # 정규성 가정 80% 구간\nhi_pt = mu + 1.2816 * sigma_global\nYte_np = Yte.numpy()[:, 0]\n\nprint(f\"global residual std used by the point model: {sigma_global:.3f}\")\n\nglobal residual std used by the point model: 1.300\n\n\n어떤 구간이든 결정적인 시험은 교정(calibration)입니다. 80% 커버리지를 주장하는 구간은 실제로 약 80%의 경우에 진값을 담아야 합니다. 그리고 평균적으로만이 아니라 어디에서나 그래야 합니다. 전체 커버리지를 확인한 뒤, 테스트 집합을 저분산 영역(작은 \\(|x|\\))과 고분산 영역(큰 \\(|x|\\))으로 나눠 봅니다.\n\nxte = Xte.numpy()[:, 0]\nlow_var = np.abs(xte) &lt; 1.0\nhigh_var = np.abs(xte) &gt; 2.0\n\ndef coverage(mask, lo, hi):\n    return np.mean((Yte_np[mask] &gt;= lo[mask]) & (Yte_np[mask] &lt;= hi[mask]))\n\nfull = np.ones_like(xte, dtype=bool)\nprint(\"empirical coverage of nominal 80% intervals (target ~0.80):\")\nprint(f\"  quantile   overall={coverage(full, P[:,0], P[:,2]):.3f}  \"\n      f\"low-var={coverage(low_var, P[:,0], P[:,2]):.3f}  \"\n      f\"high-var={coverage(high_var, P[:,0], P[:,2]):.3f}\")\nprint(f\"  point+gauss overall={coverage(full, lo_pt, hi_pt):.3f}  \"\n      f\"low-var={coverage(low_var, lo_pt, hi_pt):.3f}  \"\n      f\"high-var={coverage(high_var, lo_pt, hi_pt):.3f}\")\n\nprint(\"\\naverage 80% interval width:\")\nprint(f\"  quantile   low-var={ (P[low_var,2]-P[low_var,0]).mean():.2f}  \"\n      f\"high-var={ (P[high_var,2]-P[high_var,0]).mean():.2f}\")\nprint(f\"  point+gauss constant {hi_pt[0]-lo_pt[0]:.2f} everywhere\")\n\nempirical coverage of nominal 80% intervals (target ~0.80):\n  quantile   overall=0.767  low-var=0.749  high-var=0.741\n  point+gauss overall=0.805  low-var=0.985  high-var=0.615\n\naverage 80% interval width:\n  quantile   low-var=1.51  high-var=4.45\n  point+gauss constant 3.33 everywhere\n\n\n숫자를 주의 깊게 읽어야 합니다. 이것이 논증 전체이기 때문입니다. 점+고정 구간은 전체적으로는 80%에 가까워 받아들일 만해 보입니다. 그러나 그 평균이 위험한 실패를 숨깁니다. 저분산 영역에서는 80%보다 훨씬 많이 담고(불필요하게 넓은 구간, 안전재고에 자본을 낭비), 고분산 영역에서는 80%보다 훨씬 적게 담습니다(위험이 가장 높은 바로 그곳에서 위험하게 좁은 구간). 반면 분위수 모델은 입력에 따라 구간을 넓히고 좁힙니다. 데이터가 잔잔한 곳에서는 좁게, 요동치는 곳에서는 넓게. 그래서 두 영역 모두에서 커버리지가 목표 근처에 머뭅니다. 전역 \\(\\sigma\\) 하나로는 입력 의존적 불확실성을 표현할 수 없지만, 분위수 회귀는 각 분위수가 입력의 완전한 함수이므로 그것을 표현할 수 있습니다."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#분위수-교차-반드시-지켜봐야-할-하나의-실패-양상",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#분위수-교차-반드시-지켜봐야-할-하나의-실패-양상",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "4 4. 분위수 교차: 반드시 지켜봐야 할 하나의 실패 양상",
+    "text": "4 4. 분위수 교차: 반드시 지켜봐야 할 하나의 실패 양상\n각 분위수를 적합하는 것으로 이야기가 끝나지는 않습니다. 분위수 수준들이 함께 학습되지만 그 순서를 구조적으로 강제하는 것은 없으므로, 모델이 이따금 \\(\\hat{q}_{0.1} &gt; \\hat{q}_{0.9}\\)를 출력할 수 있습니다. 분위수 교차(quantile crossing)입니다. 실제 분위수에서는 논리적으로 불가능하며, 폭이 음수인 구간을 만듭니다. 없다고 가정하기보다 측정할 가치가 있습니다.\n\ncrossing = np.mean((P[:, 0] &gt; P[:, 1]) | (P[:, 1] &gt; P[:, 2]))\nprint(f\"fraction of test points with quantile crossing: {crossing:.4f}\")\n\n# 표준적인 값싼 처방: 행마다 예측 분위수를 정렬한다.\nP_sorted = np.sort(P, axis=1)\ncrossing_after = np.mean((P_sorted[:, 0] &gt; P_sorted[:, 1]) |\n                         (P_sorted[:, 1] &gt; P_sorted[:, 2]))\nprint(f\"after post-hoc sorting: {crossing_after:.4f}\")\n\nfraction of test points with quantile crossing: 0.0000\nafter post-hoc sorting: 0.0000\n\n\n이 데이터셋에서는 교차가 드물지만, 더 어려운 문제에서는 흔할 만큼 발생합니다. 실무에서는 위처럼 출력을 사후에 정렬하거나, 연속한 분위수 사이의 증분이 음이 아니게 모델을 설계해 순서가 구성상 성립하도록 합니다. 후자는 다중 지평 분위수 예측기가 취한 접근입니다 (Wen 기타 2017년). 정렬은 분포 가정 없이 유효한 수선입니다. 분위수를 재정렬하는 것은 결코 핀볼 손실을 증가시키지 않기 때문입니다."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#분포-전체를-채점하기-crps",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#분포-전체를-채점하기-crps",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "5 5. 분포 전체를 채점하기: CRPS",
+    "text": "5 5. 분포 전체를 채점하기: CRPS\n커버리지는 교정을 확인하지만, 좋은 확률적 예측은 선명(sharp)하기도 해야 합니다. 교정을 유지하면서도 가능한 한 집중되어 있어야 한다는 뜻입니다. 이 둘을 함께 포착하는 표준적인 단일 수치가 연속 순위 확률 점수(Continuous Ranked Probability Score, CRPS)입니다 (Gneiting 와/과 Raftery 2007년). 분위수 모델에서의 실용적 매력은 하나의 항등식에 있습니다. CRPS는 모든 분위수 수준에 대해 균일하게 적분한 핀볼 손실의 두 배와 같습니다 (Gneiting 와/과 Raftery 2007년). 그러니 당신이 학습에 쓴 바로 그 손실을 촘촘한 분위수 격자에 걸쳐 평균한 것이 곧 당신의 적절한 점수(proper score)입니다. CRPS가 과분산 예측보다 교정된 예측을 보상하는지 확인합니다.\n\nfrom scipy.stats import norm\nnp.random.seed(1)\n\ngrid = np.linspace(0.01, 0.99, 99)\nobs = np.random.randn(20_000)          # 진값 ~ N(0, 1)\n\ndef crps_from_quantiles(pred_q, y):\n    \"\"\"분위수 적분 항등식으로 CRPS 계산: 균일 격자에서 2 * 평균 핀볼 손실.\"\"\"\n    total = 0.0\n    for i, tau in enumerate(grid):\n        total += pinball(y, pred_q[:, i], tau).mean()\n    return 2 * total / len(grid)\n\nq_calib = np.array([norm.ppf(g, 0, 1) for g in grid])[None, :].repeat(len(obs), 0)\nq_wide  = np.array([norm.ppf(g, 0, 2) for g in grid])[None, :].repeat(len(obs), 0)\n\nprint(f\"CRPS, calibrated forecast N(0,1)   = {crps_from_quantiles(q_calib, obs):.4f}\")\nprint(f\"CRPS, over-dispersed forecast N(0,2) = {crps_from_quantiles(q_wide, obs):.4f}\")\n\nCRPS, calibrated forecast N(0,1)   = 0.5698\nCRPS, over-dispersed forecast N(0,2) = 0.6622\n\n\n교정된 예측이 더 낮은(더 좋은) 점수를 받습니다. 아주 넓은 예측은 소박한 커버리지 검사는 쉽게 통과하겠지만, CRPS는 과분산 예측이 쓸데없이 모호하다는 이유로 벌점을 줍니다. 바로 이 때문에 CRPS와 커버리지를 함께 보고합니다. 커버리지는 과신을, CRPS는 쓸모없이 넓은 헤징을 각각 방어합니다."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#손실에서-모델로-deepar-tft-그리고-두-계열",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#손실에서-모델로-deepar-tft-그리고-두-계열",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "6 6. 손실에서 모델로: DeepAR, TFT, 그리고 두 계열",
+    "text": "6 6. 손실에서 모델로: DeepAR, TFT, 그리고 두 계열\n위의 모든 것은 손실만 유일한 변수가 되도록 자명한 MLP를 씁니다. 실제 확률적 예측기는 이 장치를 시퀀스 모델로 바꾸는 방식에서 갈리며, 두 계열로 나뉩니다. 분위수 회귀 계열은 핀볼 손실로 고정된 분위수 집합을 직접 예측합니다. 다중 지평 분위수 순환 예측기(MQ-RNN)가 그 패턴을 세웠고 (Wen 기타 2017년), Temporal Fusion Transformer는 그것을 완전한 어텐션 기반 아키텍처의 출력층으로 삼아 \\(\\{0.1, 0.5, 0.9\\}\\) 같은 수준들에 대한 분위수 손실 합을 최소화하면서, 해석 가능한 변수 선택과 다중 지평 어텐션을 더했습니다 (Lim 기타 2021년). 모수적 계열은 DeepAR이 대표적이며, 네트워크가 선택한 분포의 모수(예: 가우시안의 평균과 분산, 또는 음이항 분포의 모수)를 출력하게 하고 최대우도로 학습한 뒤, 적합된 분포에서 표본을 뽑아 확률적 예측을 생성합니다 (Salinas 기타 2020년).\n두 계열의 트레이드오프는 깔끔합니다. 분위수 회귀는 분포 가정이 없습니다. 어떤 모수 형태도 가정하지 않으므로 왜도와 두꺼운 꼬리에 적응합니다. 그러나 당신이 요청한 분위수만 주고, 교차 수선이 필요합니다. 모수적 접근은 어떤 통계량이든 표본으로 뽑을 수 있는 완전하고 일관된 분포를 주지만, 오직 당신이 고른 분포족이 현실과 맞을 때에만 그렇습니다. 틀린 분포족은 틀린 형태를 미리 박아 넣습니다. 어느 쪽을 고를지는 당신의 데이터에 대해 분포 형태를 확정할 수 있는지에 달려 있습니다."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#한계",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#한계",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "7 7. 한계",
+    "text": "7 7. 한계\n여기 실험은 각 지표의 작동 원리가 보이도록 단일 특징의 합성 데이터를 씁니다. 절댓값은 데이터와 작은 모델에 의존하며, 실제 배포에는 설명을 위해 쓴 i.i.d. 분할이 아니라 제대로 된 시간순 검증과 다중 지평 평가가 필요합니다. 여기서 보인 분위수 회귀는 고정된 분위수 격자를 독립적으로 추정하므로 교차가 생길 수 있습니다. 또한 그 자체로는 분포 이동 하에서 미래 데이터에 대한 교정을 보장하지 않는데, 바로 이 지점에서 분위수 모델을 감싸 유한 표본 커버리지 보장을 주는 컨포멀(conformal) 방법이 유의미해집니다. 끝으로, 핀볼 기반 CRPS 추정은 분위수 격자가 촘촘한 만큼만 정확하며, 이 어떤 점수도 구간 폭이 당면한 의사결정에 실제로 실행 가능한지 확인하는 일을 대신해 주지는 않습니다."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#결론",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#결론",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "8 8. 결론",
+    "text": "8 8. 결론\n점 예측은 어떤 기획자도 실제로 던지지 않은 질문에 답합니다. 확률적 예측으로 가는 발걸음은 보기보다 작습니다. 제곱 손실을 핀볼 손실로 바꾸면, 같은 아키텍처와 같은 옵티마이저로 모델이 평균 대신 분위수를 예측하기 시작합니다. 그 대가는 가장 중요한 데이터에서 결정적입니다. 불확실성이 입력에 의존하는 곳에서, 고정 구간을 단 점 예측은 데이터가 잔잔한 곳에서는 너무 넓고 요동치는 곳에서는 너무 좁은 반면, 분위수 회귀는 구간을 적응시키며 영역 전반에서 교정을 유지합니다. 커버리지와 CRPS를 함께 보고하고, 분위수 교차를 지켜보며, 분포 형태를 확정할 수 있는지에 따라 분위수 회귀 계열과 모수적 계열 사이에서 선택하십시오. 숫자만이 아니라 범위를 예측하십시오. 의사결정이 필요로 하는 것은 그 범위입니다."
+  },
+  {
+    "objectID": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#참고문헌",
+    "href": "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.html#참고문헌",
+    "title": "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유",
+    "section": "9 참고문헌",
+    "text": "9 참고문헌\n\n\nGneiting, Tilmann, 와/과 Adrian E. Raftery. 2007년. “Strictly Proper Scoring Rules, Prediction, and Estimation”. Journal of the American Statistical Association 102 (477): 359–78. https://doi.org/10.1198/016214506000001437.\n\n\nKoenker, Roger, 와/과 Gilbert Jr. Bassett. 1978년. “Regression Quantiles”. Econometrica 46 (1): 33–50. https://doi.org/10.2307/1913643.\n\n\nLim, Bryan, Sercan Ö. Arık, Nicolas Loeff, 와/과 Tomas Pfister. 2021년. “Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting”. International Journal of Forecasting 37 (4): 1748–64. https://doi.org/10.1016/j.ijforecast.2021.03.012.\n\n\nSalinas, David, Valentin Flunkert, Jan Gasthaus, 와/과 Tim Januschowski. 2020년. “DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks”. International Journal of Forecasting 36 (3): 1181–91. https://doi.org/10.1016/j.ijforecast.2019.07.001.\n\n\nWen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2017년. “A Multi-Horizon Quantile Recurrent Forecaster”. NeurIPS Time Series Workshop."
   },
   {
     "objectID": "posts/2026-07-05-physics-informed-time-series/index.html",
