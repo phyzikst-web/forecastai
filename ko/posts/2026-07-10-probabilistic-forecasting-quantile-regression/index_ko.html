@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Prof.&nbsp;Shin (phyzik)">
+<meta name="author" content="Prof.&nbsp;Shin">
 <meta name="dcterms.date" content="2026-07-10">
 <meta name="description" content="예측값 하나는 의사결정이 가장 필요로 하는 것, 즉 일어날 수 있는 일의 범위를 숨깁니다. 이 글은 핀볼 손실부터 확률적 예측을 쌓아 올리고, 이분산 데이터에서 점 예측과 고정 구간이 왜 실패하는지 실행 코드로 보이며, 교정·분위수 교차·CRPS를 다룹니다.">
 
@@ -225,14 +225,14 @@ window.Quarto = {
     <h2 id="toc-title">목차</h2>
    
   <ul>
-  <li><a href="#충분하지-않은-숫자-하나" id="toc-충분하지-않은-숫자-하나" class="nav-link active" data-scroll-target="#충분하지-않은-숫자-하나"><span class="header-section-number">1</span> 1. 충분하지 않은 숫자 하나</a></li>
-  <li><a href="#핀볼-손실-기초부터" id="toc-핀볼-손실-기초부터" class="nav-link" data-scroll-target="#핀볼-손실-기초부터"><span class="header-section-number">2</span> 2. 핀볼 손실, 기초부터</a></li>
-  <li><a href="#점-예측에-고정-구간을-더하는-방식이-실패하는-이유" id="toc-점-예측에-고정-구간을-더하는-방식이-실패하는-이유" class="nav-link" data-scroll-target="#점-예측에-고정-구간을-더하는-방식이-실패하는-이유"><span class="header-section-number">3</span> 3. 점 예측에 고정 구간을 더하는 방식이 실패하는 이유</a></li>
-  <li><a href="#분위수-교차-반드시-지켜봐야-할-하나의-실패-양상" id="toc-분위수-교차-반드시-지켜봐야-할-하나의-실패-양상" class="nav-link" data-scroll-target="#분위수-교차-반드시-지켜봐야-할-하나의-실패-양상"><span class="header-section-number">4</span> 4. 분위수 교차: 반드시 지켜봐야 할 하나의 실패 양상</a></li>
-  <li><a href="#분포-전체를-채점하기-crps" id="toc-분포-전체를-채점하기-crps" class="nav-link" data-scroll-target="#분포-전체를-채점하기-crps"><span class="header-section-number">5</span> 5. 분포 전체를 채점하기: CRPS</a></li>
-  <li><a href="#손실에서-모델로-deepar-tft-그리고-두-계열" id="toc-손실에서-모델로-deepar-tft-그리고-두-계열" class="nav-link" data-scroll-target="#손실에서-모델로-deepar-tft-그리고-두-계열"><span class="header-section-number">6</span> 6. 손실에서 모델로: DeepAR, TFT, 그리고 두 계열</a></li>
-  <li><a href="#한계" id="toc-한계" class="nav-link" data-scroll-target="#한계"><span class="header-section-number">7</span> 7. 한계</a></li>
-  <li><a href="#결론" id="toc-결론" class="nav-link" data-scroll-target="#결론"><span class="header-section-number">8</span> 8. 결론</a></li>
+  <li><a href="#충분하지-않은-숫자-하나" id="toc-충분하지-않은-숫자-하나" class="nav-link active" data-scroll-target="#충분하지-않은-숫자-하나"><span class="header-section-number">1</span> 충분하지 않은 숫자 하나</a></li>
+  <li><a href="#핀볼-손실-기초부터" id="toc-핀볼-손실-기초부터" class="nav-link" data-scroll-target="#핀볼-손실-기초부터"><span class="header-section-number">2</span> 핀볼 손실, 기초부터</a></li>
+  <li><a href="#점-예측에-고정-구간을-더하는-방식이-실패하는-이유" id="toc-점-예측에-고정-구간을-더하는-방식이-실패하는-이유" class="nav-link" data-scroll-target="#점-예측에-고정-구간을-더하는-방식이-실패하는-이유"><span class="header-section-number">3</span> 점 예측에 고정 구간을 더하는 방식이 실패하는 이유</a></li>
+  <li><a href="#분위수-교차-반드시-지켜봐야-할-하나의-실패-양상" id="toc-분위수-교차-반드시-지켜봐야-할-하나의-실패-양상" class="nav-link" data-scroll-target="#분위수-교차-반드시-지켜봐야-할-하나의-실패-양상"><span class="header-section-number">4</span> 분위수 교차: 반드시 지켜봐야 할 하나의 실패 양상</a></li>
+  <li><a href="#분포-전체를-채점하기-crps" id="toc-분포-전체를-채점하기-crps" class="nav-link" data-scroll-target="#분포-전체를-채점하기-crps"><span class="header-section-number">5</span> 분포 전체를 채점하기: CRPS</a></li>
+  <li><a href="#손실에서-모델로-deepar-tft-그리고-두-계열" id="toc-손실에서-모델로-deepar-tft-그리고-두-계열" class="nav-link" data-scroll-target="#손실에서-모델로-deepar-tft-그리고-두-계열"><span class="header-section-number">6</span> 손실에서 모델로: DeepAR, TFT, 그리고 두 계열</a></li>
+  <li><a href="#한계" id="toc-한계" class="nav-link" data-scroll-target="#한계"><span class="header-section-number">7</span> 한계</a></li>
+  <li><a href="#결론" id="toc-결론" class="nav-link" data-scroll-target="#결론"><span class="header-section-number">8</span> 결론</a></li>
   <li><a href="#참고문헌" id="toc-참고문헌" class="nav-link" data-scroll-target="#참고문헌"><span class="header-section-number">9</span> 참고문헌</a></li>
   </ul>
 </nav>
@@ -262,7 +262,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">저자</div>
     <div class="quarto-title-meta-contents">
-             <p>Prof.&nbsp;Shin (phyzik) </p>
+             <p>Prof.&nbsp;Shin </p>
           </div>
   </div>
     
@@ -282,12 +282,12 @@ window.Quarto = {
 
 
 <section id="충분하지-않은-숫자-하나" class="level2" data-number="1">
-<h2 data-number="1" class="anchored" data-anchor-id="충분하지-않은-숫자-하나"><span class="header-section-number">1</span> 1. 충분하지 않은 숫자 하나</h2>
+<h2 data-number="1" class="anchored" data-anchor-id="충분하지-않은-숫자-하나"><span class="header-section-number">1</span> 충분하지 않은 숫자 하나</h2>
 <p>예측 모델에게 “다음 주에 몇 개나 팔릴까?”라고 물으면, 점 예측(point forecast)은 숫자 하나로, 이를테면 1,000으로 답합니다. 그러나 그 숫자는 정작 기획자가 답해야 할 질문에 대해 침묵합니다. 700이 되어 품절을 일으킬 수도 있는가, 아니면 1,400이 되어 값비싼 과잉재고를 일으킬 수도 있는가? 점 예측은 가능한 미래들의 분포 전체를 그 중심 하나로 붕괴시키고, 그 과정에서 모든 후속 의사결정 — 안전재고, 인력 배치, 자본 준비금, 전력망 용량 — 이 딛고 서는 정보를 버립니다. <strong>확률적 예측(probabilistic forecasting)</strong>은 값 하나 대신 분포, 또는 그 분포의 여러 분위수를 예측함으로써 그 정보를 지킵니다.</p>
 <p>확률적 예측으로 가는 가장 깔끔한 경로이자, Temporal Fusion Transformer 같은 현대 딥러닝 예측기의 바탕이 되는 것은 <strong>분위수 회귀(quantile regression)</strong>입니다. 목표 변수의 조건부 분포에서 여러 분위수를 직접 예측하는 방식입니다 <span class="citation" data-cites="lim2021tft">(<a href="#ref-lim2021tft" role="doc-biblioref">Lim 기타 2021년</a>)</span>. 딥러닝 이전에, 이것이 애초에 가능한 이유는 1978년의 손실 함수 하나에 기대고 있습니다. 그 함수를 이해하는 것이 토대 전부이므로, 코드로 거기서부터 시작합니다.</p>
 </section>
 <section id="핀볼-손실-기초부터" class="level2" data-number="2">
-<h2 data-number="2" class="anchored" data-anchor-id="핀볼-손실-기초부터"><span class="header-section-number">2</span> 2. 핀볼 손실, 기초부터</h2>
+<h2 data-number="2" class="anchored" data-anchor-id="핀볼-손실-기초부터"><span class="header-section-number">2</span> 핀볼 손실, 기초부터</h2>
 <p>보통의 회귀는 제곱오차를 최소화하며, 그 최소해는 조건부 <em>평균</em>입니다. 대신 조건부 <em>분위수</em>를 추정하려면, 최소해가 분위수가 되는 손실이 필요합니다. 그 손실이 <strong>핀볼 손실(pinball loss)</strong>(분위수 손실 또는 체크 손실이라고도 함)이며, <span class="citation" data-cites="koenker1978">Koenker 와/과 Bassett (<a href="#ref-koenker1978" role="doc-biblioref">1978년</a>)</span> 이 도입했습니다. 목표 <span class="math inline">\(y\)</span>, 예측 <span class="math inline">\(\hat{q}\)</span>, 분위수 수준 <span class="math inline">\(\tau \in
 (0, 1)\)</span>에 대해 오차 <span class="math inline">\(u = y - \hat{q}\)</span>를 정의하면</p>
 <p><span id="eq-pinball"><span class="math display">\[
@@ -326,7 +326,7 @@ tau=0.9: pinball-minimizing q=7.555  |  true quantile=7.555</code></pre>
 <p>평균 핀볼 손실을 최소화하는 값이 모든 수준에서 경험적 분위수에 정확히 안착합니다. 이것은 외워야 할 우연이 아니라, 분위수 회귀가 작동하는 <em>이유</em> 그 자체입니다. 제곱 손실을 핀볼 손실로 바꾸기만 하면 경사하강법이 평균 대신 분위수를 쫓습니다. 모델의 나머지는 아무것도 바꿀 필요가 없습니다.</p>
 </section>
 <section id="점-예측에-고정-구간을-더하는-방식이-실패하는-이유" class="level2" data-number="3">
-<h2 data-number="3" class="anchored" data-anchor-id="점-예측에-고정-구간을-더하는-방식이-실패하는-이유"><span class="header-section-number">3</span> 3. 점 예측에 고정 구간을 더하는 방식이 실패하는 이유</h2>
+<h2 data-number="3" class="anchored" data-anchor-id="점-예측에-고정-구간을-더하는-방식이-실패하는-이유"><span class="header-section-number">3</span> 점 예측에 고정 구간을 더하는 방식이 실패하는 이유</h2>
 <p>흔한 지름길은 점 예측을 유지한 채 나중에 구간을 덧붙이는 것입니다. 제곱오차로 평균을 예측하고, 잔차의 표준편차를 측정한 뒤, 정규성을 가정해 80% 구간으로 <span class="math inline">\(\pm 1.28\sigma\)</span>를 긋습니다. 이것은 빠르고, 등분산 데이터에서는 괜찮습니다. 그러나 불확실성이 가장 흥미로운 바로 그때, 즉 목표의 산포가 입력에 따라 달라질 때 (<strong>이분산성, heteroscedasticity</strong>) 실패합니다. 이분산성은 실제 시계열에서 오히려 정상입니다. 수요는 프로모션 기간에 더 변동하고, 부하는 극한 기상에서 더 요동칩니다.</p>
 <p>실패를 구체적으로 보이기 위해, 잡음이 <span class="math inline">\(|x|\)</span>에 따라 커지는 데이터셋을 만들고 그 위에서 두 접근을 비교합니다. 먼저 데이터와 두 모델입니다.</p>
 <div id="data-and-models" class="cell" data-execution_count="2">
@@ -445,7 +445,7 @@ average 80% interval width:
 <p>숫자를 주의 깊게 읽어야 합니다. 이것이 논증 전체이기 때문입니다. 점+고정 구간은 <em>전체적으로는</em> 80%에 가까워 받아들일 만해 보입니다. 그러나 그 평균이 위험한 실패를 숨깁니다. 저분산 영역에서는 80%보다 훨씬 많이 담고(불필요하게 넓은 구간, 안전재고에 자본을 낭비), 고분산 영역에서는 80%보다 훨씬 <em>적게</em> 담습니다(위험이 가장 높은 바로 그곳에서 위험하게 좁은 구간). 반면 분위수 모델은 입력에 따라 구간을 넓히고 좁힙니다. 데이터가 잔잔한 곳에서는 좁게, 요동치는 곳에서는 넓게. 그래서 두 영역 모두에서 커버리지가 목표 근처에 머뭅니다. 전역 <span class="math inline">\(\sigma\)</span> 하나로는 입력 의존적 불확실성을 표현할 수 없지만, 분위수 회귀는 각 분위수가 입력의 완전한 함수이므로 그것을 표현할 수 있습니다.</p>
 </section>
 <section id="분위수-교차-반드시-지켜봐야-할-하나의-실패-양상" class="level2" data-number="4">
-<h2 data-number="4" class="anchored" data-anchor-id="분위수-교차-반드시-지켜봐야-할-하나의-실패-양상"><span class="header-section-number">4</span> 4. 분위수 교차: 반드시 지켜봐야 할 하나의 실패 양상</h2>
+<h2 data-number="4" class="anchored" data-anchor-id="분위수-교차-반드시-지켜봐야-할-하나의-실패-양상"><span class="header-section-number">4</span> 분위수 교차: 반드시 지켜봐야 할 하나의 실패 양상</h2>
 <p>각 분위수를 적합하는 것으로 이야기가 끝나지는 않습니다. 분위수 수준들이 함께 학습되지만 그 순서를 구조적으로 강제하는 것은 없으므로, 모델이 이따금 <span class="math inline">\(\hat{q}_{0.1} &gt; \hat{q}_{0.9}\)</span>를 출력할 수 있습니다. <strong>분위수 교차(quantile crossing)</strong>입니다. 실제 분위수에서는 논리적으로 불가능하며, 폭이 음수인 구간을 만듭니다. 없다고 가정하기보다 측정할 가치가 있습니다.</p>
 <div id="crossing" class="cell" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>crossing <span class="op">=</span> np.mean((P[:, <span class="dv">0</span>] <span class="op">&gt;</span> P[:, <span class="dv">1</span>]) <span class="op">|</span> (P[:, <span class="dv">1</span>] <span class="op">&gt;</span> P[:, <span class="dv">2</span>]))</span>
@@ -464,7 +464,7 @@ after post-hoc sorting: 0.0000</code></pre>
 <p>이 데이터셋에서는 교차가 드물지만, 더 어려운 문제에서는 흔할 만큼 발생합니다. 실무에서는 위처럼 출력을 사후에 정렬하거나, 연속한 분위수 사이의 증분이 음이 아니게 모델을 설계해 순서가 구성상 성립하도록 합니다. 후자는 다중 지평 분위수 예측기가 취한 접근입니다 <span class="citation" data-cites="wen2017mqrnn">(<a href="#ref-wen2017mqrnn" role="doc-biblioref">Wen 기타 2017년</a>)</span>. 정렬은 분포 가정 없이 유효한 수선입니다. 분위수를 재정렬하는 것은 결코 핀볼 손실을 증가시키지 않기 때문입니다.</p>
 </section>
 <section id="분포-전체를-채점하기-crps" class="level2" data-number="5">
-<h2 data-number="5" class="anchored" data-anchor-id="분포-전체를-채점하기-crps"><span class="header-section-number">5</span> 5. 분포 전체를 채점하기: CRPS</h2>
+<h2 data-number="5" class="anchored" data-anchor-id="분포-전체를-채점하기-crps"><span class="header-section-number">5</span> 분포 전체를 채점하기: CRPS</h2>
 <p>커버리지는 교정을 확인하지만, 좋은 확률적 예측은 <strong>선명(sharp)</strong>하기도 해야 합니다. 교정을 유지하면서도 가능한 한 집중되어 있어야 한다는 뜻입니다. 이 둘을 함께 포착하는 표준적인 단일 수치가 <strong>연속 순위 확률 점수(Continuous Ranked Probability Score, CRPS)</strong>입니다 <span class="citation" data-cites="gneiting2007">(<a href="#ref-gneiting2007" role="doc-biblioref">Gneiting 와/과 Raftery 2007년</a>)</span>. 분위수 모델에서의 실용적 매력은 하나의 항등식에 있습니다. CRPS는 모든 분위수 수준에 대해 균일하게 적분한 핀볼 손실의 두 배와 같습니다 <span class="citation" data-cites="gneiting2007">(<a href="#ref-gneiting2007" role="doc-biblioref">Gneiting 와/과 Raftery 2007년</a>)</span>. 그러니 당신이 학습에 쓴 바로 그 손실을 촘촘한 분위수 격자에 걸쳐 평균한 것이 <em>곧</em> 당신의 적절한 점수(proper score)입니다. CRPS가 과분산 예측보다 교정된 예측을 보상하는지 확인합니다.</p>
 <div id="crps" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> scipy.stats <span class="im">import</span> norm</span>
@@ -493,16 +493,16 @@ CRPS, over-dispersed forecast N(0,2) = 0.6622</code></pre>
 <p>교정된 예측이 더 낮은(더 좋은) 점수를 받습니다. 아주 넓은 예측은 소박한 커버리지 검사는 쉽게 통과하겠지만, CRPS는 과분산 예측이 쓸데없이 모호하다는 이유로 벌점을 줍니다. 바로 이 때문에 CRPS와 커버리지를 <em>함께</em> 보고합니다. 커버리지는 과신을, CRPS는 쓸모없이 넓은 헤징을 각각 방어합니다.</p>
 </section>
 <section id="손실에서-모델로-deepar-tft-그리고-두-계열" class="level2" data-number="6">
-<h2 data-number="6" class="anchored" data-anchor-id="손실에서-모델로-deepar-tft-그리고-두-계열"><span class="header-section-number">6</span> 6. 손실에서 모델로: DeepAR, TFT, 그리고 두 계열</h2>
+<h2 data-number="6" class="anchored" data-anchor-id="손실에서-모델로-deepar-tft-그리고-두-계열"><span class="header-section-number">6</span> 손실에서 모델로: DeepAR, TFT, 그리고 두 계열</h2>
 <p>위의 모든 것은 <em>손실</em>만 유일한 변수가 되도록 자명한 MLP를 씁니다. 실제 확률적 예측기는 이 장치를 시퀀스 모델로 바꾸는 방식에서 갈리며, 두 계열로 나뉩니다. <strong>분위수 회귀 계열</strong>은 핀볼 손실로 고정된 분위수 집합을 직접 예측합니다. 다중 지평 분위수 순환 예측기(MQ-RNN)가 그 패턴을 세웠고 <span class="citation" data-cites="wen2017mqrnn">(<a href="#ref-wen2017mqrnn" role="doc-biblioref">Wen 기타 2017년</a>)</span>, <strong>Temporal Fusion Transformer</strong>는 그것을 완전한 어텐션 기반 아키텍처의 출력층으로 삼아 <span class="math inline">\(\{0.1, 0.5, 0.9\}\)</span> 같은 수준들에 대한 분위수 손실 합을 최소화하면서, 해석 가능한 변수 선택과 다중 지평 어텐션을 더했습니다 <span class="citation" data-cites="lim2021tft">(<a href="#ref-lim2021tft" role="doc-biblioref">Lim 기타 2021년</a>)</span>. <strong>모수적 계열</strong>은 <strong>DeepAR</strong>이 대표적이며, 네트워크가 선택한 분포의 <em>모수</em>(예: 가우시안의 평균과 분산, 또는 음이항 분포의 모수)를 출력하게 하고 최대우도로 학습한 뒤, 적합된 분포에서 표본을 뽑아 확률적 예측을 생성합니다 <span class="citation" data-cites="salinas2020deepar">(<a href="#ref-salinas2020deepar" role="doc-biblioref">Salinas 기타 2020년</a>)</span>.</p>
 <p>두 계열의 트레이드오프는 깔끔합니다. 분위수 회귀는 분포 가정이 없습니다. 어떤 모수 형태도 가정하지 않으므로 왜도와 두꺼운 꼬리에 적응합니다. 그러나 당신이 요청한 분위수만 주고, 교차 수선이 필요합니다. 모수적 접근은 어떤 통계량이든 표본으로 뽑을 수 있는 완전하고 일관된 분포를 주지만, 오직 당신이 고른 분포족이 현실과 맞을 때에만 그렇습니다. 틀린 분포족은 틀린 형태를 미리 박아 넣습니다. 어느 쪽을 고를지는 당신의 데이터에 대해 분포 형태를 확정할 수 있는지에 달려 있습니다.</p>
 </section>
 <section id="한계" class="level2" data-number="7">
-<h2 data-number="7" class="anchored" data-anchor-id="한계"><span class="header-section-number">7</span> 7. 한계</h2>
+<h2 data-number="7" class="anchored" data-anchor-id="한계"><span class="header-section-number">7</span> 한계</h2>
 <p>여기 실험은 각 지표의 작동 원리가 보이도록 단일 특징의 합성 데이터를 씁니다. 절댓값은 데이터와 작은 모델에 의존하며, 실제 배포에는 설명을 위해 쓴 i.i.d. 분할이 아니라 제대로 된 시간순 검증과 다중 지평 평가가 필요합니다. 여기서 보인 분위수 회귀는 고정된 분위수 격자를 독립적으로 추정하므로 교차가 생길 수 있습니다. 또한 그 자체로는 분포 이동 하에서 미래 데이터에 대한 교정을 보장하지 않는데, 바로 이 지점에서 분위수 모델을 감싸 유한 표본 커버리지 보장을 주는 컨포멀(conformal) 방법이 유의미해집니다. 끝으로, 핀볼 기반 CRPS 추정은 분위수 격자가 촘촘한 만큼만 정확하며, 이 어떤 점수도 구간 폭이 당면한 의사결정에 실제로 실행 가능한지 확인하는 일을 대신해 주지는 않습니다.</p>
 </section>
 <section id="결론" class="level2" data-number="8">
-<h2 data-number="8" class="anchored" data-anchor-id="결론"><span class="header-section-number">8</span> 8. 결론</h2>
+<h2 data-number="8" class="anchored" data-anchor-id="결론"><span class="header-section-number">8</span> 결론</h2>
 <p>점 예측은 어떤 기획자도 실제로 던지지 않은 질문에 답합니다. 확률적 예측으로 가는 발걸음은 보기보다 작습니다. 제곱 손실을 핀볼 손실로 바꾸면, 같은 아키텍처와 같은 옵티마이저로 모델이 평균 대신 분위수를 예측하기 시작합니다. 그 대가는 가장 중요한 데이터에서 결정적입니다. 불확실성이 입력에 의존하는 곳에서, 고정 구간을 단 점 예측은 데이터가 잔잔한 곳에서는 너무 넓고 요동치는 곳에서는 너무 좁은 반면, 분위수 회귀는 구간을 적응시키며 영역 전반에서 교정을 유지합니다. 커버리지와 CRPS를 함께 보고하고, 분위수 교차를 지켜보며, 분포 형태를 확정할 수 있는지에 따라 분위수 회귀 계열과 모수적 계열 사이에서 선택하십시오. 숫자만이 아니라 범위를 예측하십시오. 의사결정이 필요로 하는 것은 그 범위입니다.</p>
 </section>
 <section id="참고문헌" class="level2" data-number="9">
@@ -985,7 +985,7 @@ Wen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "점 예측을 넘어서: 확률적 예측에서 분위수 회귀가 중요한 이유"</span></span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> "2026-07-10"</span></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> "Prof. Shin (phyzik)"</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> "Prof. Shin"</span></span>
 <span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="an">categories:</span></span>
 <span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="co">  - 데이터과학</span></span>
 <span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="co">  - 인공지능</span></span>
@@ -1016,7 +1016,7 @@ Wen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2
 <span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a><span class="co">    code-overflow: wrap</span></span>
 <span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
 <span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a><span class="fu">## 1. 충분하지 않은 숫자 하나</span></span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a><span class="fu">## 충분하지 않은 숫자 하나</span></span>
 <span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a>예측 모델에게 "다음 주에 몇 개나 팔릴까?"라고 물으면, 점 예측(point forecast)은</span>
 <span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a>숫자 하나로, 이를테면 1,000으로 답합니다. 그러나 그 숫자는 정작 기획자가 답해야 할</span>
@@ -1033,7 +1033,7 @@ Wen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2
 <span id="cb12-49"><a href="#cb12-49" aria-hidden="true" tabindex="-1"></a>이전에, 이것이 애초에 가능한 이유는 1978년의 손실 함수 하나에 기대고 있습니다. 그</span>
 <span id="cb12-50"><a href="#cb12-50" aria-hidden="true" tabindex="-1"></a>함수를 이해하는 것이 토대 전부이므로, 코드로 거기서부터 시작합니다.</span>
 <span id="cb12-51"><a href="#cb12-51" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-52"><a href="#cb12-52" aria-hidden="true" tabindex="-1"></a><span class="fu">## 2. 핀볼 손실, 기초부터</span></span>
+<span id="cb12-52"><a href="#cb12-52" aria-hidden="true" tabindex="-1"></a><span class="fu">## 핀볼 손실, 기초부터</span></span>
 <span id="cb12-53"><a href="#cb12-53" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-54"><a href="#cb12-54" aria-hidden="true" tabindex="-1"></a>보통의 회귀는 제곱오차를 최소화하며, 그 최소해는 조건부 *평균*입니다. 대신 조건부</span>
 <span id="cb12-55"><a href="#cb12-55" aria-hidden="true" tabindex="-1"></a>*분위수*를 추정하려면, 최소해가 분위수가 되는 손실이 필요합니다. 그 손실이</span>
@@ -1083,7 +1083,7 @@ Wen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2
 <span id="cb12-101"><a href="#cb12-101" aria-hidden="true" tabindex="-1"></a>제곱 손실을 핀볼 손실로 바꾸기만 하면 경사하강법이 평균 대신 분위수를 쫓습니다.</span>
 <span id="cb12-102"><a href="#cb12-102" aria-hidden="true" tabindex="-1"></a>모델의 나머지는 아무것도 바꿀 필요가 없습니다.</span>
 <span id="cb12-103"><a href="#cb12-103" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-104"><a href="#cb12-104" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3. 점 예측에 고정 구간을 더하는 방식이 실패하는 이유</span></span>
+<span id="cb12-104"><a href="#cb12-104" aria-hidden="true" tabindex="-1"></a><span class="fu">## 점 예측에 고정 구간을 더하는 방식이 실패하는 이유</span></span>
 <span id="cb12-105"><a href="#cb12-105" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-106"><a href="#cb12-106" aria-hidden="true" tabindex="-1"></a>흔한 지름길은 점 예측을 유지한 채 나중에 구간을 덧붙이는 것입니다. 제곱오차로</span>
 <span id="cb12-107"><a href="#cb12-107" aria-hidden="true" tabindex="-1"></a>평균을 예측하고, 잔차의 표준편차를 측정한 뒤, 정규성을 가정해 80% 구간으로</span>
@@ -1218,7 +1218,7 @@ Wen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2
 <span id="cb12-242"><a href="#cb12-242" aria-hidden="true" tabindex="-1"></a>불확실성을 표현할 수 없지만, 분위수 회귀는 각 분위수가 입력의 완전한 함수이므로</span>
 <span id="cb12-243"><a href="#cb12-243" aria-hidden="true" tabindex="-1"></a>그것을 표현할 수 있습니다.</span>
 <span id="cb12-244"><a href="#cb12-244" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-245"><a href="#cb12-245" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4. 분위수 교차: 반드시 지켜봐야 할 하나의 실패 양상</span></span>
+<span id="cb12-245"><a href="#cb12-245" aria-hidden="true" tabindex="-1"></a><span class="fu">## 분위수 교차: 반드시 지켜봐야 할 하나의 실패 양상</span></span>
 <span id="cb12-246"><a href="#cb12-246" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-247"><a href="#cb12-247" aria-hidden="true" tabindex="-1"></a>각 분위수를 적합하는 것으로 이야기가 끝나지는 않습니다. 분위수 수준들이 함께</span>
 <span id="cb12-248"><a href="#cb12-248" aria-hidden="true" tabindex="-1"></a>학습되지만 그 순서를 구조적으로 강제하는 것은 없으므로, 모델이 이따금</span>
@@ -1244,7 +1244,7 @@ Wen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2
 <span id="cb12-270"><a href="#cb12-270" aria-hidden="true" tabindex="-1"></a>취한 접근입니다 <span class="co">[</span><span class="ot">@wen2017mqrnn</span><span class="co">]</span>. 정렬은 분포 가정 없이 유효한 수선입니다. 분위수를</span>
 <span id="cb12-271"><a href="#cb12-271" aria-hidden="true" tabindex="-1"></a>재정렬하는 것은 결코 핀볼 손실을 증가시키지 않기 때문입니다.</span>
 <span id="cb12-272"><a href="#cb12-272" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-273"><a href="#cb12-273" aria-hidden="true" tabindex="-1"></a><span class="fu">## 5. 분포 전체를 채점하기: CRPS</span></span>
+<span id="cb12-273"><a href="#cb12-273" aria-hidden="true" tabindex="-1"></a><span class="fu">## 분포 전체를 채점하기: CRPS</span></span>
 <span id="cb12-274"><a href="#cb12-274" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-275"><a href="#cb12-275" aria-hidden="true" tabindex="-1"></a>커버리지는 교정을 확인하지만, 좋은 확률적 예측은 **선명(sharp)**하기도 해야</span>
 <span id="cb12-276"><a href="#cb12-276" aria-hidden="true" tabindex="-1"></a>합니다. 교정을 유지하면서도 가능한 한 집중되어 있어야 한다는 뜻입니다. 이 둘을 함께</span>
@@ -1282,7 +1282,7 @@ Wen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2
 <span id="cb12-310"><a href="#cb12-310" aria-hidden="true" tabindex="-1"></a>줍니다. 바로 이 때문에 CRPS와 커버리지를 *함께* 보고합니다. 커버리지는 과신을,</span>
 <span id="cb12-311"><a href="#cb12-311" aria-hidden="true" tabindex="-1"></a>CRPS는 쓸모없이 넓은 헤징을 각각 방어합니다.</span>
 <span id="cb12-312"><a href="#cb12-312" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-313"><a href="#cb12-313" aria-hidden="true" tabindex="-1"></a><span class="fu">## 6. 손실에서 모델로: DeepAR, TFT, 그리고 두 계열</span></span>
+<span id="cb12-313"><a href="#cb12-313" aria-hidden="true" tabindex="-1"></a><span class="fu">## 손실에서 모델로: DeepAR, TFT, 그리고 두 계열</span></span>
 <span id="cb12-314"><a href="#cb12-314" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-315"><a href="#cb12-315" aria-hidden="true" tabindex="-1"></a>위의 모든 것은 *손실*만 유일한 변수가 되도록 자명한 MLP를 씁니다. 실제 확률적</span>
 <span id="cb12-316"><a href="#cb12-316" aria-hidden="true" tabindex="-1"></a>예측기는 이 장치를 시퀀스 모델로 바꾸는 방식에서 갈리며, 두 계열로 나뉩니다.</span>
@@ -1302,7 +1302,7 @@ Wen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2
 <span id="cb12-330"><a href="#cb12-330" aria-hidden="true" tabindex="-1"></a>때에만 그렇습니다. 틀린 분포족은 틀린 형태를 미리 박아 넣습니다. 어느 쪽을 고를지는</span>
 <span id="cb12-331"><a href="#cb12-331" aria-hidden="true" tabindex="-1"></a>당신의 데이터에 대해 분포 형태를 확정할 수 있는지에 달려 있습니다.</span>
 <span id="cb12-332"><a href="#cb12-332" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-333"><a href="#cb12-333" aria-hidden="true" tabindex="-1"></a><span class="fu">## 7. 한계</span></span>
+<span id="cb12-333"><a href="#cb12-333" aria-hidden="true" tabindex="-1"></a><span class="fu">## 한계</span></span>
 <span id="cb12-334"><a href="#cb12-334" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-335"><a href="#cb12-335" aria-hidden="true" tabindex="-1"></a>여기 실험은 각 지표의 작동 원리가 보이도록 단일 특징의 합성 데이터를 씁니다.</span>
 <span id="cb12-336"><a href="#cb12-336" aria-hidden="true" tabindex="-1"></a>절댓값은 데이터와 작은 모델에 의존하며, 실제 배포에는 설명을 위해 쓴 i.i.d. 분할이</span>
@@ -1314,7 +1314,7 @@ Wen, Ruofeng, Kari Torkkola, Balakrishnan Narayanaswamy, 와/과 Dhruv Madeka. 2
 <span id="cb12-342"><a href="#cb12-342" aria-hidden="true" tabindex="-1"></a>정확하며, 이 어떤 점수도 구간 폭이 당면한 의사결정에 실제로 실행 가능한지 확인하는</span>
 <span id="cb12-343"><a href="#cb12-343" aria-hidden="true" tabindex="-1"></a>일을 대신해 주지는 않습니다.</span>
 <span id="cb12-344"><a href="#cb12-344" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-345"><a href="#cb12-345" aria-hidden="true" tabindex="-1"></a><span class="fu">## 8. 결론</span></span>
+<span id="cb12-345"><a href="#cb12-345" aria-hidden="true" tabindex="-1"></a><span class="fu">## 결론</span></span>
 <span id="cb12-346"><a href="#cb12-346" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-347"><a href="#cb12-347" aria-hidden="true" tabindex="-1"></a>점 예측은 어떤 기획자도 실제로 던지지 않은 질문에 답합니다. 확률적 예측으로 가는</span>
 <span id="cb12-348"><a href="#cb12-348" aria-hidden="true" tabindex="-1"></a>발걸음은 보기보다 작습니다. 제곱 손실을 핀볼 손실로 바꾸면, 같은 아키텍처와 같은</span>
