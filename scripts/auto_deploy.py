@@ -60,7 +60,19 @@ def process_frontmatter(qmd_path, language):
     date_match = re.search(r'^date:\s*["\']?(.*?)["\']?$', frontmatter_raw, re.MULTILINE)
     
     title = title_match.group(1) if title_match else "untitled"
-    date = date_match.group(1) if date_match else "2026-07-05"
+    original_date = date_match.group(1) if date_match else ""
+    
+    # Automatically force date to today's date (deployment date)
+    import datetime
+    today_str = datetime.date.today().strftime('%Y-%m-%d')
+    if original_date != today_str:
+        print(f"[{language.upper()}] Updating post date from '{original_date}' to today's date '{today_str}' for deployment.")
+        if original_date:
+            frontmatter_raw = re.sub(r'^date:.*$', f'date: "{today_str}"', frontmatter_raw, flags=re.MULTILINE)
+        else:
+            frontmatter_raw += f'\ndate: "{today_str}"'
+            
+    date = today_str
     
     # Replace author
     frontmatter_raw = re.sub(r'^author:.*$', 'author: "Prof. Shin"', frontmatter_raw, flags=re.MULTILINE)
