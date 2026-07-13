@@ -77,8 +77,19 @@ def process_frontmatter(qmd_path, language):
     # Ensure thumbnail.jpg is referenced
     frontmatter_raw = re.sub(r'^image:.*$', 'image: "thumbnail.jpg"', frontmatter_raw, flags=re.MULTILINE)
     
-    # Save modified qmd
-    new_content = f"---{frontmatter_raw}---{body}"
+    # Insert hero image at the top of the body for SEO
+    hero_markdown = (
+        '\n\n![[개념 시각화] 본 포스트의 핵심 개념을 요약한 다이어그램입니다.](thumbnail.jpg){fig-align="center" width="90%"}\n\n'
+        if language == "ko" else
+        '\n\n![[Concept Visualization] A diagram summarizing the key concepts of this post.](thumbnail.jpg){fig-align="center" width="90%"}\n\n'
+    )
+    
+    # Avoid duplicate injection if already present
+    if "thumbnail.jpg" not in body:
+        new_content = f"---{frontmatter_raw}---{hero_markdown}{body}"
+    else:
+        new_content = f"---{frontmatter_raw}---{body}"
+        
     with open(qmd_path, 'w', encoding='utf-8') as f:
         f.write(new_content)
         
