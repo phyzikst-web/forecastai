@@ -31,5 +31,8 @@
   },
   "posts/2026-07-05-physics-informed-time-series/index.qmd": {
     "index.html": "90ce215c"
+  },
+  "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_ko.qmd": {
+    "index_ko.html": "5e8555d2"
   }
 }
