@@ -25,7 +25,7 @@ execute:
   eval: true
   warning: false
   message: false
-  freeze: auto
+  freeze: true
 format:
   html:
     code-copy: true

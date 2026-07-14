@@ -2,7 +2,7 @@
   "description": "ForecastAI 일일 자동 포스팅 스케줄 작업용 주제 큐. 매일 오전 9시 실행 시 status가 pending인 항목 중 order가 가장 작은 것을 선택해 초안을 작성한다. 두 시리즈(pytorch, llm)를 교대로 진행하도록 order가 이미 인터리빙되어 있다.",
   "instructions_file": "ForecastAI_마스터_프롬프트_v1_3.md",
   "queue": [
-    {"order": 1, "series": "pytorch", "series_no": 1, "title": "PyTorch 텐서 연산과 자동미분: autograd가 실제로 하는 일", "slug": "autograd-tensor-operations", "level": "L2", "status": "pending"},
+    {"order": 1, "series": "pytorch", "series_no": 1, "title": "PyTorch 텐서 연산과 자동미분: autograd가 실제로 하는 일", "slug": "autograd-tensor-operations", "level": "L2", "status": "drafted", "drafted_date": "2026-07-14", "path_slug": "2026-07-14-autograd-tensor-operations"},
     {"order": 2, "series": "llm", "series_no": 1, "title": "Tokenization 완전 분해: BPE, WordPiece, 숫자 토큰의 문제", "slug": "tokenization-bpe-wordpiece", "level": "L2", "status": "pending"},
     {"order": 3, "series": "pytorch", "series_no": 2, "title": "DataLoader 완전 해부: 시계열 슬라이딩 윈도우 구현", "slug": "dataloader-sliding-window", "level": "L2", "status": "pending"},
     {"order": 4, "series": "llm", "series_no": 2, "title": "Positional Encoding 비교: Sinusoidal vs RoPE vs ALiBi", "slug": "positional-encoding-sinusoidal-rope-alibi", "level": "L3", "status": "pending"},

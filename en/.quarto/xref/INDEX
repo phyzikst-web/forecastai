@@ -1,35 +1,41 @@
 {
-  "posts/2026-04-10-transfer-entropy-lstm/index.qmd": {
-    "index.html": "a2c8f743"
-  },
-  "index.qmd": {
-    "index.html": "9dd78eb7"
+  "posts/2026-07-14-what-autograd-actually-does-tensor-operations-and-the-backward-pass-in-pytorch/index.qmd": {
+    "index.html": "ddd63e13"
   },
   "research.qmd": {
-    "research.html": "c37656b9"
+    "research.html": "88d14541"
   },
   "contact.qmd": {
-    "contact.html": "dabfd6a4"
-  },
-  "about.qmd": {
-    "about.html": "4046ffff"
-  },
-  "categories.qmd": {
-    "categories.html": "e25a045c"
-  },
-  "privacy-policy.qmd": {
-    "privacy-policy.html": "523ccb98"
+    "contact.html": "20f092eb"
   },
   "posts/2026-06-30-multi-step-forecasting-strategies/index.qmd": {
-    "index.html": "50b4982d"
+    "index.html": "17ef5574"
   },
   "posts/2026-07-02-informer-patchtst-attention-bottleneck/index.qmd": {
-    "index.html": "3e04c480"
+    "index.html": "80fb3d85"
   },
   "posts/2026-07-03-non-stationary-time-series-revin/index.qmd": {
-    "index.html": "52a8e582"
+    "index.html": "61aa2bd0"
+  },
+  "posts/2026-07-14-autograd-tensor-operations/index_en.qmd": {
+    "index_en.html": "4e8aa2b5"
   },
   "posts/2026-07-05-physics-informed-time-series/index.qmd": {
-    "index.html": "2d346a7c"
+    "index.html": "66836b30"
+  },
+  "posts/2026-07-10-probabilistic-forecasting-quantile-regression/index_en.qmd": {
+    "index_en.html": "32d9e287"
+  },
+  "index.qmd": {
+    "index.html": "19a209f6"
+  },
+  "about.qmd": {
+    "about.html": "40244f15"
+  },
+  "categories.qmd": {
+    "categories.html": "e7a0d07a"
+  },
+  "privacy-policy.qmd": {
+    "privacy-policy.html": "97c25013"
   }
 }

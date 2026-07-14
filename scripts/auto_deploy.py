@@ -76,6 +76,8 @@ def process_frontmatter(qmd_path, language):
     
     # Replace author
     frontmatter_raw = re.sub(r'^author:.*$', 'author: "Prof. Shin"', frontmatter_raw, flags=re.MULTILINE)
+    # Replace bibliography to use the global shared bib file
+    frontmatter_raw = re.sub(r'^bibliography:.*$', 'bibliography: ../../references.bib', frontmatter_raw, flags=re.MULTILINE)
     # Replace freeze
     if re.search(r'^execute:', frontmatter_raw, re.MULTILINE):
         frontmatter_raw = re.sub(r'freeze:.*$', 'freeze: true', frontmatter_raw, flags=re.MULTILINE)
