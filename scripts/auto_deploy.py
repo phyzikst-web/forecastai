@@ -62,6 +62,46 @@ def process_frontmatter(qmd_path, language):
     title = title_match.group(1) if title_match else "untitled"
     original_date = date_match.group(1) if date_match else ""
     
+    # Auto-enrich categories based on title and body content
+    categories = []
+    categories_match = re.search(r'^categories:\s*\n((?:\s*-\s*.*?\n)+)', frontmatter_raw, re.MULTILINE)
+    inline_match = re.search(r'^categories:\s*\[(.*?)\]', frontmatter_raw, re.MULTILINE)
+    
+    if categories_match:
+        existing_block = categories_match.group(1)
+        categories = [line.strip().lstrip('-').strip() for line in existing_block.splitlines() if line.strip()]
+    elif inline_match:
+        categories = [c.strip().strip('"').strip("'") for c in inline_match.group(1).split(',') if c.strip()]
+        
+    keyword_rules = {
+        "autograd": (["autograd", "backward", "역전파"], ["Autograd", "역전파", "텐서"], ["Autograd", "Backpropagation", "Tensor"]),
+        "quantile": (["quantile", "probabilistic", "분위수", "확률적"], ["분위수 회귀", "확률적 예측"], ["Quantile Regression", "Probabilistic Forecasting"]),
+        "informer": (["informer", "patchtst", "attention", "어텐션"], ["Informer", "PatchTST", "어텐션 병목"], ["Informer", "PatchTST", "Attention Bottleneck"]),
+        "revin": (["revin", "non-stationary", "stationarity", "비정상", "정상성"], ["RevIN", "가역 정규화", "비정상 시계열"], ["RevIN", "Reversible Instance Normalization", "Non-stationary Time Series"]),
+        "multi-step": (["multi-step", "forecasting strategies", "멀티 스텝", "예측 전략"], ["멀티 스텝 예측", "예측 전략"], ["Multi-step Forecasting", "Forecasting Strategies"]),
+        "physics": (["physics-informed", "pinn", "물리 제약", "물리 정보"], ["물리 제약 신경망", "PINN", "물리 정보"], ["Physics-informed Neural Networks", "PINN", "Physics-informed"]),
+    }
+    
+    full_text_to_scan = (title + " " + body).lower()
+    new_tags = []
+    for key, (keywords, ko_tags, en_tags) in keyword_rules.items():
+        if any(kw.lower() in full_text_to_scan for kw in keywords):
+            tags_to_add = ko_tags if language == "ko" else en_tags
+            for tag in tags_to_add:
+                if tag not in categories and tag not in new_tags:
+                    new_tags.append(tag)
+                    
+    if new_tags:
+        print(f"[{language.upper()}] Automatically enriching categories: {new_tags}")
+        categories.extend(new_tags)
+        categories_yaml = "categories:\n" + "\n".join(f"  - {c}" for c in categories)
+        if categories_match:
+            frontmatter_raw = frontmatter_raw.replace(categories_match.group(0), categories_yaml + "\n")
+        elif inline_match:
+            frontmatter_raw = frontmatter_raw.replace(inline_match.group(0), categories_yaml)
+        else:
+            frontmatter_raw += "\n" + categories_yaml
+    
     # Automatically force date to today's date (deployment date)
     import datetime
     today_str = datetime.date.today().strftime('%Y-%m-%d')

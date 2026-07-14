@@ -140,12 +140,6 @@ categories:
   - Data Science
   - Artificial Intelligence
   - Topic Category
-tags:
-  - keyword-from-title
-  - key-concept-1
-  - key-concept-2
-  - method-or-model
-  - application-domain
 image: "thumbnail.png"
 description: |
   A concise description of the problem, method, and value of the article.
@@ -178,12 +172,6 @@ categories:
   - 데이터과학
   - 인공지능
   - 주제별 분류
-tags:
-  - 제목-핵심어
-  - 핵심개념-1
-  - 핵심개념-2
-  - 방법론-또는-모델명
-  - 적용-도메인
 image: "thumbnail.png"
 description: |
   글에서 다루는 핵심 문제와 방법론, 독자가 얻을 내용을 자연스러운 한국어로 설명한다.
@@ -207,8 +195,6 @@ format:
 ---
 ```
 
-**태그(`tags`) 작성 기준**: 글 제목과 본문 핵심 단어를 반드시 포함한다. 최소 5개 이상 작성한다. 태그는 구체적이고 검색 가능한 단어·구로 구성하며, 다음 범주를 우선 채운다: ① 제목의 핵심 키워드, ② 주요 방법론·모델명(예: `time-series`, `transfer-entropy`, `LSTM`), ③ 적용 도메인(예: `PM2.5`, `atmospheric-prediction`), ④ 주요 개념(예: `causal-inference`, `interpretability`), ⑤ 기술 수준·유형(예: `tutorial`, `paper-review`). 영문 태그는 소문자·하이픈 연결, 한글 태그는 자연스러운 명사형으로 작성한다. `categories`와 중복되어도 되나, 태그는 categories보다 구체적인 수준으로 작성한다.
-
 출력 순서: ① 영문판 파일 경로 → ② 영문판 전체 `.qmd` → ③ 한글판 파일 경로 → ④ 한글판 전체 `.qmd`. 최종 원고 외의 설명·작성 과정·검색 과정·사과·추가 질문은 출력하지 않는다.
 
 **최종 결과는 실제 `.qmd` 파일로 생성해 제공한다.** 채팅 본문에 코드 블록으로만 보여 주는 데 그치지 않고, 위 경로 구조(`posts/...`, `ko/posts/...`)를 그대로 유지한 다운로드 가능한 파일로 출력한다. 참고문헌을 citation key(`@key` 방식)로 작성한 경우 함께 빌드할 수 있도록 `references.bib`도 같이 생성한다.
@@ -222,7 +208,6 @@ format:
 - 한글판이 '~입니다 / ~합니다' 존댓말로 일관되게 작성됨
 - 절 제목에 수동 번호(`1.`, `2.`)를 쓰지 않음(자동 번호에 맡김)
 - YAML에 `author:` 줄이 없고, `date:`가 작성 요청일로 되어 있음
-- `tags`가 5개 이상이고 제목·본문 핵심 단어를 포함하며, 방법론·도메인·개념·유형 범주를 고루 갖춤
 - 이해를 돕는 시각화(코드로 생성한 그림)를 충분히 넣고, 각 그림을 본문에서 해석함
 - 최종 원고가 경로 구조를 유지한 `.qmd` 파일로 출력됨(필요 시 references.bib 포함)
 - 모든 코드가 보이게(echo) 작성되고 실행 결과가 출력되며, 코드와 출력이 코드 블록 안에 표시되고, 성능 수치는 실제 실행값임

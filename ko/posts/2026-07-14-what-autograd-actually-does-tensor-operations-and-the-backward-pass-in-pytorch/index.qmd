@@ -5,6 +5,9 @@ categories:
   - 데이터과학
   - 인공지능
   - PyTorch
+  - Autograd
+  - 역전파
+  - 텐서
 image: "thumbnail.jpg"
 description: |
   PyTorch의 `.backward()`는 대개 정답 그래디언트를 돌려주는 블랙박스로 다뤄집니다.

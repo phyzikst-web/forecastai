@@ -5,6 +5,9 @@ categories:
   - Data Science
   - Artificial Intelligence
   - PyTorch
+  - Autograd
+  - Backpropagation
+  - Tensor
 image: "thumbnail.jpg"
 description: |
   PyTorch's `.backward()` is often treated as a black box that returns the right
