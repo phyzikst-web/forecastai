@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Prof.&nbsp;Shin">
+<meta name="dcterms.date" content="2026-07-14">
+<meta name="description" content="PyTorch’s .backward() is often treated as a black box that returns the right gradient. This article opens the box: leaf tensors, the dynamic graph built by every tensor operation, and how the chain rule is executed in reverse — verified against analytic and numerical gradients, and used to train a small network with no nn.Module and no optimizer.">
+
+<title>What Autograd Actually Does: Tensor Operations and the Backward Pass in PyTorch – ForecastAI</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-de63f62b328812d8e578a4d74e282472.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-c7169bb5702ee40d3607d6e1f3f9db3c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Forecast<span style="color:#F97316;">AI</span></span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">HOME</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">ABOUT</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../categories.html"> 
+<span class="menu-text">CATEGORIES</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../research.html"> 
+<span class="menu-text">RESEARCH</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../contact.html"> 
+<span class="menu-text">CONTACT</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../ko/"> 
+<span class="menu-text">🇰🇷 한국어</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/phyzikst-web"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#the-one-line-that-hides-everything" id="toc-the-one-line-that-hides-everything" class="nav-link active" data-scroll-target="#the-one-line-that-hides-everything">The one line that hides everything</a></li>
+  <li><a href="#leaf-tensors-requires_grad-and-what-a-graph-node-is" id="toc-leaf-tensors-requires_grad-and-what-a-graph-node-is" class="nav-link" data-scroll-target="#leaf-tensors-requires_grad-and-what-a-graph-node-is">Leaf tensors, <code>requires_grad</code>, and what a graph node is</a></li>
+  <li><a href="#chain-rule-in-reverse-the-shape-of-the-backward-pass" id="toc-chain-rule-in-reverse-the-shape-of-the-backward-pass" class="nav-link" data-scroll-target="#chain-rule-in-reverse-the-shape-of-the-backward-pass">Chain rule in reverse: the shape of the backward pass</a></li>
+  <li><a href="#sanity-check-autograd-vs-a-numerical-gradient" id="toc-sanity-check-autograd-vs-a-numerical-gradient" class="nav-link" data-scroll-target="#sanity-check-autograd-vs-a-numerical-gradient">Sanity check: autograd vs a numerical gradient</a></li>
+  <li><a href="#a-training-loop-with-only-autograd" id="toc-a-training-loop-with-only-autograd" class="nav-link" data-scroll-target="#a-training-loop-with-only-autograd">A training loop with only autograd</a></li>
+  <li><a href="#the-pitfalls-that-produce-silent-wrong-gradients" id="toc-the-pitfalls-that-produce-silent-wrong-gradients" class="nav-link" data-scroll-target="#the-pitfalls-that-produce-silent-wrong-gradients">The pitfalls that produce silent wrong gradients</a></li>
+  <li><a href="#what-autograd-costs-and-when-no_grad-matters" id="toc-what-autograd-costs-and-when-no_grad-matters" class="nav-link" data-scroll-target="#what-autograd-costs-and-when-no_grad-matters">What autograd costs (and when <code>no_grad</code> matters)</a></li>
+  <li><a href="#when-autograd-is-not-the-right-tool" id="toc-when-autograd-is-not-the-right-tool" class="nav-link" data-scroll-target="#when-autograd-is-not-the-right-tool">When autograd is not the right tool</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">What Autograd Actually Does: Tensor Operations and the Backward Pass in PyTorch</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Data Science</div>
+    <div class="quarto-category">Artificial Intelligence</div>
+    <div class="quarto-category">PyTorch</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    <p>PyTorch’s <code>.backward()</code> is often treated as a black box that returns the right gradient. This article opens the box: leaf tensors, the dynamic graph built by every tensor operation, and how the chain rule is executed in reverse — verified against analytic and numerical gradients, and used to train a small network with no <code>nn.Module</code> and no optimizer.</p>
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Prof.&nbsp;Shin </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">July 14, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="thumbnail.jpg" class="img-fluid figure-img" style="width:90.0%"></p>
+<figcaption>[Concept Visualization] A diagram summarizing the key concepts of this post.</figcaption>
+</figure>
+</div>
+<section id="the-one-line-that-hides-everything" class="level2">
+<h2 class="anchored" data-anchor-id="the-one-line-that-hides-everything">The one line that hides everything</h2>
+<p>Every PyTorch training loop contains the same three lines:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>loss <span class="op">=</span> criterion(model(x), y)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>loss.backward()</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>optimizer.step()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The middle line does the work that makes deep learning possible: it computes the gradient of the loss with respect to every parameter in the model. That single call replaces what used to be pages of hand-derived derivatives, and it does so by walking a graph that PyTorch has silently built during the forward pass. For research code that stays inside the standard modules, treating <code>backward()</code> as a black box is fine. It stops being fine the moment you write a custom loss, a non-standard layer, a physics-informed regularizer, or a training loop that mixes multiple objectives — because then the graph you thought PyTorch was building is not the graph it actually built, and gradients silently become wrong.</p>
+<p>This article is about the layer of PyTorch that most tutorials skip: what <code>requires_grad</code> really marks, how the computational graph is assembled by tensor operations, and what <code>backward()</code> does step by step. We verify the mechanics against both an analytic gradient (where the truth is known in closed form) and a numerical gradient (a finite-difference check that treats autograd as an oracle to be tested), and finish by training a small network with autograd alone — no <code>nn.Module</code>, no <code>torch.optim</code> — so the loop is transparent. The design of the system, and the terminology used below, follows <span class="citation" data-cites="paszke2019">Paszke et al. (<a href="#ref-paszke2019" role="doc-biblioref">2019</a>)</span>; the general reverse-mode automatic differentiation on which it rests is covered in <span class="citation" data-cites="baydin2018">Baydin et al. (<a href="#ref-baydin2018" role="doc-biblioref">2018</a>)</span> and formalized in <span class="citation" data-cites="griewank2008">Griewank and Walther (<a href="#ref-griewank2008" role="doc-biblioref">2008</a>)</span>.</p>
+</section>
+<section id="leaf-tensors-requires_grad-and-what-a-graph-node-is" class="level2">
+<h2 class="anchored" data-anchor-id="leaf-tensors-requires_grad-and-what-a-graph-node-is">Leaf tensors, <code>requires_grad</code>, and what a graph node is</h2>
+<p>A PyTorch tensor is not just a numeric array. Every tensor carries three pointers that matter for autograd: <code>requires_grad</code> (a boolean), <code>grad_fn</code> (the operation that produced it, or <code>None</code> if it was created directly by the user), and <code>grad</code> (a buffer for accumulated gradients, filled by <code>backward()</code>). A tensor with <code>grad_fn = None</code> and <code>requires_grad = True</code> is called a <em>leaf tensor</em>. Model parameters are leaf tensors; anything computed from them is not.</p>
+<div id="leaf-tensor-basics" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>torch.manual_seed(<span class="dv">0</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> torch.tensor([<span class="fl">2.0</span>, <span class="fl">3.0</span>], requires_grad<span class="op">=</span><span class="va">True</span>)  <span class="co"># leaf</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>y <span class="op">=</span> (x <span class="op">**</span> <span class="dv">2</span>).<span class="bu">sum</span>() <span class="op">+</span> <span class="dv">3</span> <span class="op">*</span> x[<span class="dv">0</span>] <span class="op">*</span> x[<span class="dv">1</span>]              <span class="co"># not a leaf</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"x.requires_grad:"</span>, x.requires_grad, <span class="st">"| x.is_leaf:"</span>, x.is_leaf,</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>      <span class="st">"| x.grad_fn:"</span>, x.grad_fn)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"y.requires_grad:"</span>, y.requires_grad, <span class="st">"| y.is_leaf:"</span>, y.is_leaf,</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>      <span class="st">"| y.grad_fn:"</span>, y.grad_fn)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>x.requires_grad: True | x.is_leaf: True | x.grad_fn: None
+y.requires_grad: True | y.is_leaf: False | y.grad_fn: &lt;AddBackward0 object at 0x108942ad0&gt;</code></pre>
+</div>
+</div>
+<p>The forward computation of <code>y</code> did more than compute a number. Every operator (<code>**</code>, <code>sum</code>, <code>*</code>, <code>+</code>) attached a node to a directed acyclic graph, and each node stored the information needed to compute a local Jacobian on the return trip. The graph is <em>dynamic</em>: it is built again every forward pass, and destroyed after <code>backward()</code> unless you ask otherwise. When you call <code>y.backward()</code>, PyTorch walks that graph in reverse post-order and multiplies local Jacobians together — the chain rule, executed once per edge.</p>
+<p>For <span class="math inline">\(y = x_0^2 + x_1^2 + 3 x_0 x_1\)</span> the derivatives are</p>
+<p><span id="eq-analytic"><span class="math display">\[
+\frac{\partial y}{\partial x_0} = 2 x_0 + 3 x_1,
+\qquad
+\frac{\partial y}{\partial x_1} = 2 x_1 + 3 x_0,
+\tag{1}\]</span></span></p>
+<p>so at <span class="math inline">\(x = (2, 3)\)</span> the gradient should be <span class="math inline">\((2\cdot 2 + 3\cdot 3,\ 2\cdot 3 + 3\cdot 2) = (13, 12)\)</span>.</p>
+<div id="backward-check" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>y.backward()</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"y       ="</span>, y.item())</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"x.grad  ="</span>, x.grad.tolist())</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"analytic:"</span>, [<span class="dv">2</span><span class="op">*</span><span class="fl">2.0</span> <span class="op">+</span> <span class="dv">3</span><span class="op">*</span><span class="fl">3.0</span>, <span class="dv">2</span><span class="op">*</span><span class="fl">3.0</span> <span class="op">+</span> <span class="dv">3</span><span class="op">*</span><span class="fl">2.0</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>y       = 31.0
+x.grad  = [13.0, 12.0]
+analytic: [13.0, 12.0]</code></pre>
+</div>
+</div>
+<p>Two things about that output. First, <code>x.grad</code> was <code>None</code> before the call and now holds the gradient — it is <em>accumulated</em>, not overwritten, which is why training loops call <code>zero_grad()</code> at the top. Second, <code>y</code> had to be a scalar for <code>backward()</code> to run without arguments; a non-scalar output needs a <code>grad_outputs</code> argument that specifies the upstream gradient. That detail is what causes the confusing “grad can be implicitly created only for scalar outputs” error when a beginner tries to call <code>backward()</code> on a batch of losses without reducing first.</p>
+</section>
+<section id="chain-rule-in-reverse-the-shape-of-the-backward-pass" class="level2">
+<h2 class="anchored" data-anchor-id="chain-rule-in-reverse-the-shape-of-the-backward-pass">Chain rule in reverse: the shape of the backward pass</h2>
+<p>The forward pass built a graph. The backward pass walks it. For a scalar loss <span class="math inline">\(L\)</span> and an intermediate tensor <span class="math inline">\(z\)</span> produced by an operation <span class="math inline">\(z = f(a, b)\)</span>, the local rule is</p>
+<p><span id="eq-chain"><span class="math display">\[
+\frac{\partial L}{\partial a}
+= \frac{\partial L}{\partial z} \cdot \frac{\partial z}{\partial a},
+\qquad
+\frac{\partial L}{\partial b}
+= \frac{\partial L}{\partial z} \cdot \frac{\partial z}{\partial b}.
+\tag{2}\]</span></span></p>
+<p>Reverse-mode automatic differentiation, as formalized by <span class="citation" data-cites="griewank2008">Griewank and Walther (<a href="#ref-griewank2008" role="doc-biblioref">2008</a>)</span>, is exactly this rule applied once per node, in reverse topological order, so that by the time we reach a leaf tensor we have accumulated <span class="math inline">\(\partial L / \partial \text{leaf}\)</span> as a sum over every path from that leaf to <span class="math inline">\(L\)</span>. The graph structure — a DAG whose sources are leaves and whose sink is the scalar loss — is what makes this efficient: intermediate results <span class="math inline">\(\partial L / \partial z\)</span> are shared across all paths that pass through <span class="math inline">\(z\)</span>, which is why reverse-mode costs roughly one extra forward-pass worth of compute regardless of the number of parameters <span class="citation" data-cites="baydin2018">(<a href="#ref-baydin2018" role="doc-biblioref">Baydin et al. 2018</a>)</span>.</p>
+<p><a href="#fig-graph" class="quarto-xref">Figure&nbsp;1</a> sketches the graph for the tiny expression from above. Each solid edge is a data dependency created in the forward pass; each dashed arrow is the local Jacobian propagated backward from <code>y</code>.</p>
+<div id="cell-fig-graph" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.patches <span class="im">as</span> mpatches</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">7.5</span>, <span class="fl">3.6</span>))</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>nodes <span class="op">=</span> {</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"x0"</span>:  (<span class="fl">0.0</span>, <span class="fl">2.0</span>),</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"x1"</span>:  (<span class="fl">0.0</span>, <span class="fl">0.0</span>),</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"s0"</span>:  (<span class="fl">1.6</span>, <span class="fl">2.4</span>),   <span class="co"># x0^2</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"s1"</span>:  (<span class="fl">1.6</span>, <span class="op">-</span><span class="fl">0.4</span>),  <span class="co"># x1^2</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"p"</span>:   (<span class="fl">1.6</span>, <span class="fl">1.0</span>),   <span class="co"># x0*x1</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">"3p"</span>:  (<span class="fl">3.0</span>, <span class="fl">1.0</span>),   <span class="co"># 3 * x0*x1</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"y"</span>:   (<span class="fl">4.6</span>, <span class="fl">1.0</span>),</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>labels <span class="op">=</span> {</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">"x0"</span>: <span class="st">"$x_0$"</span>, <span class="st">"x1"</span>: <span class="st">"$x_1$"</span>,</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">"s0"</span>: <span class="st">"$x_0^2$"</span>, <span class="st">"s1"</span>: <span class="st">"$x_1^2$"</span>,</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    <span class="st">"p"</span>:  <span class="st">"$x_0 x_1$"</span>, <span class="st">"3p"</span>: <span class="st">"$3</span><span class="er">\</span><span class="st">,x_0 x_1$"</span>, <span class="st">"y"</span>: <span class="st">"$y$"</span>,</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> k,(a,b) <span class="kw">in</span> nodes.items():</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    ax.scatter([a],[b], s<span class="op">=</span><span class="dv">1400</span>,</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>               facecolor<span class="op">=</span><span class="st">"#eef2ff"</span> <span class="cf">if</span> k <span class="kw">in</span> (<span class="st">"x0"</span>,<span class="st">"x1"</span>) <span class="cf">else</span> <span class="st">"#ffffff"</span>,</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>               edgecolor<span class="op">=</span><span class="st">"#333"</span>)</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>    ax.text(a, b, labels[k], ha<span class="op">=</span><span class="st">"center"</span>, va<span class="op">=</span><span class="st">"center"</span>, fontsize<span class="op">=</span><span class="dv">13</span>)</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> arrow(fr, to, style<span class="op">=</span><span class="st">"solid"</span>, color<span class="op">=</span><span class="st">"#333"</span>):</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    a,b <span class="op">=</span> nodes[fr]<span class="op">;</span> c,d <span class="op">=</span> nodes[to]</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>    ax.annotate(<span class="st">""</span>, xy<span class="op">=</span>(c,d), xytext<span class="op">=</span>(a,b),</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>                arrowprops<span class="op">=</span><span class="bu">dict</span>(arrowstyle<span class="op">=</span><span class="st">"-&gt;"</span>, color<span class="op">=</span>color,</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>                                linestyle<span class="op">=</span>style, lw<span class="op">=</span><span class="fl">1.4</span>,</span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>                                shrinkA<span class="op">=</span><span class="dv">22</span>, shrinkB<span class="op">=</span><span class="dv">22</span>))</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a><span class="co"># forward edges (solid)</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> e <span class="kw">in</span> [(<span class="st">"x0"</span>,<span class="st">"s0"</span>),(<span class="st">"x1"</span>,<span class="st">"s1"</span>),(<span class="st">"x0"</span>,<span class="st">"p"</span>),(<span class="st">"x1"</span>,<span class="st">"p"</span>),</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>          (<span class="st">"p"</span>,<span class="st">"3p"</span>),(<span class="st">"s0"</span>,<span class="st">"y"</span>),(<span class="st">"s1"</span>,<span class="st">"y"</span>),(<span class="st">"3p"</span>,<span class="st">"y"</span>)]:</span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>    arrow(<span class="op">*</span>e, style<span class="op">=</span><span class="st">"solid"</span>, color<span class="op">=</span><span class="st">"#333"</span>)</span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a><span class="co"># backward arrows on a couple of edges (dashed red)</span></span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> e <span class="kw">in</span> [(<span class="st">"y"</span>,<span class="st">"s0"</span>),(<span class="st">"y"</span>,<span class="st">"3p"</span>),(<span class="st">"3p"</span>,<span class="st">"p"</span>),(<span class="st">"p"</span>,<span class="st">"x0"</span>)]:</span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>    arrow(e[<span class="dv">0</span>], e[<span class="dv">1</span>], style<span class="op">=</span><span class="st">"dashed"</span>, color<span class="op">=</span><span class="st">"#c0392b"</span>)</span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>ax.set_xlim(<span class="op">-</span><span class="fl">0.8</span>, <span class="fl">5.4</span>)<span class="op">;</span> ax.set_ylim(<span class="op">-</span><span class="fl">1.4</span>, <span class="fl">3.2</span>)<span class="op">;</span> ax.axis(<span class="st">"off"</span>)</span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>solid <span class="op">=</span> mpatches.Patch(color<span class="op">=</span><span class="st">"#333"</span>,   label<span class="op">=</span><span class="st">"forward (data)"</span>)</span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>dash  <span class="op">=</span> mpatches.Patch(color<span class="op">=</span><span class="st">"#c0392b"</span>, label<span class="op">=</span><span class="st">"backward (∂L/∂·)"</span>)</span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>ax.legend(handles<span class="op">=</span>[solid, dash], loc<span class="op">=</span><span class="st">"lower center"</span>,</span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>          bbox_to_anchor<span class="op">=</span>(<span class="fl">0.5</span>, <span class="op">-</span><span class="fl">0.1</span>), ncol<span class="op">=</span><span class="dv">2</span>, frameon<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div id="fig-graph" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-graph-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-graph-output-1.png" width="710" height="339" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-graph-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Computational graph for <span class="math inline">\(y = x_0^2 + x_1^2 + 3 x_0 x_1\)</span>. Forward edges (solid) were created by operators during the forward pass; backward arrows (dashed) show which local partial derivative is propagated along each edge when <code>y.backward()</code> runs.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The picture is not decoration: it says that <code>x0.grad</code> is a <em>sum</em> of two contributions, one arriving through <span class="math inline">\(x_0^2 \to y\)</span> and one arriving through <span class="math inline">\(x_0 x_1 \to 3 x_0 x_1 \to y\)</span>. That is where the <span class="math inline">\(2 x_0\)</span> and the <span class="math inline">\(3 x_1\)</span> in <a href="#eq-analytic" class="quarto-xref">Equation&nbsp;1</a> come from, and it is why any operation that visits a leaf tensor more than once shows up in its gradient more than once.</p>
+</section>
+<section id="sanity-check-autograd-vs-a-numerical-gradient" class="level2">
+<h2 class="anchored" data-anchor-id="sanity-check-autograd-vs-a-numerical-gradient">Sanity check: autograd vs a numerical gradient</h2>
+<p>For anything more complicated than the toy above, we usually cannot write the analytic gradient by hand — that is the whole point of autograd. But we can still verify it, because the finite-difference gradient</p>
+<p><span id="eq-fd"><span class="math display">\[
+\frac{\partial L}{\partial \theta_i}
+\;\approx\;
+\frac{L(\theta + \varepsilon e_i) - L(\theta - \varepsilon e_i)}{2 \varepsilon},
+\tag{3}\]</span></span></p>
+<p>has an error of <span class="math inline">\(\mathcal{O}(\varepsilon^2)\)</span> from truncation plus roundoff on the order of the working precision, and gives us a black-box reference to compare autograd against. This check is what practitioners write when a new custom operator misbehaves: if autograd and finite differences agree to double-precision noise, the operator is almost certainly correct; if they do not, one of them is wrong and it is usually the new code.</p>
+<div id="numerical-check" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> f(w, x):</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    W1, W2 <span class="op">=</span> w</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    h <span class="op">=</span> torch.tanh(x <span class="op">@</span> W1)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (h <span class="op">@</span> W2).<span class="bu">sum</span>()</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>x  <span class="op">=</span> torch.randn(<span class="dv">4</span>, <span class="dv">3</span>, dtype<span class="op">=</span>torch.float64)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>W1 <span class="op">=</span> torch.randn(<span class="dv">3</span>, <span class="dv">5</span>, dtype<span class="op">=</span>torch.float64, requires_grad<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>W2 <span class="op">=</span> torch.randn(<span class="dv">5</span>,    dtype<span class="op">=</span>torch.float64, requires_grad<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>w  <span class="op">=</span> [W1, W2]</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>y <span class="op">=</span> f(w, x)</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>y.backward()</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> numerical_grad(f, w, x, eps<span class="op">=</span><span class="fl">1e-4</span>):</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    grads <span class="op">=</span> []</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> p <span class="kw">in</span> w:</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>        g <span class="op">=</span> torch.zeros_like(p)</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>        flat_g <span class="op">=</span> g.view(<span class="op">-</span><span class="dv">1</span>)<span class="op">;</span> flat_p <span class="op">=</span> p.data.view(<span class="op">-</span><span class="dv">1</span>)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(flat_p.numel()):</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>            orig <span class="op">=</span> flat_p[i].item()</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>            flat_p[i] <span class="op">=</span> orig <span class="op">+</span> eps<span class="op">;</span> y_pos <span class="op">=</span> f(w, x).item()</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>            flat_p[i] <span class="op">=</span> orig <span class="op">-</span> eps<span class="op">;</span> y_neg <span class="op">=</span> f(w, x).item()</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>            flat_p[i] <span class="op">=</span> orig</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>            flat_g[i] <span class="op">=</span> (y_pos <span class="op">-</span> y_neg) <span class="op">/</span> (<span class="dv">2</span> <span class="op">*</span> eps)</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>        grads.append(g)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> grads</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>num <span class="op">=</span> numerical_grad(f, w, x)</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"max |autograd - numeric| for W1: </span><span class="sc">{</span>(W1.grad <span class="op">-</span> num[<span class="dv">0</span>])<span class="sc">.</span><span class="bu">abs</span>()<span class="sc">.</span><span class="bu">max</span>()<span class="sc">:.3e}</span><span class="ss">"</span>)</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"max |autograd - numeric| for W2: </span><span class="sc">{</span>(W2.grad <span class="op">-</span> num[<span class="dv">1</span>])<span class="sc">.</span><span class="bu">abs</span>()<span class="sc">.</span><span class="bu">max</span>()<span class="sc">:.3e}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>max |autograd - numeric| for W1: 6.617e-09
+max |autograd - numeric| for W2: 1.187e-12</code></pre>
+</div>
+</div>
+<p>Both differences are at the level of finite-precision noise — orders of magnitude smaller than any gradient component we care about — which is the result we would want to see from a passing gradient check. The same routine is what <code>torch.autograd.gradcheck</code> runs internally, and writing custom <code>torch.autograd.Function</code> subclasses without a <code>gradcheck</code> step is a well-established way to ship silent bugs into a training run.</p>
+</section>
+<section id="a-training-loop-with-only-autograd" class="level2">
+<h2 class="anchored" data-anchor-id="a-training-loop-with-only-autograd">A training loop with only autograd</h2>
+<p>To make the graph and the backward pass concrete, here is a full training loop that uses neither <code>nn.Module</code> nor <code>torch.optim</code>. We fit a small two-layer network with a <span class="math inline">\(\tanh\)</span> hidden layer to <span class="math inline">\(y = 2\sin(x) + 0.3 x\)</span> with added noise, and do the parameter update inside a <code>torch.no_grad()</code> block, because the update itself must not be part of the graph.</p>
+<div id="train-from-scratch" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>torch.manual_seed(<span class="dv">1</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>N <span class="op">=</span> <span class="dv">200</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>x_data <span class="op">=</span> torch.linspace(<span class="op">-</span><span class="dv">3</span>, <span class="dv">3</span>, N).unsqueeze(<span class="dv">1</span>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>y_true <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> torch.sin(x_data) <span class="op">+</span> <span class="fl">0.3</span> <span class="op">*</span> x_data</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>y_data <span class="op">=</span> y_true <span class="op">+</span> <span class="fl">0.1</span> <span class="op">*</span> torch.randn_like(y_true)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>D_in, D_h, D_out <span class="op">=</span> <span class="dv">1</span>, <span class="dv">16</span>, <span class="dv">1</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>W1 <span class="op">=</span> (torch.randn(D_in, D_h) <span class="op">*</span> <span class="fl">0.5</span>).requires_grad_(<span class="va">True</span>)</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>b1 <span class="op">=</span> torch.zeros(D_h,           requires_grad<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>W2 <span class="op">=</span> (torch.randn(D_h, D_out) <span class="op">*</span> <span class="fl">0.5</span>).requires_grad_(<span class="va">True</span>)</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>b2 <span class="op">=</span> torch.zeros(D_out,         requires_grad<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>params <span class="op">=</span> [W1, b1, W2, b2]</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>lr, losses <span class="op">=</span> <span class="fl">5e-2</span>, []</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> step <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">600</span>):</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>    h      <span class="op">=</span> torch.tanh(x_data <span class="op">@</span> W1 <span class="op">+</span> b1)</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>    y_pred <span class="op">=</span> h <span class="op">@</span> W2 <span class="op">+</span> b2</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>    loss   <span class="op">=</span> ((y_pred <span class="op">-</span> y_data) <span class="op">**</span> <span class="dv">2</span>).mean()</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>    loss.backward()</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> torch.no_grad():</span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> p <span class="kw">in</span> params:</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>            p <span class="op">-=</span> lr <span class="op">*</span> p.grad</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>            p.grad.zero_()</span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>    losses.append(loss.item())</span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"initial loss: </span><span class="sc">{</span>losses[<span class="dv">0</span>]<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"final   loss: </span><span class="sc">{</span>losses[<span class="op">-</span><span class="dv">1</span>]<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>initial loss: 19.4342
+final   loss: 0.0513</code></pre>
+</div>
+</div>
+<p>Three details in that loop are worth staring at. First, the <code>with torch.no_grad()</code> block: the subtraction <code>p -= lr * p.grad</code> is itself a tensor operation, and if we did it outside <code>no_grad()</code> we would extend the graph into the next iteration and eventually run out of memory. Second, <code>p.grad.zero_()</code>: gradients are accumulated across <code>backward()</code> calls, and forgetting to zero them means every step’s gradient is polluted by every earlier step’s. Third, the loop rebuilds the graph from scratch on each iteration — this is what the “define-by-run” or “dynamic graph” description of PyTorch <span class="citation" data-cites="paszke2019">(<a href="#ref-paszke2019" role="doc-biblioref">Paszke et al. 2019</a>)</span> actually means, and it is why an <code>if</code> inside the forward pass is allowed to route different examples through different subgraphs without any special mechanism.</p>
+<p><a href="#fig-fit" class="quarto-xref">Figure&nbsp;2</a> compares the fit to the underlying clean signal, and <a href="#fig-loss" class="quarto-xref">Figure&nbsp;3</a> shows the loss trajectory on a log scale.</p>
+<div id="cell-fig-fit" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> torch.no_grad():</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    y_fit <span class="op">=</span> (torch.tanh(x_data <span class="op">@</span> W1 <span class="op">+</span> b1) <span class="op">@</span> W2 <span class="op">+</span> b2)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.6</span>))</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].scatter(x_data.numpy(), y_data.numpy(), s<span class="op">=</span><span class="dv">8</span>, color<span class="op">=</span><span class="st">"#888"</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>              label<span class="op">=</span><span class="st">"noisy data"</span>)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].plot(x_data.numpy(), y_true.numpy(), color<span class="op">=</span><span class="st">"#2c3e50"</span>,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>           lw<span class="op">=</span><span class="fl">1.4</span>, label<span class="op">=</span><span class="st">"clean signal"</span>)</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].plot(x_data.numpy(), y_fit.numpy(),  color<span class="op">=</span><span class="st">"#c0392b"</span>,</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>           lw<span class="op">=</span><span class="fl">1.8</span>, label<span class="op">=</span><span class="st">"autograd fit"</span>)</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].set_title(<span class="st">"fit"</span>)<span class="op">;</span> ax[<span class="dv">0</span>].set_xlabel(<span class="st">"x"</span>)<span class="op">;</span> ax[<span class="dv">0</span>].set_ylabel(<span class="st">"y"</span>)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].legend(frameon<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>resid <span class="op">=</span> (y_fit <span class="op">-</span> y_true).squeeze().numpy()</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].hist(resid, bins<span class="op">=</span><span class="dv">25</span>, color<span class="op">=</span><span class="st">"#7f8c8d"</span>, edgecolor<span class="op">=</span><span class="st">"white"</span>)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].axvline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">"#c0392b"</span>, lw<span class="op">=</span><span class="fl">1.2</span>)</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].set_title(<span class="st">"residual (fit − clean signal)"</span>)</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].set_xlabel(<span class="st">"residual"</span>)</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div id="fig-fit" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-fit-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-fit-output-1.png" width="950" height="336" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fit-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Fit after 600 steps of pure autograd training. The network learns the smooth signal from noisy data; the residuals concentrate around zero with the noise standard deviation we injected. What matters here is that every gradient update was computed by <code>backward()</code> alone — no optimizer, no module.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div id="cell-fig-loss" class="cell" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.6</span>, <span class="fl">3.4</span>))</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>ax.plot(losses, color<span class="op">=</span><span class="st">"#2c3e50"</span>, lw<span class="op">=</span><span class="fl">1.4</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>ax.set_yscale(<span class="st">"log"</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"step"</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">"MSE loss"</span>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div id="fig-loss" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-loss-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-loss-output-1.png" width="623" height="317" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-loss-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Training loss on a log scale. The curve drops sharply for the first ~100 steps as the network finds the coarse shape of the sine, then flattens as it fits residual curvature. There is no separate optimizer state (no momentum, no adaptive step size) — the smooth trajectory is what a raw SGD update on a well-conditioned problem looks like.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The fit is close to the underlying signal and the residuals concentrate around zero at roughly the noise standard deviation, which is the best any model can achieve on this task. The loss curve on log scale makes the two-phase behavior visible: a fast coarse fit followed by a slower refinement. Neither figure would tell us anything about autograd itself, but they confirm that a hand-written loop using only leaf tensors, <code>backward()</code>, and <code>no_grad()</code> is a complete replacement for the standard training API — which is what we needed to establish before writing anything non-standard on top of it.</p>
+</section>
+<section id="the-pitfalls-that-produce-silent-wrong-gradients" class="level2">
+<h2 class="anchored" data-anchor-id="the-pitfalls-that-produce-silent-wrong-gradients">The pitfalls that produce silent wrong gradients</h2>
+<p>Most autograd bugs do not raise an exception. They produce a gradient that is <em>plausible</em> but not the gradient of the loss you think you are minimizing. Four situations account for almost all of them.</p>
+<p><strong>In-place operations on tensors needed for backward.</strong> Operators like <code>x.add_</code>, <code>x.mul_</code>, and slice assignment (<code>x[0] = ...</code>) modify a tensor’s storage in place. If that tensor is needed to compute a backward Jacobian — for example, the pre-activation input to an operation whose derivative depends on it — PyTorch raises a runtime error. When it does not raise, it is because the in-place op happened to a tensor whose value was not needed for backward, and that is fine. The safe default is to write functional code (<code>y = x + 1</code> instead of <code>x += 1</code>) and only reach for in-place ops when profiling shows memory pressure.</p>
+<p><strong>Detaching accidentally.</strong> The methods <code>.detach()</code>, <code>.numpy()</code>, and <code>.item()</code>, and any wrapping of a tensor into a plain Python scalar, remove the tensor from the graph. This is often what you want in an evaluation block; it is disastrous inside a loss. A common failure mode is normalizing a target with statistics computed via <code>.numpy()</code> and then subtracting inside the loss: the target has no gradient path (which is correct), but if the same trick was used on the prediction, the loss has no gradient path either and the model never learns.</p>
+<p><strong>Forgetting <code>zero_grad</code>.</strong> As shown above, gradients accumulate. This is sometimes what you want — gradient accumulation across mini-batches to simulate a larger batch is exactly this behavior — but it must be <em>chosen</em>, not accidental. A missing <code>p.grad = None</code> or <code>zero_grad()</code> gives you the sum of every gradient the loop has ever computed, and training either explodes or collapses in a way that looks like a learning-rate problem.</p>
+<p><strong>Double backward and retained graphs.</strong> By default the graph is freed after <code>backward()</code>. If you need a higher-order derivative (say, a gradient penalty whose gradient you also want) you must pass <code>create_graph=True</code>; if you need to call <code>backward()</code> twice on the same graph you need <code>retain_graph=True</code>. Both cost memory. Both are correct tools when used deliberately and a sign of a design mistake when used out of frustration to make an error message go away.</p>
+</section>
+<section id="what-autograd-costs-and-when-no_grad-matters" class="level2">
+<h2 class="anchored" data-anchor-id="what-autograd-costs-and-when-no_grad-matters">What autograd costs (and when <code>no_grad</code> matters)</h2>
+<p>Building the graph is not free. Every operation records a <code>grad_fn</code>, holds references to inputs that will be needed for backward, and prevents those inputs from being reclaimed. The overhead is small relative to the arithmetic of a big matmul, but it compounds when the same forward is run many times for inference. A simple back-of-the-envelope comparison:</p>
+<div id="no-grad-cost" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> time</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>torch.manual_seed(<span class="dv">0</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>Wa <span class="op">=</span> torch.randn(<span class="dv">2048</span>, <span class="dv">2048</span>, requires_grad<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>Wb <span class="op">=</span> torch.randn(<span class="dv">2048</span>, <span class="dv">2048</span>, requires_grad<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>x_big <span class="op">=</span> torch.randn(<span class="dv">2048</span>, <span class="dv">2048</span>)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="co"># warmup</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">2</span>):</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    (x_big <span class="op">@</span> Wa <span class="op">@</span> Wb).<span class="bu">sum</span>().backward()</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    Wa.grad <span class="op">=</span> <span class="va">None</span><span class="op">;</span> Wb.grad <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>t0 <span class="op">=</span> time.perf_counter()</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">5</span>):</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    z <span class="op">=</span> (x_big <span class="op">@</span> Wa) <span class="op">@</span> Wb</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>    s <span class="op">=</span> z.<span class="bu">sum</span>()<span class="op">;</span> s.backward()</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>    Wa.grad <span class="op">=</span> <span class="va">None</span><span class="op">;</span> Wb.grad <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>t_train <span class="op">=</span> (time.perf_counter() <span class="op">-</span> t0) <span class="op">/</span> <span class="dv">5</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>t0 <span class="op">=</span> time.perf_counter()</span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> torch.no_grad():</span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">5</span>):</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>        z <span class="op">=</span> (x_big <span class="op">@</span> Wa) <span class="op">@</span> Wb</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>        s <span class="op">=</span> z.<span class="bu">sum</span>()</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>t_infer <span class="op">=</span> (time.perf_counter() <span class="op">-</span> t0) <span class="op">/</span> <span class="dv">5</span></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"forward + backward:     </span><span class="sc">{</span>t_train<span class="op">*</span><span class="dv">1000</span><span class="sc">:.1f}</span><span class="ss"> ms"</span>)</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"forward under no_grad:  </span><span class="sc">{</span>t_infer<span class="op">*</span><span class="dv">1000</span><span class="sc">:.1f}</span><span class="ss"> ms"</span>)</span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"training / inference:   </span><span class="sc">{</span>t_train<span class="op">/</span>t_infer<span class="sc">:.2f}</span><span class="ss">x"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>forward + backward:     78.9 ms
+forward under no_grad:  30.9 ms
+training / inference:   2.55x</code></pre>
+</div>
+</div>
+<p>The ratio is not the interesting number in isolation — it depends on hardware, dtype, and the specific op mix — but it establishes the shape of the answer: training pays for the backward pass and for keeping intermediate activations alive; inference under <code>no_grad</code> skips both. On CPU with the sizes above the factor is a few times; on GPU with attention layers it can be an order of magnitude, and it is the first place to look when an inference server is mysteriously slow.</p>
+</section>
+<section id="when-autograd-is-not-the-right-tool" class="level2">
+<h2 class="anchored" data-anchor-id="when-autograd-is-not-the-right-tool">When autograd is not the right tool</h2>
+<p>There is no gradient through a non-differentiable operation. <code>torch.argmax</code>, integer casts, thresholded masks, and control-flow-based discrete decisions all block the graph. You can sometimes reach around them with a differentiable surrogate (Gumbel-Softmax for discrete choices, straight-through estimators for quantization) but you should know that you are doing that, not discover it because gradients silently became zero. Second, memory is finite. A very deep graph — a long unrolled RNN, a diffusion process integrated over many steps — may not fit alongside its saved activations; gradient checkpointing trades compute for memory here, and is a first-class feature of <code>torch.utils.checkpoint</code>. Third, some second-order information is expensive: Hessian-vector products are efficient (they use one backward through a backward), but a full Hessian on a million-parameter model is not a plan, it is a wish. And finally, autograd computes derivatives of the code you actually wrote — if the loss you wrote does not measure what you care about, autograd will faithfully minimize the wrong thing.</p>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>Autograd is not magic. It is a dynamic DAG built by tensor operations, carrying enough information at each node to run the chain rule in reverse against a scalar output. Understanding it as such buys three practical things: the ability to write custom losses and layers without fear that the gradient is wrong (because a <code>gradcheck</code> will tell you); the ability to read the performance profile of a training loop (because the cost of the backward pass and the cost of keeping activations alive stop being mysterious); and the ability to debug the training-loop failures that make no sense — silent zeros, exploding gradients, memory that grows without bound — because they almost always trace back to one of the pitfalls above. The next post in the PyTorch series builds on this foundation and takes it into the data pipeline: implementing a sliding-window <code>DataLoader</code> for time series, where the same concerns about graph construction reappear, this time interacting with batching and shuffling.</p>
+</section>
+<section id="references" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="references">References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-baydin2018" class="csl-entry" role="listitem">
+Baydin, Atilim Gunes, Barak A. Pearlmutter, Alexey Andreyevich Radul, and Jeffrey Mark Siskind. 2018. <span>“Automatic Differentiation in Machine Learning: A Survey.”</span> <em>Journal of Machine Learning Research</em> 18 (153): 1–43. <a href="https://jmlr.org/papers/v18/17-468.html">https://jmlr.org/papers/v18/17-468.html</a>.
+</div>
+<div id="ref-griewank2008" class="csl-entry" role="listitem">
+Griewank, Andreas, and Andrea Walther. 2008. <em>Evaluating Derivatives: Principles and Techniques of Algorithmic Differentiation</em>. 2nd ed. SIAM. <a href="https://doi.org/10.1137/1.9780898717761">https://doi.org/10.1137/1.9780898717761</a>.
+</div>
+<div id="ref-paszke2019" class="csl-entry" role="listitem">
+Paszke, Adam, Sam Gross, Francisco Massa, et al. 2019. <span>“<span>PyTorch</span>: An Imperative Style, High-Performance Deep Learning Library.”</span> <em>Advances in Neural Information Processing Systems 32 (NeurIPS 2019)</em>, 8024–35.
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 2026 Prof.&nbsp;Shin · ForecastAI</p>
+</div>   
+    <div class="nav-footer-center">
+<p><a href="privacy-policy.qmd">Privacy Policy</a></p>
+</div>
+    <div class="nav-footer-right">
+<p>Powered by <a href="https://quarto.org">Quarto</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
