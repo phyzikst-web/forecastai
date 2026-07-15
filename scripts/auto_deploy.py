@@ -76,10 +76,11 @@ def process_frontmatter(qmd_path, language):
     keyword_rules = {
         "autograd": (["autograd", "backward", "역전파"], ["Autograd", "역전파", "텐서"], ["Autograd", "Backpropagation", "Tensor"]),
         "quantile": (["quantile", "probabilistic", "분위수", "확률적"], ["분위수 회귀", "확률적 예측"], ["Quantile Regression", "Probabilistic Forecasting"]),
-        "informer": (["informer", "patchtst", "attention", "어텐션"], ["Informer", "PatchTST", "어텐션 병목"], ["Informer", "PatchTST", "Attention Bottleneck"]),
+        "informer": (["informer", "patchtst"], ["Informer", "PatchTST", "어텐션 병목"], ["Informer", "PatchTST", "Attention Bottleneck"]),
         "revin": (["revin", "non-stationary", "stationarity", "비정상", "정상성"], ["RevIN", "가역 정규화", "비정상 시계열"], ["RevIN", "Reversible Instance Normalization", "Non-stationary Time Series"]),
         "multi-step": (["multi-step", "forecasting strategies", "멀티 스텝", "예측 전략"], ["멀티 스텝 예측", "예측 전략"], ["Multi-step Forecasting", "Forecasting Strategies"]),
         "physics": (["physics-informed", "pinn", "물리 제약", "물리 정보"], ["물리 제약 신경망", "PINN", "물리 정보"], ["Physics-informed Neural Networks", "PINN", "Physics-informed"]),
+        "tokenization": (["tokenization", "bpe", "wordpiece", "토큰화"], ["토큰화", "BPE", "WordPiece"], ["Tokenization", "BPE", "WordPiece"]),
     }
     
     full_text_to_scan = (title + " " + body).lower()

@@ -34,5 +34,14 @@
   },
   "privacy-policy.qmd": {
     "privacy-policy.html": "2f76e4b2"
+  },
+  "posts/2026-07-15-tokenization-bpe-wordpiece/index_ko.qmd": {
+    "index_ko.html": "933c4552"
+  },
+  "posts/2026-07-15-dataloader-sliding-window/index_ko.qmd": {
+    "index_ko.html": "8ec22e1b"
+  },
+  "posts/2026-07-15-tokenization-unpacked-bpe-wordpiece-and-the-number-problem/index.qmd": {
+    "index.html": "65438730"
   }
 }

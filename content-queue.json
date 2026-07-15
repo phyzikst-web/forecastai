@@ -3,8 +3,8 @@
   "instructions_file": "ForecastAI_마스터_프롬프트_v1_3.md",
   "queue": [
     {"order": 1, "series": "pytorch", "series_no": 1, "title": "PyTorch 텐서 연산과 자동미분: autograd가 실제로 하는 일", "slug": "autograd-tensor-operations", "level": "L2", "status": "drafted", "drafted_date": "2026-07-14", "path_slug": "2026-07-14-autograd-tensor-operations"},
-    {"order": 2, "series": "llm", "series_no": 1, "title": "Tokenization 완전 분해: BPE, WordPiece, 숫자 토큰의 문제", "slug": "tokenization-bpe-wordpiece", "level": "L2", "status": "pending"},
-    {"order": 3, "series": "pytorch", "series_no": 2, "title": "DataLoader 완전 해부: 시계열 슬라이딩 윈도우 구현", "slug": "dataloader-sliding-window", "level": "L2", "status": "pending"},
+    {"order": 2, "series": "llm", "series_no": 1, "title": "Tokenization 완전 분해: BPE, WordPiece, 숫자 토큰의 문제", "slug": "tokenization-bpe-wordpiece", "level": "L2", "status": "drafted", "drafted_date": "2026-07-15", "path_slug": "2026-07-15-tokenization-bpe-wordpiece"},
+    {"order": 3, "series": "pytorch", "series_no": 2, "title": "DataLoader 완전 해부: 시계열 슬라이딩 윈도우 구현", "slug": "dataloader-sliding-window", "level": "L2", "status": "drafted", "drafted_date": "2026-07-15", "path_slug": "2026-07-15-dataloader-sliding-window"},
     {"order": 4, "series": "llm", "series_no": 2, "title": "Positional Encoding 비교: Sinusoidal vs RoPE vs ALiBi", "slug": "positional-encoding-sinusoidal-rope-alibi", "level": "L3", "status": "pending"},
     {"order": 5, "series": "pytorch", "series_no": 3, "title": "커스텀 손실 함수 작성법: Pinball, Huber, CRPS를 직접", "slug": "custom-loss-pinball-huber-crps", "level": "L2", "status": "pending"},
     {"order": 6, "series": "llm", "series_no": 3, "title": "Attention is All You Need 논문 리뷰: 무엇이 실제로 작동했는가", "slug": "attention-is-all-you-need-review", "level": "L3", "status": "pending"},

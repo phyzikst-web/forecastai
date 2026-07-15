@@ -1,0 +1,389 @@
+---
+title: "DataLoader, Unpacked: Building a Sliding-Window Pipeline for Time Series in PyTorch"
+date: "2026-07-15"
+categories:
+  - Data Science
+  - Artificial Intelligence
+  - PyTorch
+tags:
+  - dataloader
+  - dataset
+  - sliding-window
+  - time-series
+  - pytorch
+  - multi-step-forecasting
+  - data-leakage
+  - tutorial
+image: "thumbnail.png"
+description: |
+  In time-series work, the DataLoader is not glue code — it is where the
+  learning problem is defined. This article implements a leak-free sliding
+  window `Dataset`, walks through what `DataLoader` actually does under the
+  hood, and validates the pipeline end-to-end against a persistence baseline
+  with real, executed numbers.
+lang: en
+toc: true
+toc-depth: 3
+number-sections: true
+code-fold: false
+code-tools: true
+bibliography: references.bib
+execute:
+  echo: true
+  output: true
+  eval: true
+  warning: false
+  message: false
+  freeze: auto
+format:
+  html:
+    code-copy: true
+    code-overflow: wrap
+---
+
+## Where the learning problem actually gets defined
+
+For most tabular problems the DataLoader is boilerplate. For time series it
+is where most of the modelling decisions are quietly made. Choosing the input
+length fixes how much history the model can see. Choosing the horizon fixes
+what "prediction" even means. Choosing the stride controls how correlated your
+samples are. Choosing the split point decides whether the reported test error
+is honest. None of these decisions live inside `nn.Module`; they live inside
+the `Dataset` and `DataLoader`.
+
+This article walks through a minimal but realistic pipeline for multivariate,
+multi-step forecasting on a synthetic series. The goal is not to introduce
+`Dataset` or `DataLoader` — the PyTorch documentation already does that — but
+to show what each configuration flag actually costs, where data leakage
+sneaks in, and how to verify the pipeline is doing what you meant it to do.
+
+## The API contract, in one sentence
+
+A PyTorch `Dataset` promises two things: it can report its length via
+`__len__`, and it can return a single training example on demand via
+`__getitem__(i)`. A `DataLoader` is a sampler plus a batcher plus, optionally,
+a set of worker processes. On each iteration it (i) draws indices from a
+sampler, (ii) calls `dataset[i]` for each index, (iii) stacks the returned
+items into a batch with a *collate function*, and (iv) hands the batch back
+to the training loop. Everything else — shuffling, multi-worker prefetch,
+pinned memory, drop-last — is variations on that theme.
+
+For time series this means the *definition of a sample* is entirely up to
+`__getitem__`. If you write it wrong, no downstream trick will fix it.
+
+## A synthetic multivariate series
+
+To keep the example self-contained we build a three-channel series: one
+target channel with trend, daily, and weekly components; and two exogenous
+channels, one loosely and one strongly correlated with the target. Working
+with a synthetic signal is the only way to know the ground-truth mapping the
+model is trying to recover.
+
+```{python}
+#| label: make-series
+#| echo: true
+import numpy as np, torch
+import matplotlib.pyplot as plt
+from torch.utils.data import Dataset, DataLoader
+
+torch.manual_seed(0); np.random.seed(0)
+
+def make_series(T=2000, seed=0):
+    rng = np.random.default_rng(seed)
+    t   = np.arange(T)
+    base  = 0.002*t + np.sin(2*np.pi*t/96.0) + 0.5*np.sin(2*np.pi*t/24.0)
+    x0    = base + rng.normal(0.0, 0.3, size=T)
+    x1    = np.cos(2*np.pi*t/168.0) + 0.1*rng.normal(size=T)
+    x2    = 0.7*x0 + 0.3*rng.normal(size=T)
+    return np.stack([x0, x1, x2], axis=1).astype(np.float32)
+
+series = make_series()
+print("series shape:", series.shape, "dtype:", series.dtype)
+```
+
+```
+series shape: (2000, 3) dtype: float32
+```
+
+The shape convention `(T, D)` — time on the first axis, channels on the
+second — matches what PyTorch's recurrent and 1-D convolutional layers
+expect after batching. The DataLoader will add the leading batch dimension.
+
+## The sliding-window `Dataset`
+
+A sliding-window dataset turns a long series into a set of
+(input, horizon) pairs by moving a window along the time axis. The `stride`
+argument controls how far the window shifts between consecutive samples.
+`stride=1` yields the maximum number of samples but samples with adjacent
+starts are almost identical: a batch drawn from them under-represents the
+distribution and inflates training signal correlations. A larger stride
+trades sample count for independence, which is often the right trade for
+long series [@bergmeir2012].
+
+```{python}
+#| label: sliding-dataset
+#| echo: true
+class SlidingWindowDataset(Dataset):
+    """Wrap a (T, D) numpy array as (L, D) -> (H, C) samples."""
+    def __init__(self, series, input_len, horizon, stride=1, target_cols=(0,)):
+        assert series.ndim == 2
+        self.series      = torch.from_numpy(series)
+        self.input_len   = input_len
+        self.horizon     = horizon
+        self.target_cols = list(target_cols)
+        T = series.shape[0]
+        self.starts = np.arange(0, T - input_len - horizon + 1,
+                                stride, dtype=np.int64)
+
+    def __len__(self): return len(self.starts)
+
+    def __getitem__(self, idx):
+        s = int(self.starts[idx])
+        x = self.series[s : s + self.input_len]                                 # (L, D)
+        y = self.series[s + self.input_len : s + self.input_len + self.horizon, # (H, C)
+                        self.target_cols]
+        return x, y
+```
+
+Two design choices are worth naming. First, indices are precomputed at
+construction time, not derived arithmetically inside `__getitem__`. This
+makes it trivial to shuffle, subsample, or filter windows (for example,
+dropping windows that overlap known outages) without touching the sampling
+code. Second, the target axis is a *list*: with `target_cols=(0,)` the
+returned `y` has shape `(H, 1)`, and switching to multi-output forecasting
+requires only widening the list.
+
+## Splitting without leaking the future
+
+For i.i.d. data a random split is fine. For a time series it is not. Random
+sampling puts training and test windows on either side of a common point in
+time, which lets the model interpolate rather than forecast. The correct
+default is a chronological cut [@hyndman2021]. What is easy to miss is that
+this cut has to be applied *before* windowing, and the validation and test
+segments must include enough leading context so that windows starting near
+the cut still have a full input history.
+
+```{python}
+#| label: split
+#| echo: true
+T          = series.shape[0]
+train_end  = int(T * 0.70)
+val_end    = int(T * 0.85)
+INPUT_LEN, HORIZON = 96, 24
+
+train_ds = SlidingWindowDataset(series[:train_end],                    INPUT_LEN, HORIZON)
+val_ds   = SlidingWindowDataset(series[train_end - INPUT_LEN : val_end], INPUT_LEN, HORIZON)
+test_ds  = SlidingWindowDataset(series[val_end   - INPUT_LEN :        ], INPUT_LEN, HORIZON)
+
+print(f"train samples: {len(train_ds)}, val: {len(val_ds)}, test: {len(test_ds)}")
+x0, y0 = train_ds[0]
+print(f"x shape: {tuple(x0.shape)}, y shape: {tuple(y0.shape)}")
+```
+
+```
+train samples: 1281, val: 277, test: 277
+x shape: (96, 3), y shape: (24, 1)
+```
+
+The `- INPUT_LEN` prefix on the validation and test slices is the small
+detail that keeps the first validation and test windows valid without ever
+using future data during training: the training slice ends at `train_end`,
+and the validation windows may look backwards into indices before
+`train_end`, but they never predict into it.
+
+![Sliding windows over the target channel: shaded regions with the same colour
+are the input (light) and horizon (dark) of a single sample. Adjacent windows
+share almost all their content when the stride is small.](figs/windows.png){#fig-windows}
+
+![Chronological split of the raw series: the model never sees future data at
+training time, and validation windows only consume the leading context needed
+to form a full input.](figs/split.png){#fig-split}
+
+@fig-windows makes clear why stride matters: at `stride=1`, consecutive
+samples overlap by `INPUT_LEN - 1` steps, so a mini-batch of nearby indices
+is effectively one sample repeated. @fig-split shows how the split translates
+to time: the boundaries are hard walls in *time*, but soft in *sample count*
+because of the shared context region.
+
+## What `DataLoader` actually does
+
+Given a `Dataset`, a `DataLoader` produces mini-batches by wrapping a
+sampler around it and calling a collate function. In the default path this
+is enough to turn `(x, y)` tuples of shapes `(L, D)` and `(H, C)` into
+`(B, L, D)` and `(B, H, C)` batches without any user code.
+
+```{python}
+#| label: loader
+#| echo: true
+train_loader = DataLoader(train_ds, batch_size=64, shuffle=True,
+                          num_workers=0, drop_last=True)
+xb, yb = next(iter(train_loader))
+print(f"batch x: {tuple(xb.shape)}, batch y: {tuple(yb.shape)}")
+```
+
+```
+batch x: (64, 96, 3), batch y: (64, 24, 1)
+```
+
+Three flags deserve a comment. `shuffle=True` samples window *start indices*
+uniformly at random each epoch; it does not shuffle *within* a window, so
+temporal order inside each sample is preserved. `drop_last=True` discards
+the trailing incomplete batch, which stabilizes gradient statistics — with
+window-based data the last batch can be dramatically smaller than the
+others. `num_workers>0` spawns worker processes that call `__getitem__` in
+parallel; this pays off when `__getitem__` is expensive (heavy I/O,
+augmentation, decoding), and is mostly overhead when the dataset is a
+lightweight indexed view on an in-memory tensor as it is here.
+
+The next block measures the wall time of two full epochs at three batch
+sizes, with `num_workers=0`, to make the trade-offs concrete on a small
+CPU-bound example.
+
+```{python}
+#| label: bench-batch
+#| echo: true
+import time
+def bench(batch_size, epochs=2):
+    loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,
+                        num_workers=0, drop_last=True)
+    for _ in loader: break  # warm-up
+    t0 = time.perf_counter()
+    for _ in range(epochs):
+        for xb, yb in loader:
+            _ = xb.mean() + yb.mean()
+    return time.perf_counter() - t0
+
+for bs in [16, 64, 256]:
+    print(f"batch_size={bs}: {bench(bs):.4f} s")
+```
+
+```
+batch_size=16: 0.0283 s
+batch_size=64: 0.0225 s
+batch_size=256: 0.0495 s
+```
+
+![Wall-clock time for two epochs at three batch sizes, single-process. Smaller
+batches pay Python loop overhead per iteration; larger batches pay memory-copy
+cost per iteration.](figs/batchsize.png){#fig-batchsize}
+
+The numbers in @fig-batchsize are tiny in absolute terms — the dataset is
+small and lives in RAM — but the pattern is real: throughput is not
+monotone in batch size. On this run the sweet spot for pure iteration cost
+is around 64, and larger batches become slower again because each batch
+copies more data through the collate path. On a GPU with heavy per-example
+work the picture flips: larger batches usually dominate. The point is that
+neither answer is universal; the DataLoader configuration has to be measured
+on the actual workload.
+
+## An end-to-end sanity check
+
+A pipeline is only trustworthy if a simple model trained through it beats a
+truly trivial baseline. We fit two models: naive persistence, which repeats
+the last observed target value for the whole horizon; and a single linear
+map from the flattened input window to the horizon (a direct multi-step
+head, cf. @salinas2020 for the more general probabilistic form).
+
+```{python}
+#| label: fit-baselines
+#| echo: true
+def to_tensors(ds):
+    xs, ys = zip(*(ds[i] for i in range(len(ds))))
+    return torch.stack(xs), torch.stack(ys)
+
+X_tr, Y_tr = to_tensors(train_ds)
+X_te, Y_te = to_tensors(test_ds)
+
+# Baseline A: persistence
+last = X_te[:, -1:, 0:1].expand(-1, HORIZON, -1)
+rmse_persist = torch.sqrt(((last - Y_te)**2).mean()).item()
+mae_persist  = (last - Y_te).abs().mean().item()
+
+# Baseline B: linear direct multi-step
+class Linear(torch.nn.Module):
+    def __init__(self, L, D, H):
+        super().__init__()
+        self.fc = torch.nn.Linear(L*D, H)
+    def forward(self, x):
+        b = x.shape[0]
+        return self.fc(x.reshape(b, -1)).unsqueeze(-1)
+
+model  = Linear(INPUT_LEN, series.shape[1], HORIZON)
+opt    = torch.optim.Adam(model.parameters(), lr=1e-3)
+loss_f = torch.nn.MSELoss()
+losses = []
+loader = DataLoader(train_ds, batch_size=128, shuffle=True, drop_last=True)
+
+for epoch in range(8):
+    model.train(); epoch_loss = 0.0
+    for xb, yb in loader:
+        opt.zero_grad()
+        loss = loss_f(model(xb), yb)
+        loss.backward(); opt.step()
+        epoch_loss += loss.item() * xb.size(0)
+    losses.append(epoch_loss / len(loader.dataset))
+    print(f"epoch {epoch+1}: train MSE = {losses[-1]:.4f}")
+
+with torch.no_grad():
+    pred_te = model(X_te)
+rmse_lin = torch.sqrt(((pred_te - Y_te)**2).mean()).item()
+mae_lin  = (pred_te - Y_te).abs().mean().item()
+print(f"persistence  RMSE={rmse_persist:.4f}  MAE={mae_persist:.4f}")
+print(f"linear head  RMSE={rmse_lin:.4f}  MAE={mae_lin:.4f}")
+```
+
+```
+epoch 1: train MSE = 1.9627
+epoch 2: train MSE = 0.7489
+epoch 3: train MSE = 0.4801
+epoch 4: train MSE = 0.3027
+epoch 5: train MSE = 0.2236
+epoch 6: train MSE = 0.1826
+epoch 7: train MSE = 0.1609
+epoch 8: train MSE = 0.1482
+persistence  RMSE=0.9313  MAE=0.7516
+linear head  RMSE=0.4251  MAE=0.3398
+```
+
+![Training MSE per epoch for the linear head, mini-batched through the
+sliding-window loader.](figs/loss.png){#fig-loss}
+
+![One test window: the 96-step input on the left, the 24-step ground truth,
+and the linear model's 24-step forecast. The prediction tracks the dominant
+periodicity while under-shooting the extremes.](figs/prediction.png){#fig-pred}
+
+The persistence baseline gives us a scale for the problem: RMSE 0.93 on the
+held-out windows just by repeating the last value. A single linear layer,
+trained through this DataLoader, drops RMSE to 0.43 — a factor of ~2.2
+improvement — and MAE to 0.34. That gap is what tells us the pipeline is
+plumbing the right information through: shuffling is not scrambling time
+within a window, the chronological split is holding, and the collate is
+producing the shapes the model expects. @fig-loss shows the loss decreasing
+monotonically, and @fig-pred shows one test window where the prediction
+captures the phase and level of the target but not its full amplitude — a
+typical failure mode of squared-error training on periodic signals.
+
+## Where this pipeline breaks
+
+Three failure modes are worth naming, because they are common and rarely
+surface as loud errors. The first is silent leakage from a normalization
+scheme fit on the whole series before the split: fit `mean` and `std` on
+training data only, or use per-window normalization
+[cf. @hyndman2021, ch. 3]. The second is over-optimistic evaluation when
+`stride=1` and the test set is small: the reported metric is an average
+over highly correlated windows, and its variance is much larger than the
+raw sample count suggests; using rolling-origin evaluation
+[@bergmeir2012] gives a more honest picture. The third is memory: for very
+long series, keeping the entire array in RAM as a tensor is fine, but
+returning slice *views* (as `SlidingWindowDataset` does) instead of copies
+matters for both speed and footprint — the version above avoids per-item
+copies because `torch.from_numpy(...)[start:stop]` is a view.
+
+The DataLoader will not tell you about any of these. The only way to catch
+them is to sanity-check the pipeline against a trivial baseline before
+believing anything a deeper model reports.
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
