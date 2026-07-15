@@ -83,10 +83,26 @@ def process_frontmatter(qmd_path, language):
         "tokenization": (["tokenization", "bpe", "wordpiece", "토큰화"], ["토큰화", "BPE", "WordPiece"], ["Tokenization", "BPE", "WordPiece"]),
     }
     
-    full_text_to_scan = (title + " " + body).lower()
+    body_lower = body.lower()
+    title_lower = title.lower()
     new_tags = []
+    
+    # Add DataLoader rule dynamically
+    keyword_rules["dataloader"] = (
+        ["dataloader", "sliding window", "슬라이딩 윈도우", "데이터로더"],
+        ["데이터로더", "슬라이딩 윈도우", "PyTorch"],
+        ["DataLoader", "Sliding Window", "PyTorch"]
+    )
+    
     for key, (keywords, ko_tags, en_tags) in keyword_rules.items():
-        if any(kw.lower() in full_text_to_scan for kw in keywords):
+        # Heuristic: keyword must be in the title, OR appear at least 3 times in the body text
+        match = False
+        for kw in keywords:
+            kw_l = kw.lower()
+            if kw_l in title_lower or body_lower.count(kw_l) >= 3:
+                match = True
+                break
+        if match:
             tags_to_add = ko_tags if language == "ko" else en_tags
             for tag in tags_to_add:
                 if tag not in categories and tag not in new_tags:

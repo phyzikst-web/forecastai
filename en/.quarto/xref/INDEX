@@ -46,5 +46,8 @@
   },
   "posts/2026-07-15-tokenization-unpacked-bpe-wordpiece-and-the-number-problem/index.qmd": {
     "index.html": "8cf64178"
+  },
+  "posts/2026-07-15-dataloader-unpacked-building-a-sliding-window-pipeline-for-time-series-in-pytorch/index.qmd": {
+    "index.html": "c17c2ce0"
   }
 }

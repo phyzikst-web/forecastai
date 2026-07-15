@@ -5,6 +5,8 @@ categories:
   - Data Science
   - Artificial Intelligence
   - PyTorch
+  - DataLoader
+  - Sliding Window
 tags:
   - dataloader
   - dataset
@@ -14,7 +16,7 @@ tags:
   - multi-step-forecasting
   - data-leakage
   - tutorial
-image: "thumbnail.png"
+image: "thumbnail.jpg"
 description: |
   In time-series work, the DataLoader is not glue code — it is where the
   learning problem is defined. This article implements a leak-free sliding
@@ -24,22 +26,26 @@ description: |
 lang: en
 toc: true
 toc-depth: 3
-number-sections: true
+number-sections: false
 code-fold: false
-code-tools: true
-bibliography: references.bib
+code-tools: false
+bibliography: ../../references.bib
 execute:
   echo: true
   output: true
   eval: true
   warning: false
   message: false
-  freeze: auto
+  freeze: true
 format:
   html:
     code-copy: true
     code-overflow: wrap
 ---
+
+![[Concept Visualization] A diagram summarizing the key concepts of this post.](thumbnail.jpg){fig-align="center" width="90%"}
+
+
 
 ## Where the learning problem actually gets defined
 

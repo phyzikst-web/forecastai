@@ -5,6 +5,8 @@ categories:
   - 데이터과학
   - 인공지능
   - PyTorch
+  - 데이터로더
+  - 슬라이딩 윈도우
 tags:
   - DataLoader
   - Dataset
@@ -14,7 +16,7 @@ tags:
   - 다단계예측
   - 데이터누수
   - 튜토리얼
-image: "thumbnail.png"
+image: "thumbnail.jpg"
 description: |
   시계열 작업에서 DataLoader는 접착제 코드가 아니라 학습 문제 자체를 정의하는
   곳입니다. 이 글은 누수 없는 슬라이딩 윈도우 `Dataset`을 구현하고, `DataLoader`가
@@ -23,22 +25,26 @@ description: |
 lang: ko
 toc: true
 toc-depth: 3
-number-sections: true
+number-sections: false
 code-fold: false
-code-tools: true
-bibliography: references.bib
+code-tools: false
+bibliography: ../../references.bib
 execute:
   echo: true
   output: true
   eval: true
   warning: false
   message: false
-  freeze: auto
+  freeze: true
 format:
   html:
     code-copy: true
     code-overflow: wrap
 ---
+
+![[개념 시각화] 본 포스트의 핵심 개념을 요약한 다이어그램입니다.](thumbnail.jpg){fig-align="center" width="90%"}
+
+
 
 ## 학습 문제가 실제로 정의되는 곳
 
