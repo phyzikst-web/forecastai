@@ -49,5 +49,11 @@
   },
   "posts/2026-07-15-dataloader-unpacked-building-a-sliding-window-pipeline-for-time-series-in-pytorch/index.qmd": {
     "index.html": "c17c2ce0"
+  },
+  "posts/2026-07-16-positional-encoding-compared-sinusoidal-vs-rope-vs-alibi/index.qmd": {
+    "index.html": "d5ee1535"
+  },
+  "posts/2026-07-16-positional-encoding-sinusoidal-rope-alibi/index.qmd": {
+    "index.html": "c8e93896"
   }
 }
