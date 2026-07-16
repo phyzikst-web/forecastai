@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Prof.&nbsp;Shin">
+<meta name="dcterms.date" content="2026-07-16">
+<meta name="description" content="Self-attention is permutation-invariant, so every Transformer smuggles order back in through a positional encoding. This post derives the sinusoidal scheme, RoPE, and ALiBi from what each is trying to guarantee, implements the three with runnable NumPy code, and visualizes how they shape attention scores — including what happens when a model is asked to run at a sequence length it never saw during training.">
+
+<title>Positional Encoding, Compared: Sinusoidal vs.&nbsp;RoPE vs.&nbsp;ALiBi – ForecastAI</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-de63f62b328812d8e578a4d74e282472.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-c71b8a56d94d19998417d12f98a1f753.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Forecast<span style="color:#F97316;">AI</span></span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">HOME</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">ABOUT</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../categories.html"> 
+<span class="menu-text">CATEGORIES</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../research.html"> 
+<span class="menu-text">RESEARCH</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../contact.html"> 
+<span class="menu-text">CONTACT</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../ko/"> 
+<span class="menu-text">🇰🇷 한국어</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/phyzikst-web"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#why-attention-needs-a-hint-about-order" id="toc-why-attention-needs-a-hint-about-order" class="nav-link active" data-scroll-target="#why-attention-needs-a-hint-about-order">Why attention needs a hint about order</a></li>
+  <li><a href="#what-a-positional-encoding-must-preserve" id="toc-what-a-positional-encoding-must-preserve" class="nav-link" data-scroll-target="#what-a-positional-encoding-must-preserve">What a positional encoding must preserve</a></li>
+  <li><a href="#sinusoidal-pe-derived-and-drawn" id="toc-sinusoidal-pe-derived-and-drawn" class="nav-link" data-scroll-target="#sinusoidal-pe-derived-and-drawn">Sinusoidal PE, derived and drawn</a></li>
+  <li><a href="#rope-rotate-queries-and-keys-instead-of-adding" id="toc-rope-rotate-queries-and-keys-instead-of-adding" class="nav-link" data-scroll-target="#rope-rotate-queries-and-keys-instead-of-adding">RoPE: rotate queries and keys instead of adding</a></li>
+  <li><a href="#alibi-dont-encode-position-penalize-distance" id="toc-alibi-dont-encode-position-penalize-distance" class="nav-link" data-scroll-target="#alibi-dont-encode-position-penalize-distance">ALiBi: don’t encode position, penalize distance</a></li>
+  <li><a href="#attention-under-each-scheme" id="toc-attention-under-each-scheme" class="nav-link" data-scroll-target="#attention-under-each-scheme">Attention under each scheme</a></li>
+  <li><a href="#length-extrapolation-the-failure-that-separates-them" id="toc-length-extrapolation-the-failure-that-separates-them" class="nav-link" data-scroll-target="#length-extrapolation-the-failure-that-separates-them">Length extrapolation: the failure that separates them</a></li>
+  <li><a href="#choosing-between-the-three" id="toc-choosing-between-the-three" class="nav-link" data-scroll-target="#choosing-between-the-three">Choosing between the three</a></li>
+  <li><a href="#limits-and-open-questions" id="toc-limits-and-open-questions" class="nav-link" data-scroll-target="#limits-and-open-questions">Limits and open questions</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Positional Encoding, Compared: Sinusoidal vs.&nbsp;RoPE vs.&nbsp;ALiBi</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Data Science</div>
+    <div class="quarto-category">Artificial Intelligence</div>
+    <div class="quarto-category">LLM</div>
+    <div class="quarto-category">Transformer</div>
+    <div class="quarto-category">Positional Encoding</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    <p>Self-attention is permutation-invariant, so every Transformer smuggles order back in through a positional encoding. This post derives the sinusoidal scheme, RoPE, and ALiBi from what each is trying to guarantee, implements the three with runnable NumPy code, and visualizes how they shape attention scores — including what happens when a model is asked to run at a sequence length it never saw during training.</p>
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Prof.&nbsp;Shin </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">July 16, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="thumbnail.jpg" class="img-fluid figure-img" style="width:90.0%"></p>
+<figcaption>[Concept Visualization] A diagram summarizing the key concepts of this post.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="thumbnail.png" class="img-fluid figure-img" style="width:90.0%"></p>
+<figcaption>[Concept Visualization] A diagram summarizing the key concepts of this post.</figcaption>
+</figure>
+</div>
+<section id="why-attention-needs-a-hint-about-order" class="level2">
+<h2 class="anchored" data-anchor-id="why-attention-needs-a-hint-about-order">Why attention needs a hint about order</h2>
+<p>The scaled dot-product attention used in Transformers is a set operation. Given queries <span class="math inline">\(Q\)</span>, keys <span class="math inline">\(K\)</span>, values <span class="math inline">\(V\)</span> with shapes <span class="math inline">\((n, d_k), (n, d_k), (n, d_v)\)</span>, the output</p>
+<p><span class="math display">\[\operatorname{Attention}(Q, K, V) = \operatorname{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d_k}}\right) V\]</span></p>
+<p>is <em>permutation-equivariant</em>: reorder the tokens along the sequence axis and the output is reordered the same way. Nothing inside the operation looks at where a token sits in the sequence. For anything more structured than a bag of words — natural language, time series, code — some signal about order has to be injected before or inside attention. That injection is the job of the <em>positional encoding</em> (PE).</p>
+<p>Three schemes dominate current Transformers, and they make sharply different choices about <em>what</em> to encode: sinusoidal PE from <span class="citation" data-cites="vaswani2017">Vaswani et al. (<a href="#ref-vaswani2017" role="doc-biblioref">2017</a>)</span> encodes <em>absolute</em> position by adding a fixed pattern to the token embedding; Rotary Position Embedding (RoPE) from <span class="citation" data-cites="su2024roformer">Su et al. (<a href="#ref-su2024roformer" role="doc-biblioref">2024</a>)</span> encodes <em>relative</em> position by rotating query and key vectors before the dot product; and Attention with Linear Biases (ALiBi) from <span class="citation" data-cites="press2022alibi">Press et al. (<a href="#ref-press2022alibi" role="doc-biblioref">2022</a>)</span> injects position by biasing raw attention logits according to distance. The differences matter most on two axes that matter for anyone using an LLM on long inputs: how the mechanism scales to sequence lengths not seen at training time, and how much freedom the network keeps to <em>learn</em> what “distance” means.</p>
+</section>
+<section id="what-a-positional-encoding-must-preserve" class="level2">
+<h2 class="anchored" data-anchor-id="what-a-positional-encoding-must-preserve">What a positional encoding must preserve</h2>
+<p>Before comparing schemes, it helps to state what the encoded position is being asked to do inside attention. In a single head, the pre-softmax logit between query at position <span class="math inline">\(m\)</span> and key at position <span class="math inline">\(n\)</span> is</p>
+<p><span class="math display">\[s_{m,n} = \frac{ q(x_m)^{\top} k(x_n) }{\sqrt{d_k}}.\]</span></p>
+<p>An additive PE writes <span class="math inline">\(q(x_m) = W_Q(x_m + p_m)\)</span>, <span class="math inline">\(k(x_n) = W_K(x_n + p_n)\)</span>. Expanding the dot product,</p>
+<p><span class="math display">\[q(x_m)^{\top}k(x_n) = x_m^{\top} W_Q^{\top} W_K x_n
++ x_m^{\top} W_Q^{\top} W_K p_n
++ p_m^{\top} W_Q^{\top} W_K x_n
++ p_m^{\top} W_Q^{\top} W_K p_n.\]</span></p>
+<p>Only the first term is content-only. The other three mix content and position, and the last is position-only. Whether the model can pick up <em>relative</em> structure — that positions 12 and 15 are three apart — depends on whether the last term is a function of <span class="math inline">\((m - n)\)</span> alone. Sinusoidal PE approximately satisfies this because sines and cosines admit an angle-sum identity, but the earlier cross terms leak absolute-position information in a way that is not translation-invariant. RoPE gets rid of the additive mix entirely by rotating queries and keys, forcing the position contribution into a form where <span class="math inline">\(q_m^{\top} k_n\)</span> depends only on <span class="math inline">\(m - n\)</span>. ALiBi throws away the attempt to make the encoding compatible with the content dot product and instead adds a per-head, distance-dependent bias directly to <span class="math inline">\(s_{m,n}\)</span>.</p>
+<p>The three schemes therefore answer three different questions. Sinusoidal PE asks <em>what marker should I attach to each position?</em> RoPE asks <em>how should I rotate the query/key basis so that their inner product carries relative position?</em> ALiBi asks <em>what penalty should I place on far-away tokens without touching content at all?</em></p>
+</section>
+<section id="sinusoidal-pe-derived-and-drawn" class="level2">
+<h2 class="anchored" data-anchor-id="sinusoidal-pe-derived-and-drawn">Sinusoidal PE, derived and drawn</h2>
+<p>The original scheme fills a <span class="math inline">\(d_\text{model}\)</span>-dimensional vector <span class="math inline">\(p_m\)</span> at position <span class="math inline">\(m\)</span> with a fixed pattern:</p>
+<p><span class="math display">\[p_{m, 2k}   = \sin\!\bigl( m \, \theta_k \bigr), \quad
+  p_{m, 2k+1} = \cos\!\bigl( m \, \theta_k \bigr), \quad
+  \theta_k = \text{base}^{-2k/d_\text{model}},\]</span></p>
+<p>with base = 10000 and <span class="math inline">\(k = 0, 1, \dots, d_\text{model}/2 - 1\)</span>. Each pair <span class="math inline">\((2k, 2k+1)\)</span> of dimensions rotates at frequency <span class="math inline">\(\theta_k\)</span>, and the frequencies span roughly seven orders of magnitude across the embedding when <span class="math inline">\(d_\text{model} = 512\)</span>. Two properties fall out. First, the norm <span class="math inline">\(\lVert p_m \rVert = \sqrt{d_\text{model}/2}\)</span> is constant, so adding <span class="math inline">\(p_m\)</span> to a token embedding does not distort the vector’s length. Second, because <span class="math inline">\(\sin(a + b)\)</span> and <span class="math inline">\(\cos(a + b)\)</span> are linear in <span class="math inline">\(\sin b, \cos b\)</span> with coefficients that depend on <span class="math inline">\(a\)</span>, there exists a linear map <span class="math inline">\(R_a\)</span> such that <span class="math inline">\(p_{m+a} = R_a\, p_m\)</span>. That is the sense in which sinusoidal PE “encodes relative position”: the map from one position to another is fixed and learnable-free.</p>
+<p>The following code builds the matrix and confirms the constant-norm property using <span class="math inline">\(d_\text{model} = 64, \text{max\_len} = 128\)</span>.</p>
+<div id="sin-pe" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> sinusoidal_pe(max_len: <span class="bu">int</span>, d_model: <span class="bu">int</span>, base: <span class="bu">float</span> <span class="op">=</span> <span class="fl">10000.0</span>) <span class="op">-&gt;</span> np.ndarray:</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    pos <span class="op">=</span> np.arange(max_len)[:, <span class="va">None</span>].astype(np.float64)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    i   <span class="op">=</span> np.arange(d_model <span class="op">//</span> <span class="dv">2</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    inv_freq <span class="op">=</span> <span class="fl">1.0</span> <span class="op">/</span> (base <span class="op">**</span> (<span class="dv">2</span> <span class="op">*</span> i <span class="op">/</span> d_model))</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    pe <span class="op">=</span> np.zeros((max_len, d_model), dtype<span class="op">=</span>np.float64)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    pe[:, <span class="dv">0</span>::<span class="dv">2</span>] <span class="op">=</span> np.sin(pos <span class="op">*</span> inv_freq)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    pe[:, <span class="dv">1</span>::<span class="dv">2</span>] <span class="op">=</span> np.cos(pos <span class="op">*</span> inv_freq)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pe</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>PE <span class="op">=</span> sinusoidal_pe(max_len<span class="op">=</span><span class="dv">128</span>, d_model<span class="op">=</span><span class="dv">64</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"shape:"</span>, PE.shape)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"row norms (constant):"</span>, np.<span class="bu">round</span>(np.linalg.norm(PE, axis<span class="op">=</span><span class="dv">1</span>)[:<span class="dv">5</span>], <span class="dv">4</span>))</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"PE[0] . PE[k] at k=1,2,4,8,16:"</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>      np.<span class="bu">round</span>([(PE[<span class="dv">0</span>] <span class="op">@</span> PE[k]) <span class="cf">for</span> k <span class="kw">in</span> [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">4</span>, <span class="dv">8</span>, <span class="dv">16</span>]], <span class="dv">3</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>shape: (128, 64)
+row norms (constant): [5.6569 5.6569 5.6569 5.6569 5.6569]
+PE[0] . PE[k] at k=1,2,4,8,16: [30.917 28.304 23.934 22.414 19.373]</code></pre>
+</div>
+</div>
+<pre><code>shape: (128, 64)
+row norms (constant): [5.6569 5.6569 5.6569 5.6569 5.6569]
+PE[0] . PE[k] at k=1,2,4,8,16: [30.917 28.304 23.934 22.414 19.373]</code></pre>
+<p>The dot products decrease with distance but not monotonically: because the high-frequency dimensions oscillate quickly, positions that are far apart can still line up. That non-monotonicity is a real weakness for long-range tasks, because raw sinusoidal similarity does not cleanly reward “closer” over “farther.” Plotting the full matrix as a heatmap makes the frequency structure visible.</p>
+<div id="cell-sin-heatmap" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.5</span>, <span class="fl">3.4</span>))</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>im <span class="op">=</span> ax.imshow(PE, aspect<span class="op">=</span><span class="st">'auto'</span>, cmap<span class="op">=</span><span class="st">'RdBu_r'</span>, vmin<span class="op">=-</span><span class="dv">1</span>, vmax<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">'embedding dim'</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">'position'</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Sinusoidal PE (d_model=64, max_len=128)'</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>plt.colorbar(im, ax<span class="op">=</span>ax, fraction<span class="op">=</span><span class="fl">0.03</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/sin-heatmap-output-1.png" id="sin-heatmap" width="613" height="317" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Read the figure column by column: low-index columns (left) oscillate almost uniformly across all positions — they are the high-frequency channels — while high-index columns (right) change slowly and act as coarse position counters. This multi-scale layout is what lets the fixed pattern distinguish nearby positions and still assign different values to positions hundreds of steps apart. It also makes the failure mode visible: past the trained length, the slow columns keep drifting into a region the model has never seen, so extrapolation is not free.</p>
+</section>
+<section id="rope-rotate-queries-and-keys-instead-of-adding" class="level2">
+<h2 class="anchored" data-anchor-id="rope-rotate-queries-and-keys-instead-of-adding">RoPE: rotate queries and keys instead of adding</h2>
+<p>RoPE takes the position-as-rotation intuition literally. Split the query vector <span class="math inline">\(q \in \mathbb{R}^{d_k}\)</span> into <span class="math inline">\(d_k / 2\)</span> two-dimensional pairs and, at position <span class="math inline">\(m\)</span>, rotate the <span class="math inline">\(k\)</span>-th pair by angle <span class="math inline">\(m \theta_k\)</span>:</p>
+<p><span class="math display">\[R_{m,k} = \begin{bmatrix} \cos m\theta_k &amp; -\sin m\theta_k \\ \sin m\theta_k &amp; \cos m\theta_k \end{bmatrix}.\]</span></p>
+<p>The rotated query is <span class="math inline">\(\tilde{q}_m = R_m q\)</span>, and the same operation is applied to the key at position <span class="math inline">\(n\)</span>. The dot product then satisfies</p>
+<p><span class="math display">\[\tilde{q}_m^{\top} \tilde{k}_n = q^{\top} R_m^{\top} R_n k = q^{\top} R_{n-m} k,\]</span></p>
+<p>because rotations of the same pair compose additively in their angles. The attention logit depends on <span class="math inline">\((n - m)\)</span> only, so relative position is baked into the inner product with no additive embedding and no learnable parameters. Crucially, RoPE lives inside the query and key computation — it does not touch the value vector — so it interacts with content in a multiplicative, not additive, way. This preserves the norm structure of <span class="math inline">\(q\)</span> and <span class="math inline">\(k\)</span> and avoids the four-way cross-term expansion that plagues additive PE.</p>
+<p>A minimal NumPy implementation makes the operation and its guarantee visible.</p>
+<div id="rope" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> apply_rope(x: np.ndarray, base: <span class="bu">float</span> <span class="op">=</span> <span class="fl">10000.0</span>) <span class="op">-&gt;</span> np.ndarray:</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""x: (seq_len, d), d even. Rotate each (x_{2k}, x_{2k+1}) pair by m*theta_k."""</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    seq_len, d <span class="op">=</span> x.shape</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> d <span class="op">%</span> <span class="dv">2</span> <span class="op">==</span> <span class="dv">0</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    k     <span class="op">=</span> np.arange(d <span class="op">//</span> <span class="dv">2</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    theta <span class="op">=</span> base <span class="op">**</span> (<span class="op">-</span><span class="dv">2</span> <span class="op">*</span> k <span class="op">/</span> d)               <span class="co"># (d/2,)</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    m     <span class="op">=</span> np.arange(seq_len)[:, <span class="va">None</span>]        <span class="co"># (seq, 1)</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    ang   <span class="op">=</span> m <span class="op">*</span> theta[<span class="va">None</span>, :]                 <span class="co"># (seq, d/2)</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    cos, sin <span class="op">=</span> np.cos(ang), np.sin(ang)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    x_even, x_odd <span class="op">=</span> x[:, <span class="dv">0</span>::<span class="dv">2</span>], x[:, <span class="dv">1</span>::<span class="dv">2</span>]</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> np.empty_like(x)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    out[:, <span class="dv">0</span>::<span class="dv">2</span>] <span class="op">=</span> x_even <span class="op">*</span> cos <span class="op">-</span> x_odd <span class="op">*</span> sin</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    out[:, <span class="dv">1</span>::<span class="dv">2</span>] <span class="op">=</span> x_even <span class="op">*</span> sin <span class="op">+</span> x_odd <span class="op">*</span> cos</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> out</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Translation invariance: &lt;RoPE(q,m), RoPE(k,n)&gt; depends only on n - m.</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>rng <span class="op">=</span> np.random.default_rng(<span class="dv">0</span>)</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>q <span class="op">=</span> rng.standard_normal((<span class="dv">1</span>, <span class="dv">32</span>))</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>k <span class="op">=</span> rng.standard_normal((<span class="dv">1</span>, <span class="dv">32</span>))</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> m, n <span class="kw">in</span> [(<span class="dv">0</span>, <span class="dv">4</span>), (<span class="dv">10</span>, <span class="dv">14</span>), (<span class="dv">30</span>, <span class="dv">34</span>), (<span class="dv">100</span>, <span class="dv">104</span>)]:</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    q_at_m <span class="op">=</span> apply_rope(np.tile(q, (m <span class="op">+</span> <span class="dv">1</span>, <span class="dv">1</span>)))[m:m<span class="op">+</span><span class="dv">1</span>]</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>    k_at_n <span class="op">=</span> apply_rope(np.tile(k, (n <span class="op">+</span> <span class="dv">1</span>, <span class="dv">1</span>)))[n:n<span class="op">+</span><span class="dv">1</span>]</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"&lt;RoPE q@</span><span class="sc">{</span>m<span class="sc">:&gt;3}</span><span class="ss">, RoPE k@</span><span class="sc">{</span>n<span class="sc">:&gt;3}</span><span class="ss">&gt; = </span><span class="sc">{</span><span class="bu">float</span>(q_at_m <span class="op">@</span> k_at_n.T)<span class="sc">:+.6f}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;RoPE q@  0, RoPE k@  4&gt; = -4.038429
+&lt;RoPE q@ 10, RoPE k@ 14&gt; = -4.038429
+&lt;RoPE q@ 30, RoPE k@ 34&gt; = -4.038429
+&lt;RoPE q@100, RoPE k@104&gt; = -4.038429</code></pre>
+</div>
+</div>
+<pre><code>&lt;RoPE q@  0, RoPE k@  4&gt; = -4.038429
+&lt;RoPE q@ 10, RoPE k@ 14&gt; = -4.038429
+&lt;RoPE q@ 30, RoPE k@ 34&gt; = -4.038429
+&lt;RoPE q@100, RoPE k@104&gt; = -4.038429</code></pre>
+<p>Four different absolute-position pairs with the same relative offset <span class="math inline">\(n - m = 4\)</span> produce the <em>identical</em> inner product. This is not an emergent property; it is what the construction guarantees. What varies with <span class="math inline">\(k\)</span> (the pair index) is the rotation speed <span class="math inline">\(\theta_k\)</span>: low-index pairs rotate slowly and act as coarse counters, high-index pairs rotate quickly and act as fine counters. Visualizing <span class="math inline">\(\cos(m \theta_k)\)</span> and <span class="math inline">\(\sin(m \theta_k)\)</span> for the slowest and fastest pair shows the range.</p>
+<div id="cell-rope-rotations" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>positions <span class="op">=</span> np.arange(<span class="dv">0</span>, <span class="dv">64</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>theta_low  <span class="op">=</span> <span class="fl">10000.0</span> <span class="op">**</span> (<span class="op">-</span><span class="dv">2</span> <span class="op">*</span> <span class="dv">0</span>  <span class="op">/</span> <span class="dv">64</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>theta_high <span class="op">=</span> <span class="fl">10000.0</span> <span class="op">**</span> (<span class="op">-</span><span class="dv">2</span> <span class="op">*</span> <span class="dv">30</span> <span class="op">/</span> <span class="dv">64</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.4</span>))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ax_, ang, title <span class="kw">in</span> <span class="bu">zip</span>(axes,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                           [positions <span class="op">*</span> theta_low, positions <span class="op">*</span> theta_high],</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>                           [<span class="ss">f'k=0 (θ≈</span><span class="sc">{</span>theta_low<span class="sc">:.3f}</span><span class="ss">)'</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>                            <span class="ss">f'k=30 (θ≈</span><span class="sc">{</span>theta_high<span class="sc">:.5f}</span><span class="ss">)'</span>]):</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    ax_.plot(positions, np.cos(ang), label<span class="op">=</span><span class="st">'cos(mθ)'</span>)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    ax_.plot(positions, np.sin(ang), label<span class="op">=</span><span class="st">'sin(mθ)'</span>)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    ax_.set_xlabel(<span class="st">'position m'</span>)<span class="op">;</span> ax_.set_title(title)</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    ax_.legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> ax_.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/rope-rotations-output-1.png" id="rope-rotations" width="750" height="317" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The left panel completes many cycles across the visible range — that is what makes it useful for distinguishing tokens that are a few positions apart. The right panel barely turns even after 64 positions; it will differ meaningfully only for positions hundreds or thousands apart. LLM RoPE implementations sometimes rescale the base or apply position interpolation (YaRN, NTK-aware scaling; see <span class="citation" data-cites="chen2023extending">Chen et al. (<a href="#ref-chen2023extending" role="doc-biblioref">2023</a>)</span>) to shift these curves and extend the “distinguishable” range beyond the trained length, at the cost of compressing fine-grained resolution.</p>
+</section>
+<section id="alibi-dont-encode-position-penalize-distance" class="level2">
+<h2 class="anchored" data-anchor-id="alibi-dont-encode-position-penalize-distance">ALiBi: don’t encode position, penalize distance</h2>
+<p>ALiBi takes a different route. Leave the queries and keys untouched, compute the content dot product as usual, and then, per head, add a linear bias to the raw attention logit:</p>
+<p><span class="math display">\[s_{m,n} \;\leftarrow\; s_{m,n} \;-\; m_h \, |m - n|,\]</span></p>
+<p>where <span class="math inline">\(m_h &gt; 0\)</span> is a slope specific to head <span class="math inline">\(h\)</span>. There is no positional vector, no rotation, and no learned parameter. In the original ALiBi recipe with <span class="math inline">\(H\)</span> heads, the slopes form a geometric sequence <span class="math inline">\(m_h = (2^{-8/H})^{h+1}\)</span> so that different heads penalize distance at different scales.</p>
+<div id="alibi" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> alibi_slopes(n_heads: <span class="bu">int</span>) <span class="op">-&gt;</span> np.ndarray:</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    start <span class="op">=</span> <span class="fl">2.0</span> <span class="op">**</span> (<span class="op">-</span><span class="fl">8.0</span> <span class="op">/</span> n_heads)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.array([start <span class="op">**</span> (i <span class="op">+</span> <span class="dv">1</span>) <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(n_heads)])</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> alibi_bias(seq_len: <span class="bu">int</span>, n_heads: <span class="bu">int</span>) <span class="op">-&gt;</span> np.ndarray:</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    slopes <span class="op">=</span> alibi_slopes(n_heads)                            <span class="co"># (h,)</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    i <span class="op">=</span> np.arange(seq_len)[:, <span class="va">None</span>]</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    j <span class="op">=</span> np.arange(seq_len)[<span class="va">None</span>, :]</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    dist <span class="op">=</span> <span class="op">-</span>np.<span class="bu">abs</span>(i <span class="op">-</span> j).astype(np.float64)                  <span class="co"># (s,s), 0 on diag</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> slopes[:, <span class="va">None</span>, <span class="va">None</span>] <span class="op">*</span> dist[<span class="va">None</span>, :, :]           <span class="co"># (h,s,s)</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>slopes <span class="op">=</span> alibi_slopes(<span class="dv">8</span>)</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"slopes (h=8):"</span>, np.<span class="bu">round</span>(slopes, <span class="dv">4</span>))</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>B <span class="op">=</span> alibi_bias(seq_len<span class="op">=</span><span class="dv">16</span>, n_heads<span class="op">=</span><span class="dv">8</span>)</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"bias shape :"</span>, B.shape)</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"head 0, row 8, cols 10..15:"</span>, np.<span class="bu">round</span>(B[<span class="dv">0</span>, <span class="dv">8</span>, <span class="dv">10</span>:], <span class="dv">3</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>slopes (h=8): [0.5    0.25   0.125  0.0625 0.0312 0.0156 0.0078 0.0039]
+bias shape : (8, 16, 16)
+head 0, row 8, cols 10..15: [-1.  -1.5 -2.  -2.5 -3.  -3.5]</code></pre>
+</div>
+</div>
+<pre><code>slopes (h=8): [0.5    0.25   0.125  0.0625 0.0312 0.0156 0.0078 0.0039]
+bias shape : (8, 16, 16)
+head 0, row 8, cols 10..15: [-1.  -1.5 -2.  -2.5 -3.  -3.5]</code></pre>
+<p>Head 0 penalizes distance at slope 0.5 (its logit drops by 0.5 for every step away), while head 7 uses a slope near 0.004 and behaves almost like an unbiased head. Because the penalty is unbounded and linear, ALiBi never gets confused about which token is “farther” — the ordering by distance is exact. Visualizing the head-0 bias matrix and the full slope schedule makes the mechanism concrete.</p>
+<div id="cell-alibi-viz" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">9</span>, <span class="fl">3.4</span>))</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>im <span class="op">=</span> axes[<span class="dv">0</span>].imshow(B[<span class="dv">3</span>], cmap<span class="op">=</span><span class="st">'viridis'</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_title(<span class="ss">f'ALiBi bias matrix (head 3, slope=</span><span class="sc">{</span>slopes[<span class="dv">3</span>]<span class="sc">:.3f}</span><span class="ss">)'</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_xlabel(<span class="st">'key position'</span>)<span class="op">;</span> axes[<span class="dv">0</span>].set_ylabel(<span class="st">'query position'</span>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>plt.colorbar(im, ax<span class="op">=</span>axes[<span class="dv">0</span>], fraction<span class="op">=</span><span class="fl">0.05</span>)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].bar(<span class="bu">range</span>(<span class="bu">len</span>(slopes)), slopes, color<span class="op">=</span><span class="st">'C1'</span>)</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_title(<span class="st">'Per-head slopes (n_heads=8)'</span>)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_xlabel(<span class="st">'head index'</span>)<span class="op">;</span> axes[<span class="dv">1</span>].set_ylabel(<span class="st">'slope m_h'</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].grid(alpha<span class="op">=</span><span class="fl">0.3</span>, axis<span class="op">=</span><span class="st">'y'</span>)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/alibi-viz-output-1.png" id="alibi-viz" width="794" height="317" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The bias matrix has the same triangular shape regardless of what the query and key vectors look like — it depends only on <span class="math inline">\(|m - n|\)</span>. Different heads scan the sequence at different distance scales because the geometric slope schedule spans two orders of magnitude. This is where ALiBi’s length extrapolation comes from: the mechanism is defined for arbitrary <span class="math inline">\(|m - n|\)</span>, so a model trained at length 1024 can be fed length 4096 at inference without hitting a length the encoding was never sampled from.</p>
+</section>
+<section id="attention-under-each-scheme" class="level2">
+<h2 class="anchored" data-anchor-id="attention-under-each-scheme">Attention under each scheme</h2>
+<p>The three constructions differ in what a query at some position <span class="math inline">\(m\)</span> sees when it looks around. Simulating each with a random content vector shared across positions is not meant to reproduce a trained model’s behavior — it isolates the <em>positional</em> part of the score by holding content fixed. With <span class="math inline">\(d_\text{model} = 64\)</span> and sequence length 96, the following runs a single query at <span class="math inline">\(m = 48\)</span> against 96 keys under each scheme.</p>
+<div id="cell-attn-compare" class="cell" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>seq_len, d_model, m <span class="op">=</span> <span class="dv">96</span>, <span class="dv">64</span>, <span class="dv">48</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>rng <span class="op">=</span> np.random.default_rng(<span class="dv">1</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>content_q <span class="op">=</span> rng.standard_normal((d_model,)) <span class="op">/</span> np.sqrt(d_model)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>content_k <span class="op">=</span> rng.standard_normal((seq_len, d_model)) <span class="op">/</span> np.sqrt(d_model)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="co"># sinusoidal (additive)</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>sin_PE <span class="op">=</span> sinusoidal_pe(seq_len, d_model)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>q_sin, K_sin <span class="op">=</span> content_q <span class="op">+</span> sin_PE[m], content_k <span class="op">+</span> sin_PE</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>scores_sin <span class="op">=</span> K_sin <span class="op">@</span> q_sin</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="co"># RoPE (multiplicative on q,k)</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>q_rope <span class="op">=</span> apply_rope(np.tile(content_q, (m <span class="op">+</span> <span class="dv">1</span>, <span class="dv">1</span>)))[m]</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>K_rope <span class="op">=</span> apply_rope(content_k)</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>scores_rope <span class="op">=</span> K_rope <span class="op">@</span> q_rope</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a><span class="co"># ALiBi (bias on raw content score)</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>raw       <span class="op">=</span> content_k <span class="op">@</span> content_q</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>slope     <span class="op">=</span> slopes[<span class="dv">3</span>]</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>bias_row  <span class="op">=</span> <span class="op">-</span>slope <span class="op">*</span> np.<span class="bu">abs</span>(np.arange(seq_len) <span class="op">-</span> m)</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>scores_alibi <span class="op">=</span> raw <span class="op">+</span> bias_row</span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> softmax(x):</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>    z <span class="op">=</span> x <span class="op">-</span> x.<span class="bu">max</span>()<span class="op">;</span> e <span class="op">=</span> np.exp(z)<span class="op">;</span> <span class="cf">return</span> e <span class="op">/</span> e.<span class="bu">sum</span>()</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>attn_sin, attn_rope, attn_alibi <span class="op">=</span> <span class="bu">map</span>(softmax, (scores_sin, scores_rope, scores_alibi))</span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.6</span>))</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>positions_all <span class="op">=</span> np.arange(seq_len)</span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a>ax.plot(positions_all, attn_sin,   label<span class="op">=</span><span class="st">'sinusoidal (additive)'</span>, lw<span class="op">=</span><span class="fl">1.6</span>)</span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a>ax.plot(positions_all, attn_rope,  label<span class="op">=</span><span class="st">'RoPE'</span>,                  lw<span class="op">=</span><span class="fl">1.6</span>)</span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a>ax.plot(positions_all, attn_alibi, label<span class="op">=</span><span class="st">'ALiBi (head 3)'</span>,        lw<span class="op">=</span><span class="fl">1.6</span>)</span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>ax.axvline(m, color<span class="op">=</span><span class="st">'k'</span>, ls<span class="op">=</span><span class="st">'--'</span>, lw<span class="op">=</span><span class="fl">0.8</span>, alpha<span class="op">=</span><span class="fl">0.6</span>, label<span class="op">=</span><span class="ss">f'query m=</span><span class="sc">{</span>m<span class="sc">}</span><span class="ss">'</span>)</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">'key position'</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">'attention weight'</span>)</span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Attention distribution over positions with random content'</span>)</span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a>ax.legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a>plt.show()</span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"peak — sin/rope/alibi:"</span>, <span class="bu">int</span>(attn_sin.argmax()),</span>
+<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a>      <span class="bu">int</span>(attn_rope.argmax()), <span class="bu">int</span>(attn_alibi.argmax()))</span>
+<span id="cb13-41"><a href="#cb13-41" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"entropy — sin/rope/alibi:"</span>,</span>
+<span id="cb13-42"><a href="#cb13-42" aria-hidden="true" tabindex="-1"></a>      np.<span class="bu">round</span>([<span class="op">-</span>(p <span class="op">*</span> np.log(p <span class="op">+</span> <span class="fl">1e-12</span>)).<span class="bu">sum</span>()</span>
+<span id="cb13-43"><a href="#cb13-43" aria-hidden="true" tabindex="-1"></a>                <span class="cf">for</span> p <span class="kw">in</span> (attn_sin, attn_rope, attn_alibi)], <span class="dv">3</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/attn-compare-output-1.png" id="attn-compare" width="662" height="336" class="figure-img"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>peak — sin/rope/alibi: 48 32 47
+entropy — sin/rope/alibi: [1.251 4.559 4.24 ]</code></pre>
+</div>
+</div>
+<pre><code>peak — sin/rope/alibi: 48 32 47
+entropy — sin/rope/alibi: [1.251 4.559 4.24 ]</code></pre>
+<p>Three things stand out. Sinusoidal attention spikes hard at the query position (entropy 1.25) — because <span class="math inline">\(p_m\)</span> is added to <em>both</em> <span class="math inline">\(q\)</span> and <span class="math inline">\(k\)</span>, the inner product picks up a large <span class="math inline">\(\lVert p_m \rVert^2\)</span> term whenever <span class="math inline">\(n = m\)</span>. That is a benign quirk here (random untrained content) but the same positional-self-similarity is what a real model has to work around during training. RoPE, having no additive term, is nearly uniform (entropy 4.56): the raw content signal dominates and position acts through phase differences that partially cancel. ALiBi puts its peak near the query and decays outward regardless of content, with intermediate entropy. In a trained network these raw shapes get modulated by learned <span class="math inline">\(W_Q, W_K\)</span>, but the <em>bias</em> each scheme imposes is what the model has to counteract or exploit.</p>
+</section>
+<section id="length-extrapolation-the-failure-that-separates-them" class="level2">
+<h2 class="anchored" data-anchor-id="length-extrapolation-the-failure-that-separates-them">Length extrapolation: the failure that separates them</h2>
+<p>The visible practical difference between the three shows up when the model is asked to attend over sequences longer than it saw during training. Plotting the raw attention logit as a function of relative distance for a fixed content pair, at two sequence lengths (128 and 384), traces each scheme past its comfort zone.</p>
+<div id="cell-extrapolation" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> rel_similarity_curve(scheme: <span class="bu">str</span>, seq_len: <span class="bu">int</span>, d: <span class="bu">int</span> <span class="op">=</span> <span class="dv">64</span>) <span class="op">-&gt;</span> np.ndarray:</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    rng <span class="op">=</span> np.random.default_rng(<span class="dv">2</span>)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    q <span class="op">=</span> rng.standard_normal((d,)) <span class="op">/</span> np.sqrt(d)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    k <span class="op">=</span> rng.standard_normal((d,)) <span class="op">/</span> np.sqrt(d)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> seq_len <span class="op">//</span> <span class="dv">2</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    positions <span class="op">=</span> np.arange(seq_len)</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> scheme <span class="op">==</span> <span class="st">'sinusoidal'</span>:</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>        P <span class="op">=</span> sinusoidal_pe(seq_len, d)</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> (k[<span class="va">None</span>, :] <span class="op">+</span> P) <span class="op">@</span> (q <span class="op">+</span> P[m])</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> scheme <span class="op">==</span> <span class="st">'rope'</span>:</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>        q_at <span class="op">=</span> apply_rope(np.tile(q, (m <span class="op">+</span> <span class="dv">1</span>, <span class="dv">1</span>)))[m]</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>        k_at <span class="op">=</span> apply_rope(np.tile(k, (seq_len, <span class="dv">1</span>)))</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> k_at <span class="op">@</span> q_at</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> scheme <span class="op">==</span> <span class="st">'alibi'</span>:</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>        raw   <span class="op">=</span> np.tile(k <span class="op">@</span> q, seq_len)</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>        slope <span class="op">=</span> <span class="fl">0.25</span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> raw <span class="op">-</span> slope <span class="op">*</span> np.<span class="bu">abs</span>(positions <span class="op">-</span> m)</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">raise</span> <span class="pp">ValueError</span></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.6</span>))</span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> ax_, L <span class="kw">in</span> <span class="bu">zip</span>(axes, [<span class="dv">128</span>, <span class="dv">384</span>]):</span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a>    x <span class="op">=</span> np.arange(L) <span class="op">-</span> L <span class="op">//</span> <span class="dv">2</span></span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> name, style <span class="kw">in</span> [(<span class="st">'sinusoidal'</span>, <span class="st">':'</span>), (<span class="st">'rope'</span>, <span class="st">'-'</span>), (<span class="st">'alibi'</span>, <span class="st">'--'</span>)]:</span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a>        ax_.plot(x, rel_similarity_curve(name, L), style, label<span class="op">=</span>name, lw<span class="op">=</span><span class="fl">1.4</span>)</span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a>    ax_.axvline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">'k'</span>, lw<span class="op">=</span><span class="fl">0.6</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)</span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a>    ax_.set_xlabel(<span class="st">'relative distance (key − query)'</span>)</span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a>    ax_.set_ylabel(<span class="st">'raw attention logit'</span>)</span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a>    ax_.set_title(<span class="ss">f'seq_len = </span><span class="sc">{</span>L<span class="sc">}</span><span class="ss">'</span>)</span>
+<span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a>    ax_.legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> ax_.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb16-32"><a href="#cb16-32" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/extrapolation-output-1.png" id="extrapolation" width="949" height="336" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>At the trained length (128), all three produce structured curves peaked near the query. At length 384 the picture changes: the sinusoidal curve develops higher-amplitude oscillations at large distances because the fixed angular pattern is being evaluated at <span class="math inline">\(m \theta_k\)</span> values well outside the range the model was implicitly calibrated to during training. RoPE keeps its oscillatory structure but with a similar caveat — pairs with fast rotation have completed many extra full cycles, so any attention head that relied on a specific phase relationship is now confused. ALiBi is the cleanest: its linear penalty is <em>defined</em> for every distance, and the further out you go, the more strongly a head suppresses those positions. This monotonic behavior at unseen lengths is the reason ALiBi was proposed as a length-extrapolation technique in the first place <span class="citation" data-cites="press2022alibi">(<a href="#ref-press2022alibi" role="doc-biblioref">Press et al. 2022</a>)</span>, though subsequent work has shown that whether extrapolation is <em>usable</em> depends on the downstream task, not just on how well the logits behave in isolation <span class="citation" data-cites="kazemnejad2023impact">(<a href="#ref-kazemnejad2023impact" role="doc-biblioref">Kazemnejad et al. 2023</a>)</span>.</p>
+</section>
+<section id="choosing-between-the-three" class="level2">
+<h2 class="anchored" data-anchor-id="choosing-between-the-three">Choosing between the three</h2>
+<p>A short comparison table captures the axes that actually matter when you have to pick one.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>aspect</th>
+<th>Sinusoidal (additive)</th>
+<th>RoPE</th>
+<th>ALiBi</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>where it acts</td>
+<td>added to token embedding</td>
+<td>multiplies q, k inside attention</td>
+<td>added to attention logits</td>
+</tr>
+<tr class="even">
+<td>encodes</td>
+<td>absolute + relative (approximate)</td>
+<td>strictly relative</td>
+<td>pure distance penalty</td>
+</tr>
+<tr class="odd">
+<td>learned parameters</td>
+<td>0</td>
+<td>0</td>
+<td>0 (slopes fixed by rule)</td>
+</tr>
+<tr class="even">
+<td>interacts with content</td>
+<td>via cross terms after <span class="math inline">\(W_Q, W_K\)</span></td>
+<td>via preserved inner products</td>
+<td>not at all</td>
+</tr>
+<tr class="odd">
+<td>length extrapolation</td>
+<td>poor beyond trained length</td>
+<td>needs interpolation for large gains</td>
+<td>strong by construction</td>
+</tr>
+<tr class="even">
+<td>adopted in</td>
+<td>original Transformer, T5 variants</td>
+<td>LLaMA, Mistral, Qwen, Gemma</td>
+<td>BLOOM, MPT, some long-context lines</td>
+</tr>
+</tbody>
+</table>
+<p>The pattern that has emerged in practice: sinusoidal PE is a serviceable default for fixed-length problems where the trained range is enough, and its mathematical transparency makes it a good teaching object. RoPE has become the de facto choice in open-source LLMs because it preserves relative structure cleanly and is compatible with a large ecosystem of context-length extension tricks (position interpolation, YaRN, dynamic-NTK scaling). ALiBi trades expressive flexibility for the cleanest length-extrapolation profile and is preferred when the deployment context guarantees long inputs but no retraining budget. None of these is a universal winner; the choice is whether you want the model to <em>learn</em> position relations, to have them imposed by rotation, or to have them imposed by distance penalty.</p>
+</section>
+<section id="limits-and-open-questions" class="level2">
+<h2 class="anchored" data-anchor-id="limits-and-open-questions">Limits and open questions</h2>
+<p>Two limits are worth naming. First, the fact that RoPE and ALiBi are strictly relative can hurt on tasks that genuinely depend on absolute position — index lookup, boundary detection, certain retrieval formats — where an absolute signature makes learning easier. Hybrid designs have been proposed to add back a small absolute signal, but the trade-off is not settled. Second, “length extrapolation” is a heavily contested benchmark. Papers that show ALiBi extending gracefully often measure perplexity on natural text, not task accuracy, and controlled studies have found that extrapolated attention tends to under-utilize the extra context regardless of the positional scheme <span class="citation" data-cites="kazemnejad2023impact">(<a href="#ref-kazemnejad2023impact" role="doc-biblioref">Kazemnejad et al. 2023</a>)</span>. When a paper claims “million-token context,” the question to ask is whether the model can <em>use</em> those tokens, not just avoid crashing on them.</p>
+<p>For time-series work specifically, sinusoidal-style PE remains common in Transformer-based forecasters because sequence lengths are known and fixed, and additive PE composes cleanly with input normalization schemes such as RevIN. RoPE is starting to appear in long-horizon forecasters that reuse LLM backbones. ALiBi has seen less uptake in forecasting than in language modeling, partly because forecasting benchmarks rarely stress length extrapolation the way long-context language modeling does.</p>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>Sinusoidal PE, RoPE, and ALiBi are not three variants of the same idea. They answer different questions about what “position” should mean inside attention, and their differences show up in the shape of the attention matrix, in the extent to which relative structure is preserved by construction, and in what happens when a model runs at unseen lengths. If you take one thing away, take the derivation of <span class="math inline">\(s_{m,n}\)</span> as a sum of four terms in the additive case: it is the reason additive PE is delicate and the reason RoPE and ALiBi were invented. The right question at design time is not “which is best” but “which of these three constraints does my task actually need,” and the runnable code above is a starting point for answering that in your own setting.</p>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-chen2023extending" class="csl-entry" role="listitem">
+Chen, Shouyuan, Sherman Wong, Liangjian Chen, and Yuandong Tian. 2023. <em>Extending Context Window of Large Language Models via Positional Interpolation</em>. <a href="https://arxiv.org/abs/2306.15595">https://arxiv.org/abs/2306.15595</a>.
+</div>
+<div id="ref-kazemnejad2023impact" class="csl-entry" role="listitem">
+Kazemnejad, Amirhossein, Inkit Padhi, Karthikeyan Natesan Ramamurthy, Payel Das, and Siva Reddy. 2023. <span>“The Impact of Positional Encoding on Length Generalization in Transformers.”</span> <em>Advances in Neural Information Processing Systems (NeurIPS)</em>.
+</div>
+<div id="ref-press2022alibi" class="csl-entry" role="listitem">
+Press, Ofir, Noah A. Smith, and Mike Lewis. 2022. <span>“Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation.”</span> <em>International Conference on Learning Representations (ICLR)</em>.
+</div>
+<div id="ref-su2024roformer" class="csl-entry" role="listitem">
+Su, Jianlin, Murtadha Ahmed, Yu Lu, Shengfeng Pan, Wen Bo, and Yunfeng Liu. 2024. <span>“<span>RoFormer</span>: Enhanced Transformer with Rotary Position Embedding.”</span> <em>Neurocomputing</em> 568: 127063. <a href="https://doi.org/10.1016/j.neucom.2023.127063">https://doi.org/10.1016/j.neucom.2023.127063</a>.
+</div>
+<div id="ref-vaswani2017" class="csl-entry" role="listitem">
+Vaswani, Ashish, Noam Shazeer, Niki Parmar, et al. 2017. <span>“Attention Is All You Need.”</span> <em>Advances in Neural Information Processing Systems (NeurIPS)</em> 30.
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 2026 Prof.&nbsp;Shin · ForecastAI</p>
+</div>   
+    <div class="nav-footer-center">
+<p><a href="privacy-policy.qmd">Privacy Policy</a></p>
+</div>
+    <div class="nav-footer-right">
+<p>Powered by <a href="https://quarto.org">Quarto</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

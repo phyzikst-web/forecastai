@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/2026-07-16-positional-encoding-compared-sinusoidal-vs-rope-vs-alibi/index.html",
       "/posts/2026-07-15-tokenization-unpacked-bpe-wordpiece-and-the-number-problem/index.html",
       "/posts/2026-07-15-dataloader-unpacked-building-a-sliding-window-pipeline-for-time-series-in-pytorch/index.html",
       "/posts/2026-07-14-what-autograd-actually-does-tensor-operations-and-the-backward-pass-in-pytorch/index.html",
@@ -15,6 +16,7 @@
   {
     "listing": "/categories.html",
     "items": [
+      "/posts/2026-07-16-positional-encoding-compared-sinusoidal-vs-rope-vs-alibi/index.html",
       "/posts/2026-07-15-tokenization-unpacked-bpe-wordpiece-and-the-number-problem/index.html",
       "/posts/2026-07-15-dataloader-unpacked-building-a-sliding-window-pipeline-for-time-series-in-pytorch/index.html",
       "/posts/2026-07-14-what-autograd-actually-does-tensor-operations-and-the-backward-pass-in-pytorch/index.html",
