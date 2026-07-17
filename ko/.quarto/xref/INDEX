@@ -52,5 +52,8 @@
   },
   "posts/2026-07-16-positional-encoding-sinusoidal-rope-alibi/index.qmd": {
     "index.html": "9b734d01"
+  },
+  "posts/2026-07-17-writing-custom-losses-in-pytorch-pinball-huber-and-crps-from-scratch/index.qmd": {
+    "index.html": "e893ee91"
   }
 }
