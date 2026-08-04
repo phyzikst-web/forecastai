@@ -1,0 +1,408 @@
+---
+title: "Attention Is All You Need, Re-read: What Actually Worked"
+date: "2026-08-04"
+categories:
+  - Data Science
+  - Artificial Intelligence
+  - LLM
+  - Transformer
+  - Paper Review
+tags:
+  - attention-is-all-you-need
+  - transformer
+  - self-attention
+  - scaled-dot-product-attention
+  - multi-head-attention
+  - positional-encoding
+  - layer-normalization
+  - residual-connection
+  - paper-review
+  - LLM
+image: "thumbnail.jpg"
+description: |
+  The 2017 Transformer paper is remembered for one slogan, but its lasting
+  contribution is more specific and more contested than "attention is all you
+  need." This review separates the paper's genuine mechanism — a constant-path,
+  fully parallel interaction layer — from the supporting machinery that later
+  work showed was doing much of the load-bearing, with runnable NumPy code that
+  reproduces the scaling argument, the tensor bookkeeping, and the cost model.
+lang: en
+toc: true
+toc-depth: 3
+number-sections: false
+code-fold: false
+code-tools: false
+bibliography: ../../references.bib
+execute:
+  echo: true
+  output: true
+  eval: true
+  warning: false
+  message: false
+  freeze: true
+format:
+  html:
+    code-copy: true
+    code-overflow: wrap
+---
+
+![[Concept Visualization] Self-attention connects every token in a single step; three pieces of supporting machinery carry much of the load.](thumbnail.jpg){fig-align="center" width="90%"}
+
+## The bottleneck the paper set out to remove
+
+By 2017 the dominant sequence models were recurrent. An encoder–decoder LSTM
+with attention on top [@sutskever2014; @bahdanau2015] held the state of the art
+in machine translation, and the attention module of @bahdanau2015 had already
+shown that letting the decoder look back at all encoder states, rather than a
+single compressed vector, removed a real information bottleneck. The problem
+was not accuracy but the recurrence itself: to compute the hidden state at
+position $t$ you must first compute the state at $t-1$. That sequential
+dependency makes training hard to parallelize across the time axis and stretches
+the path a gradient must travel between two distant positions to a length that
+grows with their separation.
+
+@vaswani2017 asked what happens if you keep the attention and throw away the
+recurrence. The answer — the Transformer — replaced recurrent and convolutional
+layers with stacked self-attention. That is the move the title advertises. But
+the paper's slogan has aged into a slight misreading: the architecture is not
+attention *alone*. It is attention wrapped in residual connections, layer
+normalization, a position-wise feed-forward network, and a fixed positional
+signal, and the ablations in the paper plus a decade of follow-up show that
+several of those wrappers are not optional decoration. This review works through
+what the mechanism is, what the paper's own experiments actually establish, and
+where the popular summary overstates the case.
+
+## One mechanism, applied everywhere
+
+Self-attention computes, for every position, a weighted average of the
+representations at all positions, where the weights come from a compatibility
+score between that position's *query* and every other position's *key*. Given
+packed matrices $Q, K, V$ with shapes $(n, d_k), (n, d_k), (n, d_v)$ the paper's
+scaled dot-product attention is
+
+$$\operatorname{Attention}(Q, K, V) = \operatorname{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d_k}}\right) V .$$
+
+The softmax runs over the key axis, so each output row is a convex combination
+of value vectors. Nothing here is recurrent: every output position is computed
+from the same $Q, K, V$ in one matrix multiply, which is exactly the property
+that lets a GPU fill the whole $(n, n)$ score matrix in parallel. The same
+operation is reused in three roles — encoder self-attention, decoder masked
+self-attention, and encoder–decoder cross-attention — differing only in where
+$Q$, $K$, and $V$ come from and whether a causal mask blanks out future keys.
+
+Two design choices turn this bare operation into something trainable. The first
+is the $1/\sqrt{d_k}$ scale. The second is splitting the computation into
+multiple heads. Both are easy to state and easy to underestimate, so it is worth
+reproducing what each one does.
+
+## Why divide by $\sqrt{d_k}$
+
+If the entries of $Q$ and $K$ are independent with unit variance, a single
+dot product $q^{\top}k$ sums $d_k$ such products and therefore has variance
+$d_k$. As $d_k$ grows the logits fed to the softmax spread out, and softmax with
+large-magnitude inputs saturates: almost all the mass collapses onto a single
+key and the gradient through the other logits vanishes. Dividing by $\sqrt{d_k}$
+restores unit-scale logits regardless of head width. The following code makes
+the effect measurable by comparing the variance of the raw and scaled scores and
+the entropy of the resulting attention distribution over 50 keys.
+
+```{python}
+#| label: scale-effect
+#| echo: true
+import numpy as np
+
+def softmax(x, axis=-1):
+    z = x - x.max(axis=axis, keepdims=True)
+    e = np.exp(z)
+    return e / e.sum(axis=axis, keepdims=True)
+
+def entropy(scores):
+    p = softmax(scores)
+    return float(-(p * np.log(p + 1e-12)).sum())
+
+rng = np.random.default_rng(0)
+for d_k in [16, 64, 256]:
+    Q = rng.standard_normal((1, d_k))
+    K = rng.standard_normal((50, d_k))
+    raw = (Q @ K.T)[0]
+    scaled = raw / np.sqrt(d_k)
+    print(f"d_k={d_k:>3} | var(raw)={raw.var():7.2f} | var(scaled)={scaled.var():5.3f} "
+          f"| entropy raw={entropy(raw):5.3f} | entropy scaled={entropy(scaled):5.3f} "
+          f"| max weight raw={softmax(raw).max():.3f} scaled={softmax(scaled).max():.3f}")
+```
+
+```
+d_k= 16 | var(raw)=  13.48 | var(scaled)=0.842 | entropy raw=1.063 | entropy scaled=3.566 | max weight raw=0.773 scaled=0.108
+d_k= 64 | var(raw)=  49.06 | var(scaled)=0.767 | entropy raw=1.243 | entropy scaled=3.590 | max weight raw=0.669 scaled=0.071
+d_k=256 | var(raw)= 349.86 | var(scaled)=1.367 | entropy raw=0.000 | entropy scaled=2.996 | max weight raw=1.000 scaled=0.308
+```
+
+The raw variance climbs with $d_k$ exactly as predicted, and at $d_k = 256$ the
+unscaled softmax has collapsed entirely: entropy is numerically zero and one key
+takes all the weight. The scaled version keeps entropy near the healthy middle
+of its range (uniform over 50 keys would be $\log 50 \approx 3.91$). Sweeping
+$d_k$ across a wider range and averaging over many random draws shows the
+collapse is systematic, not an artifact of one seed.
+
+```{python}
+#| label: scale-sweep
+#| echo: true
+import matplotlib.pyplot as plt
+
+dks = np.array([4, 8, 16, 32, 64, 128, 256, 512])
+ent_raw, ent_scaled = [], []
+for d_k in dks:
+    er, es = [], []
+    for _ in range(200):
+        Q = rng.standard_normal((1, d_k)); K = rng.standard_normal((50, d_k))
+        raw = (Q @ K.T)[0]
+        er.append(entropy(raw)); es.append(entropy(raw / np.sqrt(d_k)))
+    ent_raw.append(np.mean(er)); ent_scaled.append(np.mean(es))
+
+fig, ax = plt.subplots(figsize=(6.5, 3.6))
+ax.plot(dks, ent_raw, "o-", label="unscaled  QK^T")
+ax.plot(dks, ent_scaled, "s-", label=r"scaled  QK^T / $\sqrt{d_k}$")
+ax.axhline(np.log(50), ls="--", color="gray", lw=0.8, label="uniform (log 50)")
+ax.set_xscale("log", base=2); ax.set_xlabel("head dimension $d_k$")
+ax.set_ylabel("mean softmax entropy (nats)")
+ax.legend(fontsize=8); ax.grid(alpha=0.3)
+plt.tight_layout(); plt.show()
+```
+
+The unscaled curve decays toward zero as heads widen — the network would start
+training with attention distributions already saturated, and the paper notes
+this is why the scale factor exists. Read the figure as a warning about
+initialization geometry: without the $1/\sqrt{d_k}$ term, the very first
+forward pass on a wide head produces near-one-hot attention, and the gradient
+signal that would let the model *learn* where to attend is gone before training
+begins.
+
+## Multi-head attention, with the dimensions tracked
+
+A single attention head averages values, and an average cannot simultaneously
+capture "the subject three tokens back" and "the nearest punctuation." Multi-head
+attention runs $h$ attention operations in parallel on linear projections of the
+input into $d_k = d_\text{model}/h$-dimensional subspaces, then concatenates and
+projects the results. The projections give each head its own view of what
+counts as a good query–key match. The bookkeeping is where implementations go
+wrong, so the code prints the shape at every step for $d_\text{model}=64$,
+$h=8$, sequence length 10.
+
+```{python}
+#| label: multihead
+#| echo: true
+seq_len, d_model, h = 10, 64, 8
+d_k = d_model // h
+rng = np.random.default_rng(1)
+X  = rng.standard_normal((seq_len, d_model))
+Wq = rng.standard_normal((d_model, d_model)) / np.sqrt(d_model)
+Wk = rng.standard_normal((d_model, d_model)) / np.sqrt(d_model)
+Wv = rng.standard_normal((d_model, d_model)) / np.sqrt(d_model)
+Wo = rng.standard_normal((d_model, d_model)) / np.sqrt(d_model)
+
+def split_heads(M):                       # (seq, d_model) -> (h, seq, d_k)
+    return M.reshape(seq_len, h, d_k).transpose(1, 0, 2)
+
+Q, K, V   = X @ Wq, X @ Wk, X @ Wv
+Qh, Kh, Vh = split_heads(Q), split_heads(K), split_heads(V)
+scores = Qh @ Kh.transpose(0, 2, 1) / np.sqrt(d_k)     # (h, seq, seq)
+attn   = softmax(scores, axis=-1)
+ctx    = attn @ Vh                                      # (h, seq, d_k)
+ctx_merged = ctx.transpose(1, 0, 2).reshape(seq_len, d_model)
+out = ctx_merged @ Wo
+
+print(f"X            {X.shape}")
+print(f"Q = K = V    {Q.shape}")
+print(f"per-head Qh  {Qh.shape}  (h={h}, d_k={d_k})")
+print(f"scores       {scores.shape}  (h, seq, seq)")
+print(f"attn rowsum  {np.round(attn[0].sum(1)[:3], 6)}  (softmax normalized)")
+print(f"context      {ctx.shape}  ->  merged {ctx_merged.shape}")
+print(f"output       {out.shape}")
+```
+
+```
+X            (10, 64)
+Q = K = V    (10, 64)
+per-head Qh  (8, 10, 8)  (h=8, d_k=8)
+scores       (8, 10, 10)  (h, seq, seq)
+attn rowsum  [1. 1. 1.]  (softmax normalized)
+context      (8, 10, 8)  ->  merged (10, 64)
+output       (10, 64)
+```
+
+The total parameter and compute budget is nearly identical to a single head of
+full width, because each head operates in a $d_k = 8$ subspace; the split buys
+representational diversity almost for free. What multi-head attention does *not*
+buy is interpretability, a point worth stating because it is routinely
+overclaimed. A single head's weight matrix is a valid probability distribution
+over keys, but that does not make it an explanation of the model's decision.
+
+```{python}
+#| label: head-heatmap
+#| echo: true
+fig, ax = plt.subplots(figsize=(4.6, 3.8))
+im = ax.imshow(attn[0], cmap="viridis", vmin=0)
+ax.set_xlabel("key position"); ax.set_ylabel("query position")
+ax.set_title("Attention weights (head 0)")
+plt.colorbar(im, ax=ax, fraction=0.046)
+plt.tight_layout(); plt.show()
+```
+
+Each row of the heatmap sums to one, so it reads like an explanation of "what
+this token looked at." But the value vectors it averages, and the seven other
+heads and the feed-forward network downstream, all reshape that signal before it
+reaches the output. Treating one head's weights as the model's reasoning is the
+attention-map analogue of reading tea leaves; the weights are real, their causal
+role in the prediction is not established by the picture.
+
+## What the ablations actually showed
+
+The paper's contribution is not just the architecture but Table 3, where the
+authors vary one component at a time on English–German translation. Read
+critically, that table is where the "attention is all you need" reading gets
+complicated. Reducing the number of heads to one drops BLEU noticeably, and
+using too many heads also hurts — so the *multiplicity* of heads matters, not
+attention per se. Shrinking the key dimension $d_k$ degrades quality, consistent
+with the compatibility function being the load-bearing part. Enlarging the model
+and adding dropout both help in the expected directions. Crucially, replacing
+the learned components with the sinusoidal positional encoding produced nearly
+identical results to a learned positional embedding, which is the evidence
+behind the common claim that the specific positional scheme is not what makes
+the model work.
+
+Two cautions apply to how this table is usually cited. First, every number is a
+single run on one language pair with one tokenizer and one training budget; the
+paper does not report variance across seeds, so small BLEU gaps between
+configurations should not be read as reliable rankings. Second, the ablations
+vary components that were *already inside* the Transformer. They tell you the
+relative importance of heads, key width, and positional scheme, but they do not
+isolate the residual connections or layer normalization, because no row of the
+table removes those. For the components the paper did not ablate, the evidence
+comes from later work, and it is not favorable to the "attention alone" reading.
+
+## Cost and path length: the real reason it scaled
+
+The section of the paper that has aged best is the complexity comparison. A
+self-attention layer costs $O(n^2 \cdot d)$ operations and connects any two
+positions through a path of length $O(1)$; a recurrent layer costs
+$O(n \cdot d^2)$ and has a maximum path length of $O(n)$. The code below
+evaluates both for $d = 512$ across sequence lengths.
+
+```{python}
+#| label: complexity
+#| echo: true
+d = 512
+ns = np.array([32, 64, 128, 256, 512, 1024, 2048, 4096])
+self_ops = ns**2 * d
+rec_ops  = ns * d * d
+for n, s, r in zip(ns, self_ops, rec_ops):
+    print(f"n={n:>4} | self-attn ~{s:>14,} | recurrent ~{r:>14,} "
+          f"| ratio={s/r:6.3f} | path: self=1, rec={n}")
+```
+
+```
+n=  32 | self-attn ~       524,288 | recurrent ~     8,388,608 | ratio= 0.062 | path: self=1, rec=32
+n=  64 | self-attn ~     2,097,152 | recurrent ~    16,777,216 | ratio= 0.125 | path: self=1, rec=64
+n= 128 | self-attn ~     8,388,608 | recurrent ~    33,554,432 | ratio= 0.250 | path: self=1, rec=128
+n= 256 | self-attn ~    33,554,432 | recurrent ~    67,108,864 | ratio= 0.500 | path: self=1, rec=256
+n= 512 | self-attn ~   134,217,728 | recurrent ~   134,217,728 | ratio= 1.000 | path: self=1, rec=512
+n=1024 | self-attn ~   536,870,912 | recurrent ~   268,435,456 | ratio= 2.000 | path: self=1, rec=1024
+n=2048 | self-attn ~ 2,147,483,648 | recurrent ~   536,870,912 | ratio= 4.000 | path: self=1, rec=2048
+n=4096 | self-attn ~ 8,589,934,592 | recurrent ~ 1,073,741,824 | ratio= 8.000 | path: self=1, rec=4096
+```
+
+The crossover at $n = d = 512$ is the detail most summaries omit. Self-attention
+is cheaper *per layer* only while the sequence is shorter than the model width;
+past that point its quadratic cost overtakes the recurrent layer, which is why
+long-context Transformers spawned an entire literature on sub-quadratic
+attention. The advantage that does not degrade is the path length: it is $1$ for
+self-attention at every sequence length, versus $n$ for recurrence.
+
+```{python}
+#| label: cost-path
+#| echo: true
+fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.6))
+axes[0].plot(ns, self_ops, "o-", label=r"self-attention $O(n^2 d)$")
+axes[0].plot(ns, rec_ops, "s-", label=r"recurrent $O(n d^2)$")
+axes[0].axvline(d, ls="--", color="k", lw=0.8, alpha=0.6, label=f"n = d = {d}")
+axes[0].set_xscale("log", base=2); axes[0].set_yscale("log")
+axes[0].set_xlabel("sequence length n"); axes[0].set_ylabel("operations")
+axes[0].set_title("Per-layer cost (d=512)"); axes[0].legend(fontsize=8); axes[0].grid(alpha=0.3)
+axes[1].plot(ns, np.ones_like(ns), "o-", label="self-attention: 1")
+axes[1].plot(ns, ns, "s-", label="recurrent: n")
+axes[1].set_xscale("log", base=2); axes[1].set_yscale("log")
+axes[1].set_xlabel("sequence length n"); axes[1].set_ylabel("max path length")
+axes[1].set_title("Longest dependency path"); axes[1].legend(fontsize=8); axes[1].grid(alpha=0.3)
+plt.tight_layout(); plt.show()
+```
+
+The left panel shows the crossover; the right panel shows the property that made
+the architecture trainable at depth. A constant-length path between any two
+positions means the gradient signal linking distant tokens does not have to
+survive $n$ successive Jacobian products, which is the failure mode that made
+long-range learning in RNNs fragile. This — parallelism plus short gradient
+paths — is the mechanism that actually scaled, more than any claim about
+attention being a uniquely expressive operation.
+
+## What actually worked
+
+Pulling the threads together, the durable contribution of the paper is narrower
+and more structural than its title. Self-attention supplied a fully parallel,
+constant-path interaction layer, and that removed the two properties of
+recurrence that capped model size and depth. But the components the paper
+under-emphasized turn out to be doing much of the work. Residual connections,
+imported from @he2016resnet, are what let the encoder and decoder stack to depth
+without the signal degrading; remove them and a deep Transformer does not train.
+Layer normalization [@ba2016layernorm] stabilizes the scale of activations
+between sublayers. And the position of that normalization — the paper placed it
+*after* each sublayer (Post-LN), whereas later work showed that placing it
+*before* (Pre-LN) removes the need for the learning-rate warmup the original
+recipe required and makes deep Transformers train more reliably
+[@xiong2020layernorm]. That the field quietly switched to Pre-LN is direct
+evidence that the original arrangement was not optimal, and that the architecture
+is sensitive to details the slogan ignores.
+
+So the honest reading is that attention was necessary but not sufficient. The
+paper's real achievement was assembling attention, residual connections,
+normalization, and a position-wise feed-forward network into a block that trains
+stably when stacked and parallelizes across the sequence. Ablating attention
+would of course break it; but so would ablating the residuals, and the paper's
+own experiments only tested the former.
+
+## Limits and what the paper did not settle
+
+Three limitations bound how far the 2017 results generalize. The quadratic cost
+demonstrated above is a real ceiling: the architecture as published does not
+scale to very long sequences without modification, and the crossover at $n = d$
+shows the problem starts earlier than the "linear enough in practice" framing
+suggests. The evaluation was narrow — two translation tasks and an English
+constituency-parsing check — so the paper establishes that the Transformer
+matches or beats recurrent baselines *on those tasks*, not the general-purpose
+dominance the architecture later achieved, which took the scale-up in
+@devlin2019 and successors to demonstrate. And the interpretability of attention
+weights, sometimes advertised as a side benefit, is not supported by the paper's
+evidence and has been contested since; the weights are a real intermediate
+quantity, but their causal relation to the output is not shown by inspecting
+them.
+
+## Conclusion
+
+Re-read a decade later, "attention is all you need" is best treated as a
+provocation rather than a finding. The finding is that a specific block —
+scaled dot-product multi-head attention, wrapped in residual connections, layer
+normalization, and a feed-forward network — gives a sequence model both full
+parallelism and a constant-length gradient path, and that this combination
+scales where recurrence did not. The $1/\sqrt{d_k}$ scale and the multi-head
+split are the parts of attention that had to be right, and the code here shows
+why. But the residual and normalization machinery, which the paper mentions
+almost in passing and never ablates, is doing enough of the load-bearing that
+later work reorganized it (Pre-LN) for stability. For anyone using or teaching
+the Transformer, the useful lesson is not the slogan but the decomposition:
+know which piece supplies parallelism, which supplies trainable depth, and which
+supplies the positional signal, because the next architecture you read will keep
+some of them and replace others.
+
+## References
+
+::: {#refs}
+:::

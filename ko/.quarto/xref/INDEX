@@ -58,5 +58,11 @@
   },
   "posts/2026-08-03-nnmodule-design-patterns-building-reusable-time-series-blocks/index.qmd": {
     "index.html": "28b68714"
+  },
+  "posts/2026-08-04-attention-is-all-you-need-what-actually-worked/index.qmd": {
+    "index.html": "fb9503d5"
+  },
+  "posts/2026-08-04-attention-is-all-you-need-re-read-what-actually-worked/index.qmd": {
+    "index.html": "7b1e6383"
   }
 }
