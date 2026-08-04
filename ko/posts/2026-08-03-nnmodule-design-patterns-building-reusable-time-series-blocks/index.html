@@ -278,8 +278,6 @@ div.csl-indent {
 <h2 class="anchored" data-anchor-id="명시적-형상-계약을-갖춘-재사용-블록">명시적 형상 계약을 갖춘 재사용 블록</h2>
 <p>핵심 단위는 채널 차원에 대해 작동하는 잔차 합성곱 블록입니다. 재사용성을 위해 할 수 있는 가장 유용한 일은 형상 계약(shape contract)을 독스트링으로 적어 두고 절대 어기지 않는 것입니다. 여기서는 <code>(B, C, L)</code>, 즉 배치·채널·길이 규약을 고정하고, <code>'same'</code> 패딩으로 길이를 보존합니다. 그래서 블록은 외부의 별도 처리 없이도 그대로 쌓을 수 있습니다. 잔차 스킵 연결은 He 등(2016)을 따르며, 입력과 출력 채널 수가 다를 때는 <code>1×1</code> 합성곱이 스킵 경로를 맞춰 줍니다.</p>
 <div id="temporal-block" class="cell" data-execution_count="1">
-<details class="code-fold">
-<summary>코드</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch.nn <span class="im">as</span> nn</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -317,7 +315,6 @@ div.csl-indent {
 <span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"input : </span><span class="sc">{</span><span class="bu">tuple</span>(x.shape)<span class="sc">}</span><span class="ss">"</span>)</span>
 <span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"output: </span><span class="sc">{</span><span class="bu">tuple</span>(y.shape)<span class="sc">}</span><span class="ss">"</span>)</span>
 <span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"trainable params in one block: </span><span class="sc">{</span><span class="bu">sum</span>(p.numel() <span class="cf">for</span> p <span class="kw">in</span> block.parameters())<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 <div class="cell-output cell-output-stdout">
 <pre><code>input : (8, 3, 64)
 output: (8, 16, 64)
@@ -330,8 +327,6 @@ trainable params in one block: 1648</code></pre>
 <h2 class="anchored" data-anchor-id="조합-modulelist와-설정-기반-구성">조합: ModuleList와 설정 기반 구성</h2>
 <p>블록이 형상 계약을 지키면 쌓는 일은 간단해집니다. 여기서 놓치기 쉬운 핵심은, 순수한 파이썬 리스트에 담긴 모듈은 PyTorch에게 <strong>보이지 않는다</strong>는 점입니다. 그냥 리스트 안에 있는 파라미터는 결코 등록되지 않습니다. <code>nn.ModuleList</code>는 바로 이를 위해 존재합니다. 개수가 가변인 서브모듈을 담으면서도 그것들이 등록·탐색 가능하도록 유지해 줍니다. 폭(width)을 설정 리스트로 지정하면, “모델을 더 깊게”라는 요구가 <code>forward</code> 수정이 아니라 한 줄 변경으로 끝납니다.</p>
 <div id="encoder" class="cell" data-execution_count="2">
-<details class="code-fold">
-<summary>코드</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TemporalEncoder(nn.Module):</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, c_in: <span class="bu">int</span>, channels: <span class="bu">list</span>[<span class="bu">int</span>], kernel_size: <span class="bu">int</span> <span class="op">=</span> <span class="dv">3</span>):</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>        <span class="bu">super</span>().<span class="fu">__init__</span>()</span>
@@ -351,7 +346,6 @@ trainable params in one block: 1648</code></pre>
 <span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"encoder output: </span><span class="sc">{</span><span class="bu">tuple</span>(h.shape)<span class="sc">}</span><span class="ss">"</span>)</span>
 <span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"num stacked blocks: </span><span class="sc">{</span><span class="bu">len</span>(enc.blocks)<span class="sc">}</span><span class="ss">"</span>)</span>
 <span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"encoder params: </span><span class="sc">{</span><span class="bu">sum</span>(p.numel() <span class="cf">for</span> p <span class="kw">in</span> enc.parameters())<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 <div class="cell-output cell-output-stdout">
 <pre><code>encoder output: (8, 32, 64)
 num stacked blocks: 3
@@ -364,8 +358,6 @@ encoder params: 12592</code></pre>
 <h2 class="anchored" data-anchor-id="버퍼와-파라미터의-구분">버퍼와 파라미터의 구분</h2>
 <p>정규화는 버퍼와 파라미터의 구분이 구체적으로 드러나는 지점입니다. 아래 표준화 모듈은 실행 중 평균과 분산을 유지하여, 추론 시 하나의 테스트 배치가 아니라 안정적인 통계량을 쓰도록 합니다. 이 텐서들은 <code>state_dict()</code>를 통해 저장·복원되고 모델을 따라 GPU로 이동해야 하지만, 그래디언트는 결코 받아서는 안 됩니다. <code>register_buffer</code>가 바로 그 요구를 표현합니다. <code>nn.BatchNorm1d</code>가 내부적으로 쓰는 것과 같은 메커니즘입니다(Ioffe &amp; Szegedy, 2015).</p>
 <div id="buffers" class="cell" data-execution_count="3">
-<details class="code-fold">
-<summary>코드</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> RunningStandardizer(nn.Module):</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Standardizes (B, C, L) using running stats stored as *buffers*,</span></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">    not parameters -- they persist in state_dict but never get gradients."""</span></span>
@@ -392,7 +384,6 @@ encoder params: 12592</code></pre>
 <span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, buf <span class="kw">in</span> std.named_buffers():</span>
 <span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"buffer </span><span class="sc">{</span>name<span class="sc">:14s}</span><span class="ss"> shape=</span><span class="sc">{</span><span class="bu">tuple</span>(buf.shape)<span class="sc">}</span><span class="ss">  requires_grad=</span><span class="sc">{</span>buf<span class="sc">.</span>requires_grad<span class="sc">}</span><span class="ss">"</span>)</span>
 <span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"learned parameters:"</span>, [n <span class="cf">for</span> n, _ <span class="kw">in</span> std.named_parameters()] <span class="kw">or</span> <span class="st">"none"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 <div class="cell-output cell-output-stdout">
 <pre><code>buffer running_mean   shape=(3,)  requires_grad=False
 buffer running_var    shape=(3,)  requires_grad=False
@@ -405,8 +396,6 @@ learned parameters: none</code></pre>
 <h2 class="anchored" data-anchor-id="예측-모델-조립과-가중치-초기화">예측 모델 조립과 가중치 초기화</h2>
 <p>이제 조각들을 하나의 완전한 모델로 조합합니다. 예측 모델은 더 흔한 <code>(B, L, C)</code> 배치를 받아 한 번 전치하여 블록 규약으로 바꾸고, 시간 축으로 평균 풀링한 뒤 다단계 지평(horizon)으로 사상합니다. 가중치 초기화는 <code>self.apply(...)</code>로 처리합니다. 이 메서드는 모든 서브모듈을 재귀적으로 순회하므로, 초기화를 블록마다 흩뿌리는 대신 한 곳에서 일관되게 지정할 수 있습니다(He 등(2015)의 Kaiming 초기화).</p>
 <div id="forecaster" class="cell" data-execution_count="4">
-<details class="code-fold">
-<summary>코드</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Forecaster(nn.Module):</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""(B, L, C_in) -&gt; (B, horizon) single-target multi-step forecaster."""</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, c_in: <span class="bu">int</span>, channels: <span class="bu">list</span>[<span class="bu">int</span>], horizon: <span class="bu">int</span>,</span>
@@ -438,7 +427,6 @@ learned parameters: none</code></pre>
 <span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"model output: </span><span class="sc">{</span><span class="bu">tuple</span>(out.shape)<span class="sc">}</span><span class="ss">"</span>)</span>
 <span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"total params: </span><span class="sc">{</span><span class="bu">sum</span>(p.numel() <span class="cf">for</span> p <span class="kw">in</span> model.parameters())<span class="sc">}</span><span class="ss">"</span>)</span>
 <span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"top-level submodules:"</span>, [n <span class="cf">for</span> n, _ <span class="kw">in</span> model.named_children()])</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 <div class="cell-output cell-output-stdout">
 <pre><code>model input : (8, 64, 3)
 model output: (8, 12)
@@ -452,8 +440,6 @@ top-level submodules: ['standardize', 'encoder', 'head']</code></pre>
 <h2 class="anchored" data-anchor-id="이-추상화는-값을-하는가">이 추상화는 값을 하는가</h2>
 <p>구조는 그 결과로 만들어진 모델이 학습될 때에만 가치가 있습니다. 조합한 예측 모델을 합성 3채널 시계열에 학습시켜 봅니다. 사인 곡선의 합에 잡음을 더한 신호이며, 64스텝 문맥으로부터 채널 0의 다음 12스텝을 예측합니다. 미래 정보 누수를 막기 위해 분할은 시간순으로 합니다.</p>
 <div id="train" class="cell" data-execution_count="5">
-<details class="code-fold">
-<summary>코드</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>np.random.seed(<span class="dv">0</span>)</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -503,7 +489,6 @@ top-level submodules: ['standardize', 'encoder', 'head']</code></pre>
 <span id="cb9-47"><a href="#cb9-47" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"train windows: </span><span class="sc">{</span><span class="bu">tuple</span>(Xtr.shape)<span class="sc">}</span><span class="ss">, test windows: </span><span class="sc">{</span><span class="bu">tuple</span>(Xte.shape)<span class="sc">}</span><span class="ss">"</span>)</span>
 <span id="cb9-48"><a href="#cb9-48" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"final train MSE: </span><span class="sc">{</span>losses[<span class="op">-</span><span class="dv">1</span>]<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
 <span id="cb9-49"><a href="#cb9-49" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"test  MSE: </span><span class="sc">{</span>test_mse<span class="sc">:.4f}</span><span class="ss">  |  test MAE: </span><span class="sc">{</span>test_mae<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 <div class="cell-output cell-output-stdout">
 <pre><code>train windows: (3139, 64, 3), test windows: (785, 64, 3)
 final train MSE: 0.0520
@@ -511,15 +496,12 @@ test  MSE: 0.0360  |  test MAE: 0.1525</code></pre>
 </div>
 </div>
 <div id="cell-fig-loss" class="cell" data-execution_count="6">
-<details class="code-fold">
-<summary>코드</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">6</span>, <span class="fl">3.4</span>))</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>ax.plot(<span class="bu">range</span>(<span class="dv">1</span>, <span class="bu">len</span>(losses) <span class="op">+</span> <span class="dv">1</span>), losses, marker<span class="op">=</span><span class="st">"o"</span>, ms<span class="op">=</span><span class="dv">3</span>, color<span class="op">=</span><span class="st">"#2b6cb0"</span>)</span>
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"epoch"</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">"train MSE"</span>)</span>
 <span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Training loss of the composed forecaster"</span>)</span>
 <span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)<span class="op">;</span> fig.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 <div class="cell-output cell-output-display">
 <div id="fig-loss" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -535,8 +517,6 @@ test  MSE: 0.0360  |  test MAE: 0.1525</code></pre>
 </div>
 <p>손실이 매끄럽게 감소하고 테스트 오차가 학습 오차에 근접합니다. 시드가 고정된 정상(stationary) 합성 신호에서 기대할 수 있는 결과이며, 추상화가 최적화를 방해하지 않았음을 뜻합니다. 보류(held-out)한 창에 대한 예측은 모델이 잘하는 부분과 못하는 부분을 함께 보여 줍니다.</p>
 <div id="cell-fig-pred" class="cell" data-execution_count="7">
-<details class="code-fold">
-<summary>코드</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>k <span class="op">=</span> <span class="dv">5</span></span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>ctx, true, fc <span class="op">=</span> Xte[k, :, <span class="dv">0</span>].numpy(), Yte[k].numpy(), pred_te[k].numpy()</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.4</span>, <span class="fl">3.4</span>))</span>
@@ -547,7 +527,6 @@ test  MSE: 0.0360  |  test MAE: 0.1525</code></pre>
 <span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"time step"</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">"value"</span>)</span>
 <span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"One test window: context, target, forecast"</span>)</span>
 <span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>ax.legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)<span class="op">;</span> fig.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 <div class="cell-output cell-output-display">
 <div id="fig-pred" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -567,8 +546,6 @@ test  MSE: 0.0360  |  test MAE: 0.1525</code></pre>
 <h2 class="anchored" data-anchor-id="설계상의-트레이드오프">설계상의 트레이드오프</h2>
 <p>조합성은 용량(capacity)을 값싸게 바꾸도록 해 주지만, 용량 자체가 공짜는 아닙니다. 아래 그림은 다른 조건을 고정한 채 블록 스택을 깊게 할수록 파라미터 수가 어떻게 늘어나는지 셉니다.</p>
 <div id="cell-fig-params" class="cell" data-execution_count="8">
-<details class="code-fold">
-<summary>코드</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>depths <span class="op">=</span> [[<span class="dv">16</span>], [<span class="dv">16</span>, <span class="dv">32</span>], [<span class="dv">16</span>, <span class="dv">32</span>, <span class="dv">32</span>], [<span class="dv">16</span>, <span class="dv">32</span>, <span class="dv">64</span>, <span class="dv">64</span>]]</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>counts <span class="op">=</span> [<span class="bu">sum</span>(p.numel() <span class="cf">for</span> p <span class="kw">in</span> Forecaster(<span class="dv">3</span>, ch, H).parameters()) <span class="cf">for</span> ch <span class="kw">in</span> depths]</span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">6</span>, <span class="fl">3.4</span>))</span>
@@ -578,7 +555,6 @@ test  MSE: 0.0360  |  test MAE: 0.1525</code></pre>
 <span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i, c <span class="kw">in</span> <span class="bu">enumerate</span>(counts):</span>
 <span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    ax.text(i, c, <span class="ss">f"</span><span class="sc">{</span>c<span class="sc">:,}</span><span class="ss">"</span>, ha<span class="op">=</span><span class="st">"center"</span>, va<span class="op">=</span><span class="st">"bottom"</span>, fontsize<span class="op">=</span><span class="dv">8</span>)</span>
 <span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
 <div class="cell-output cell-output-display">
 <div id="fig-params" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
