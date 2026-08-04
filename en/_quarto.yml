@@ -38,7 +38,7 @@ format:
     theme: [flatly, ../custom.scss]
     lang: en
     toc: false
-    code-fold: true
+    code-fold: false
     code-tools: false
     highlight-style: github
     mainfont: "Noto Sans KR"

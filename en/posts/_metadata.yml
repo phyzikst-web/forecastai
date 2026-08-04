@@ -3,6 +3,6 @@ format:
   html:
     toc: true
     toc-depth: 3
-    code-fold: true
+    code-fold: false
     code-tools: true
 freeze: auto

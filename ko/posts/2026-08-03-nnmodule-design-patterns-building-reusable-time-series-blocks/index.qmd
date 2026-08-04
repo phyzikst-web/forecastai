@@ -20,7 +20,7 @@ lang: ko
 toc: true
 toc-depth: 3
 number-sections: false
-code-fold: true
+code-fold: false
 code-tools: false
 execute:
   echo: true

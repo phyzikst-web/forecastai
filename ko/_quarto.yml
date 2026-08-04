@@ -39,7 +39,7 @@ format:
     lang: ko
     date-format: "YYYY-MM-DD"
     toc: false
-    code-fold: true
+    code-fold: false
     code-tools: false
     highlight-style: github
     mainfont: "Noto Sans KR"

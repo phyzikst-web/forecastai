@@ -144,6 +144,7 @@ def process_frontmatter(qmd_path, language):
     # Replace number-sections and code-tools
     frontmatter_raw = re.sub(r'^number-sections:.*$', 'number-sections: false', frontmatter_raw, flags=re.MULTILINE)
     frontmatter_raw = re.sub(r'^code-tools:.*$', 'code-tools: false', frontmatter_raw, flags=re.MULTILINE)
+    frontmatter_raw = re.sub(r'^code-fold:.*$', 'code-fold: false', frontmatter_raw, flags=re.MULTILINE)
     
     # Ensure thumbnail.jpg is referenced
     frontmatter_raw = re.sub(r'^image:.*$', 'image: "thumbnail.jpg"', frontmatter_raw, flags=re.MULTILINE)
