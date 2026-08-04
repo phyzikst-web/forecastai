@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Prof.&nbsp;Shin">
+<meta name="dcterms.date" content="2026-08-04">
+<meta name="description" content="The 2017 Transformer paper is remembered for one slogan, but its lasting contribution is more specific and more contested than “attention is all you need.” This review separates the paper’s genuine mechanism — a constant-path, fully parallel interaction layer — from the supporting machinery that later work showed was doing much of the load-bearing, with runnable NumPy code that reproduces the scaling argument, the tensor bookkeeping, and the cost model.">
+
+<title>Attention Is All You Need, Re-read: What Actually Worked – ForecastAI</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-bb62276ab45c84d9efd712f51ff97b5a.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-02d6a4966984111ca0cd601c682d0235.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Forecast<span style="color:#F97316;">AI</span></span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">HOME</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">ABOUT</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../categories.html"> 
+<span class="menu-text">CATEGORIES</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../research.html"> 
+<span class="menu-text">RESEARCH</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../contact.html"> 
+<span class="menu-text">CONTACT</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../ko/"> 
+<span class="menu-text">🇰🇷 한국어</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/phyzikst-web"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#the-bottleneck-the-paper-set-out-to-remove" id="toc-the-bottleneck-the-paper-set-out-to-remove" class="nav-link active" data-scroll-target="#the-bottleneck-the-paper-set-out-to-remove">The bottleneck the paper set out to remove</a></li>
+  <li><a href="#one-mechanism-applied-everywhere" id="toc-one-mechanism-applied-everywhere" class="nav-link" data-scroll-target="#one-mechanism-applied-everywhere">One mechanism, applied everywhere</a></li>
+  <li><a href="#why-divide-by-sqrtd_k" id="toc-why-divide-by-sqrtd_k" class="nav-link" data-scroll-target="#why-divide-by-sqrtd_k">Why divide by <span class="math inline">\(\sqrt{d_k}\)</span></a></li>
+  <li><a href="#multi-head-attention-with-the-dimensions-tracked" id="toc-multi-head-attention-with-the-dimensions-tracked" class="nav-link" data-scroll-target="#multi-head-attention-with-the-dimensions-tracked">Multi-head attention, with the dimensions tracked</a></li>
+  <li><a href="#what-the-ablations-actually-showed" id="toc-what-the-ablations-actually-showed" class="nav-link" data-scroll-target="#what-the-ablations-actually-showed">What the ablations actually showed</a></li>
+  <li><a href="#cost-and-path-length-the-real-reason-it-scaled" id="toc-cost-and-path-length-the-real-reason-it-scaled" class="nav-link" data-scroll-target="#cost-and-path-length-the-real-reason-it-scaled">Cost and path length: the real reason it scaled</a></li>
+  <li><a href="#what-actually-worked" id="toc-what-actually-worked" class="nav-link" data-scroll-target="#what-actually-worked">What actually worked</a></li>
+  <li><a href="#limits-and-what-the-paper-did-not-settle" id="toc-limits-and-what-the-paper-did-not-settle" class="nav-link" data-scroll-target="#limits-and-what-the-paper-did-not-settle">Limits and what the paper did not settle</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Attention Is All You Need, Re-read: What Actually Worked</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Data Science</div>
+    <div class="quarto-category">Artificial Intelligence</div>
+    <div class="quarto-category">LLM</div>
+    <div class="quarto-category">Transformer</div>
+    <div class="quarto-category">Paper Review</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    <p>The 2017 Transformer paper is remembered for one slogan, but its lasting contribution is more specific and more contested than “attention is all you need.” This review separates the paper’s genuine mechanism — a constant-path, fully parallel interaction layer — from the supporting machinery that later work showed was doing much of the load-bearing, with runnable NumPy code that reproduces the scaling argument, the tensor bookkeeping, and the cost model.</p>
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Prof.&nbsp;Shin </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">August 4, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="thumbnail.jpg" class="img-fluid figure-img" style="width:90.0%"></p>
+<figcaption>[Concept Visualization] Self-attention connects every token in a single step; three pieces of supporting machinery carry much of the load.</figcaption>
+</figure>
+</div>
+<section id="the-bottleneck-the-paper-set-out-to-remove" class="level2">
+<h2 class="anchored" data-anchor-id="the-bottleneck-the-paper-set-out-to-remove">The bottleneck the paper set out to remove</h2>
+<p>By 2017 the dominant sequence models were recurrent. An encoder–decoder LSTM with attention on top <span class="citation" data-cites="sutskever2014 bahdanau2015">(<a href="#ref-sutskever2014" role="doc-biblioref">Sutskever et al. 2014</a>; <a href="#ref-bahdanau2015" role="doc-biblioref">Bahdanau et al. 2015</a>)</span> held the state of the art in machine translation, and the attention module of <span class="citation" data-cites="bahdanau2015">Bahdanau et al. (<a href="#ref-bahdanau2015" role="doc-biblioref">2015</a>)</span> had already shown that letting the decoder look back at all encoder states, rather than a single compressed vector, removed a real information bottleneck. The problem was not accuracy but the recurrence itself: to compute the hidden state at position <span class="math inline">\(t\)</span> you must first compute the state at <span class="math inline">\(t-1\)</span>. That sequential dependency makes training hard to parallelize across the time axis and stretches the path a gradient must travel between two distant positions to a length that grows with their separation.</p>
+<p><span class="citation" data-cites="vaswani2017">Vaswani et al. (<a href="#ref-vaswani2017" role="doc-biblioref">2017</a>)</span> asked what happens if you keep the attention and throw away the recurrence. The answer — the Transformer — replaced recurrent and convolutional layers with stacked self-attention. That is the move the title advertises. But the paper’s slogan has aged into a slight misreading: the architecture is not attention <em>alone</em>. It is attention wrapped in residual connections, layer normalization, a position-wise feed-forward network, and a fixed positional signal, and the ablations in the paper plus a decade of follow-up show that several of those wrappers are not optional decoration. This review works through what the mechanism is, what the paper’s own experiments actually establish, and where the popular summary overstates the case.</p>
+</section>
+<section id="one-mechanism-applied-everywhere" class="level2">
+<h2 class="anchored" data-anchor-id="one-mechanism-applied-everywhere">One mechanism, applied everywhere</h2>
+<p>Self-attention computes, for every position, a weighted average of the representations at all positions, where the weights come from a compatibility score between that position’s <em>query</em> and every other position’s <em>key</em>. Given packed matrices <span class="math inline">\(Q, K, V\)</span> with shapes <span class="math inline">\((n, d_k), (n, d_k), (n, d_v)\)</span> the paper’s scaled dot-product attention is</p>
+<p><span class="math display">\[\operatorname{Attention}(Q, K, V) = \operatorname{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d_k}}\right) V .\]</span></p>
+<p>The softmax runs over the key axis, so each output row is a convex combination of value vectors. Nothing here is recurrent: every output position is computed from the same <span class="math inline">\(Q, K, V\)</span> in one matrix multiply, which is exactly the property that lets a GPU fill the whole <span class="math inline">\((n, n)\)</span> score matrix in parallel. The same operation is reused in three roles — encoder self-attention, decoder masked self-attention, and encoder–decoder cross-attention — differing only in where <span class="math inline">\(Q\)</span>, <span class="math inline">\(K\)</span>, and <span class="math inline">\(V\)</span> come from and whether a causal mask blanks out future keys.</p>
+<p>Two design choices turn this bare operation into something trainable. The first is the <span class="math inline">\(1/\sqrt{d_k}\)</span> scale. The second is splitting the computation into multiple heads. Both are easy to state and easy to underestimate, so it is worth reproducing what each one does.</p>
+</section>
+<section id="why-divide-by-sqrtd_k" class="level2">
+<h2 class="anchored" data-anchor-id="why-divide-by-sqrtd_k">Why divide by <span class="math inline">\(\sqrt{d_k}\)</span></h2>
+<p>If the entries of <span class="math inline">\(Q\)</span> and <span class="math inline">\(K\)</span> are independent with unit variance, a single dot product <span class="math inline">\(q^{\top}k\)</span> sums <span class="math inline">\(d_k\)</span> such products and therefore has variance <span class="math inline">\(d_k\)</span>. As <span class="math inline">\(d_k\)</span> grows the logits fed to the softmax spread out, and softmax with large-magnitude inputs saturates: almost all the mass collapses onto a single key and the gradient through the other logits vanishes. Dividing by <span class="math inline">\(\sqrt{d_k}\)</span> restores unit-scale logits regardless of head width. The following code makes the effect measurable by comparing the variance of the raw and scaled scores and the entropy of the resulting attention distribution over 50 keys.</p>
+<div id="scale-effect" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> softmax(x, axis<span class="op">=-</span><span class="dv">1</span>):</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    z <span class="op">=</span> x <span class="op">-</span> x.<span class="bu">max</span>(axis<span class="op">=</span>axis, keepdims<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    e <span class="op">=</span> np.exp(z)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> e <span class="op">/</span> e.<span class="bu">sum</span>(axis<span class="op">=</span>axis, keepdims<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> entropy(scores):</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    p <span class="op">=</span> softmax(scores)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="bu">float</span>(<span class="op">-</span>(p <span class="op">*</span> np.log(p <span class="op">+</span> <span class="fl">1e-12</span>)).<span class="bu">sum</span>())</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>rng <span class="op">=</span> np.random.default_rng(<span class="dv">0</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> d_k <span class="kw">in</span> [<span class="dv">16</span>, <span class="dv">64</span>, <span class="dv">256</span>]:</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    Q <span class="op">=</span> rng.standard_normal((<span class="dv">1</span>, d_k))</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    K <span class="op">=</span> rng.standard_normal((<span class="dv">50</span>, d_k))</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    raw <span class="op">=</span> (Q <span class="op">@</span> K.T)[<span class="dv">0</span>]</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    scaled <span class="op">=</span> raw <span class="op">/</span> np.sqrt(d_k)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"d_k=</span><span class="sc">{</span>d_k<span class="sc">:&gt;3}</span><span class="ss"> | var(raw)=</span><span class="sc">{</span>raw<span class="sc">.</span>var()<span class="sc">:7.2f}</span><span class="ss"> | var(scaled)=</span><span class="sc">{</span>scaled<span class="sc">.</span>var()<span class="sc">:5.3f}</span><span class="ss"> "</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"| entropy raw=</span><span class="sc">{</span>entropy(raw)<span class="sc">:5.3f}</span><span class="ss"> | entropy scaled=</span><span class="sc">{</span>entropy(scaled)<span class="sc">:5.3f}</span><span class="ss"> "</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"| max weight raw=</span><span class="sc">{</span>softmax(raw)<span class="sc">.</span><span class="bu">max</span>()<span class="sc">:.3f}</span><span class="ss"> scaled=</span><span class="sc">{</span>softmax(scaled)<span class="sc">.</span><span class="bu">max</span>()<span class="sc">:.3f}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>d_k= 16 | var(raw)=  13.48 | var(scaled)=0.842 | entropy raw=1.063 | entropy scaled=3.566 | max weight raw=0.773 scaled=0.108
+d_k= 64 | var(raw)=  49.06 | var(scaled)=0.767 | entropy raw=1.243 | entropy scaled=3.590 | max weight raw=0.669 scaled=0.071
+d_k=256 | var(raw)= 349.86 | var(scaled)=1.367 | entropy raw=0.000 | entropy scaled=2.996 | max weight raw=1.000 scaled=0.308</code></pre>
+</div>
+</div>
+<pre><code>d_k= 16 | var(raw)=  13.48 | var(scaled)=0.842 | entropy raw=1.063 | entropy scaled=3.566 | max weight raw=0.773 scaled=0.108
+d_k= 64 | var(raw)=  49.06 | var(scaled)=0.767 | entropy raw=1.243 | entropy scaled=3.590 | max weight raw=0.669 scaled=0.071
+d_k=256 | var(raw)= 349.86 | var(scaled)=1.367 | entropy raw=0.000 | entropy scaled=2.996 | max weight raw=1.000 scaled=0.308</code></pre>
+<p>The raw variance climbs with <span class="math inline">\(d_k\)</span> exactly as predicted, and at <span class="math inline">\(d_k = 256\)</span> the unscaled softmax has collapsed entirely: entropy is numerically zero and one key takes all the weight. The scaled version keeps entropy near the healthy middle of its range (uniform over 50 keys would be <span class="math inline">\(\log 50 \approx 3.91\)</span>). Sweeping <span class="math inline">\(d_k\)</span> across a wider range and averaging over many random draws shows the collapse is systematic, not an artifact of one seed.</p>
+<div id="cell-scale-sweep" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>dks <span class="op">=</span> np.array([<span class="dv">4</span>, <span class="dv">8</span>, <span class="dv">16</span>, <span class="dv">32</span>, <span class="dv">64</span>, <span class="dv">128</span>, <span class="dv">256</span>, <span class="dv">512</span>])</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>ent_raw, ent_scaled <span class="op">=</span> [], []</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> d_k <span class="kw">in</span> dks:</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    er, es <span class="op">=</span> [], []</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">200</span>):</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        Q <span class="op">=</span> rng.standard_normal((<span class="dv">1</span>, d_k))<span class="op">;</span> K <span class="op">=</span> rng.standard_normal((<span class="dv">50</span>, d_k))</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        raw <span class="op">=</span> (Q <span class="op">@</span> K.T)[<span class="dv">0</span>]</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        er.append(entropy(raw))<span class="op">;</span> es.append(entropy(raw <span class="op">/</span> np.sqrt(d_k)))</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    ent_raw.append(np.mean(er))<span class="op">;</span> ent_scaled.append(np.mean(es))</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.5</span>, <span class="fl">3.6</span>))</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>ax.plot(dks, ent_raw, <span class="st">"o-"</span>, label<span class="op">=</span><span class="st">"unscaled  QK^T"</span>)</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>ax.plot(dks, ent_scaled, <span class="st">"s-"</span>, label<span class="op">=</span><span class="vs">r"scaled  QK</span><span class="dv">^</span><span class="vs">T / </span><span class="dv">$\s</span><span class="vs">qrt{d_k}</span><span class="dv">$</span><span class="vs">"</span>)</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>ax.axhline(np.log(<span class="dv">50</span>), ls<span class="op">=</span><span class="st">"--"</span>, color<span class="op">=</span><span class="st">"gray"</span>, lw<span class="op">=</span><span class="fl">0.8</span>, label<span class="op">=</span><span class="st">"uniform (log 50)"</span>)</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>ax.set_xscale(<span class="st">"log"</span>, base<span class="op">=</span><span class="dv">2</span>)<span class="op">;</span> ax.set_xlabel(<span class="st">"head dimension $d_k$"</span>)</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"mean softmax entropy (nats)"</span>)</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>ax.legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/scale-sweep-output-1.png" id="scale-sweep" width="614" height="332" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The unscaled curve decays toward zero as heads widen — the network would start training with attention distributions already saturated, and the paper notes this is why the scale factor exists. Read the figure as a warning about initialization geometry: without the <span class="math inline">\(1/\sqrt{d_k}\)</span> term, the very first forward pass on a wide head produces near-one-hot attention, and the gradient signal that would let the model <em>learn</em> where to attend is gone before training begins.</p>
+</section>
+<section id="multi-head-attention-with-the-dimensions-tracked" class="level2">
+<h2 class="anchored" data-anchor-id="multi-head-attention-with-the-dimensions-tracked">Multi-head attention, with the dimensions tracked</h2>
+<p>A single attention head averages values, and an average cannot simultaneously capture “the subject three tokens back” and “the nearest punctuation.” Multi-head attention runs <span class="math inline">\(h\)</span> attention operations in parallel on linear projections of the input into <span class="math inline">\(d_k = d_\text{model}/h\)</span>-dimensional subspaces, then concatenates and projects the results. The projections give each head its own view of what counts as a good query–key match. The bookkeeping is where implementations go wrong, so the code prints the shape at every step for <span class="math inline">\(d_\text{model}=64\)</span>, <span class="math inline">\(h=8\)</span>, sequence length 10.</p>
+<div id="multihead" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>seq_len, d_model, h <span class="op">=</span> <span class="dv">10</span>, <span class="dv">64</span>, <span class="dv">8</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>d_k <span class="op">=</span> d_model <span class="op">//</span> h</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>rng <span class="op">=</span> np.random.default_rng(<span class="dv">1</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>X  <span class="op">=</span> rng.standard_normal((seq_len, d_model))</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>Wq <span class="op">=</span> rng.standard_normal((d_model, d_model)) <span class="op">/</span> np.sqrt(d_model)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>Wk <span class="op">=</span> rng.standard_normal((d_model, d_model)) <span class="op">/</span> np.sqrt(d_model)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>Wv <span class="op">=</span> rng.standard_normal((d_model, d_model)) <span class="op">/</span> np.sqrt(d_model)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>Wo <span class="op">=</span> rng.standard_normal((d_model, d_model)) <span class="op">/</span> np.sqrt(d_model)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> split_heads(M):                       <span class="co"># (seq, d_model) -&gt; (h, seq, d_k)</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> M.reshape(seq_len, h, d_k).transpose(<span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">2</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>Q, K, V   <span class="op">=</span> X <span class="op">@</span> Wq, X <span class="op">@</span> Wk, X <span class="op">@</span> Wv</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>Qh, Kh, Vh <span class="op">=</span> split_heads(Q), split_heads(K), split_heads(V)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>scores <span class="op">=</span> Qh <span class="op">@</span> Kh.transpose(<span class="dv">0</span>, <span class="dv">2</span>, <span class="dv">1</span>) <span class="op">/</span> np.sqrt(d_k)     <span class="co"># (h, seq, seq)</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>attn   <span class="op">=</span> softmax(scores, axis<span class="op">=-</span><span class="dv">1</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>ctx    <span class="op">=</span> attn <span class="op">@</span> Vh                                      <span class="co"># (h, seq, d_k)</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>ctx_merged <span class="op">=</span> ctx.transpose(<span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">2</span>).reshape(seq_len, d_model)</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>out <span class="op">=</span> ctx_merged <span class="op">@</span> Wo</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"X            </span><span class="sc">{</span>X<span class="sc">.</span>shape<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Q = K = V    </span><span class="sc">{</span>Q<span class="sc">.</span>shape<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"per-head Qh  </span><span class="sc">{</span>Qh<span class="sc">.</span>shape<span class="sc">}</span><span class="ss">  (h=</span><span class="sc">{</span>h<span class="sc">}</span><span class="ss">, d_k=</span><span class="sc">{</span>d_k<span class="sc">}</span><span class="ss">)"</span>)</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"scores       </span><span class="sc">{</span>scores<span class="sc">.</span>shape<span class="sc">}</span><span class="ss">  (h, seq, seq)"</span>)</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"attn rowsum  </span><span class="sc">{</span>np<span class="sc">.</span><span class="bu">round</span>(attn[<span class="dv">0</span>].<span class="bu">sum</span>(<span class="dv">1</span>)[:<span class="dv">3</span>], <span class="dv">6</span>)<span class="sc">}</span><span class="ss">  (softmax normalized)"</span>)</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"context      </span><span class="sc">{</span>ctx<span class="sc">.</span>shape<span class="sc">}</span><span class="ss">  -&gt;  merged </span><span class="sc">{</span>ctx_merged<span class="sc">.</span>shape<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"output       </span><span class="sc">{</span>out<span class="sc">.</span>shape<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>X            (10, 64)
+Q = K = V    (10, 64)
+per-head Qh  (8, 10, 8)  (h=8, d_k=8)
+scores       (8, 10, 10)  (h, seq, seq)
+attn rowsum  [1. 1. 1.]  (softmax normalized)
+context      (8, 10, 8)  -&gt;  merged (10, 64)
+output       (10, 64)</code></pre>
+</div>
+</div>
+<pre><code>X            (10, 64)
+Q = K = V    (10, 64)
+per-head Qh  (8, 10, 8)  (h=8, d_k=8)
+scores       (8, 10, 10)  (h, seq, seq)
+attn rowsum  [1. 1. 1.]  (softmax normalized)
+context      (8, 10, 8)  -&gt;  merged (10, 64)
+output       (10, 64)</code></pre>
+<p>The total parameter and compute budget is nearly identical to a single head of full width, because each head operates in a <span class="math inline">\(d_k = 8\)</span> subspace; the split buys representational diversity almost for free. What multi-head attention does <em>not</em> buy is interpretability, a point worth stating because it is routinely overclaimed. A single head’s weight matrix is a valid probability distribution over keys, but that does not make it an explanation of the model’s decision.</p>
+<div id="cell-head-heatmap" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">4.6</span>, <span class="fl">3.8</span>))</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>im <span class="op">=</span> ax.imshow(attn[<span class="dv">0</span>], cmap<span class="op">=</span><span class="st">"viridis"</span>, vmin<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"key position"</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">"query position"</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Attention weights (head 0)"</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>plt.colorbar(im, ax<span class="op">=</span>ax, fraction<span class="op">=</span><span class="fl">0.046</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/head-heatmap-output-1.png" id="head-heatmap" width="394" height="355" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Each row of the heatmap sums to one, so it reads like an explanation of “what this token looked at.” But the value vectors it averages, and the seven other heads and the feed-forward network downstream, all reshape that signal before it reaches the output. Treating one head’s weights as the model’s reasoning is the attention-map analogue of reading tea leaves; the weights are real, their causal role in the prediction is not established by the picture.</p>
+</section>
+<section id="what-the-ablations-actually-showed" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-ablations-actually-showed">What the ablations actually showed</h2>
+<p>The paper’s contribution is not just the architecture but Table 3, where the authors vary one component at a time on English–German translation. Read critically, that table is where the “attention is all you need” reading gets complicated. Reducing the number of heads to one drops BLEU noticeably, and using too many heads also hurts — so the <em>multiplicity</em> of heads matters, not attention per se. Shrinking the key dimension <span class="math inline">\(d_k\)</span> degrades quality, consistent with the compatibility function being the load-bearing part. Enlarging the model and adding dropout both help in the expected directions. Crucially, replacing the learned components with the sinusoidal positional encoding produced nearly identical results to a learned positional embedding, which is the evidence behind the common claim that the specific positional scheme is not what makes the model work.</p>
+<p>Two cautions apply to how this table is usually cited. First, every number is a single run on one language pair with one tokenizer and one training budget; the paper does not report variance across seeds, so small BLEU gaps between configurations should not be read as reliable rankings. Second, the ablations vary components that were <em>already inside</em> the Transformer. They tell you the relative importance of heads, key width, and positional scheme, but they do not isolate the residual connections or layer normalization, because no row of the table removes those. For the components the paper did not ablate, the evidence comes from later work, and it is not favorable to the “attention alone” reading.</p>
+</section>
+<section id="cost-and-path-length-the-real-reason-it-scaled" class="level2">
+<h2 class="anchored" data-anchor-id="cost-and-path-length-the-real-reason-it-scaled">Cost and path length: the real reason it scaled</h2>
+<p>The section of the paper that has aged best is the complexity comparison. A self-attention layer costs <span class="math inline">\(O(n^2 \cdot d)\)</span> operations and connects any two positions through a path of length <span class="math inline">\(O(1)\)</span>; a recurrent layer costs <span class="math inline">\(O(n \cdot d^2)\)</span> and has a maximum path length of <span class="math inline">\(O(n)\)</span>. The code below evaluates both for <span class="math inline">\(d = 512\)</span> across sequence lengths.</p>
+<div id="complexity" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> <span class="dv">512</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>ns <span class="op">=</span> np.array([<span class="dv">32</span>, <span class="dv">64</span>, <span class="dv">128</span>, <span class="dv">256</span>, <span class="dv">512</span>, <span class="dv">1024</span>, <span class="dv">2048</span>, <span class="dv">4096</span>])</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>self_ops <span class="op">=</span> ns<span class="op">**</span><span class="dv">2</span> <span class="op">*</span> d</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>rec_ops  <span class="op">=</span> ns <span class="op">*</span> d <span class="op">*</span> d</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> n, s, r <span class="kw">in</span> <span class="bu">zip</span>(ns, self_ops, rec_ops):</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"n=</span><span class="sc">{</span>n<span class="sc">:&gt;4}</span><span class="ss"> | self-attn ~</span><span class="sc">{</span>s<span class="sc">:&gt;14,}</span><span class="ss"> | recurrent ~</span><span class="sc">{</span>r<span class="sc">:&gt;14,}</span><span class="ss"> "</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"| ratio=</span><span class="sc">{</span>s<span class="op">/</span>r<span class="sc">:6.3f}</span><span class="ss"> | path: self=1, rec=</span><span class="sc">{</span>n<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>n=  32 | self-attn ~       524,288 | recurrent ~     8,388,608 | ratio= 0.062 | path: self=1, rec=32
+n=  64 | self-attn ~     2,097,152 | recurrent ~    16,777,216 | ratio= 0.125 | path: self=1, rec=64
+n= 128 | self-attn ~     8,388,608 | recurrent ~    33,554,432 | ratio= 0.250 | path: self=1, rec=128
+n= 256 | self-attn ~    33,554,432 | recurrent ~    67,108,864 | ratio= 0.500 | path: self=1, rec=256
+n= 512 | self-attn ~   134,217,728 | recurrent ~   134,217,728 | ratio= 1.000 | path: self=1, rec=512
+n=1024 | self-attn ~   536,870,912 | recurrent ~   268,435,456 | ratio= 2.000 | path: self=1, rec=1024
+n=2048 | self-attn ~ 2,147,483,648 | recurrent ~   536,870,912 | ratio= 4.000 | path: self=1, rec=2048
+n=4096 | self-attn ~ 8,589,934,592 | recurrent ~ 1,073,741,824 | ratio= 8.000 | path: self=1, rec=4096</code></pre>
+</div>
+</div>
+<pre><code>n=  32 | self-attn ~       524,288 | recurrent ~     8,388,608 | ratio= 0.062 | path: self=1, rec=32
+n=  64 | self-attn ~     2,097,152 | recurrent ~    16,777,216 | ratio= 0.125 | path: self=1, rec=64
+n= 128 | self-attn ~     8,388,608 | recurrent ~    33,554,432 | ratio= 0.250 | path: self=1, rec=128
+n= 256 | self-attn ~    33,554,432 | recurrent ~    67,108,864 | ratio= 0.500 | path: self=1, rec=256
+n= 512 | self-attn ~   134,217,728 | recurrent ~   134,217,728 | ratio= 1.000 | path: self=1, rec=512
+n=1024 | self-attn ~   536,870,912 | recurrent ~   268,435,456 | ratio= 2.000 | path: self=1, rec=1024
+n=2048 | self-attn ~ 2,147,483,648 | recurrent ~   536,870,912 | ratio= 4.000 | path: self=1, rec=2048
+n=4096 | self-attn ~ 8,589,934,592 | recurrent ~ 1,073,741,824 | ratio= 8.000 | path: self=1, rec=4096</code></pre>
+<p>The crossover at <span class="math inline">\(n = d = 512\)</span> is the detail most summaries omit. Self-attention is cheaper <em>per layer</em> only while the sequence is shorter than the model width; past that point its quadratic cost overtakes the recurrent layer, which is why long-context Transformers spawned an entire literature on sub-quadratic attention. The advantage that does not degrade is the path length: it is <span class="math inline">\(1\)</span> for self-attention at every sequence length, versus <span class="math inline">\(n\)</span> for recurrence.</p>
+<div id="cell-cost-path" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="fl">9.5</span>, <span class="fl">3.6</span>))</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].plot(ns, self_ops, <span class="st">"o-"</span>, label<span class="op">=</span><span class="vs">r"self-attention </span><span class="dv">$</span><span class="vs">O</span><span class="kw">(</span><span class="vs">n</span><span class="dv">^</span><span class="vs">2 d</span><span class="kw">)</span><span class="dv">$</span><span class="vs">"</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].plot(ns, rec_ops, <span class="st">"s-"</span>, label<span class="op">=</span><span class="vs">r"recurrent </span><span class="dv">$</span><span class="vs">O</span><span class="kw">(</span><span class="vs">n d</span><span class="dv">^</span><span class="vs">2</span><span class="kw">)</span><span class="dv">$</span><span class="vs">"</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].axvline(d, ls<span class="op">=</span><span class="st">"--"</span>, color<span class="op">=</span><span class="st">"k"</span>, lw<span class="op">=</span><span class="fl">0.8</span>, alpha<span class="op">=</span><span class="fl">0.6</span>, label<span class="op">=</span><span class="ss">f"n = d = </span><span class="sc">{</span>d<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_xscale(<span class="st">"log"</span>, base<span class="op">=</span><span class="dv">2</span>)<span class="op">;</span> axes[<span class="dv">0</span>].set_yscale(<span class="st">"log"</span>)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_xlabel(<span class="st">"sequence length n"</span>)<span class="op">;</span> axes[<span class="dv">0</span>].set_ylabel(<span class="st">"operations"</span>)</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_title(<span class="st">"Per-layer cost (d=512)"</span>)<span class="op">;</span> axes[<span class="dv">0</span>].legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> axes[<span class="dv">0</span>].grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].plot(ns, np.ones_like(ns), <span class="st">"o-"</span>, label<span class="op">=</span><span class="st">"self-attention: 1"</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].plot(ns, ns, <span class="st">"s-"</span>, label<span class="op">=</span><span class="st">"recurrent: n"</span>)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_xscale(<span class="st">"log"</span>, base<span class="op">=</span><span class="dv">2</span>)<span class="op">;</span> axes[<span class="dv">1</span>].set_yscale(<span class="st">"log"</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_xlabel(<span class="st">"sequence length n"</span>)<span class="op">;</span> axes[<span class="dv">1</span>].set_ylabel(<span class="st">"max path length"</span>)</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_title(<span class="st">"Longest dependency path"</span>)<span class="op">;</span> axes[<span class="dv">1</span>].legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> axes[<span class="dv">1</span>].grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/cost-path-output-1.png" id="cost-path" width="901" height="334" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The left panel shows the crossover; the right panel shows the property that made the architecture trainable at depth. A constant-length path between any two positions means the gradient signal linking distant tokens does not have to survive <span class="math inline">\(n\)</span> successive Jacobian products, which is the failure mode that made long-range learning in RNNs fragile. This — parallelism plus short gradient paths — is the mechanism that actually scaled, more than any claim about attention being a uniquely expressive operation.</p>
+</section>
+<section id="what-actually-worked" class="level2">
+<h2 class="anchored" data-anchor-id="what-actually-worked">What actually worked</h2>
+<p>Pulling the threads together, the durable contribution of the paper is narrower and more structural than its title. Self-attention supplied a fully parallel, constant-path interaction layer, and that removed the two properties of recurrence that capped model size and depth. But the components the paper under-emphasized turn out to be doing much of the work. Residual connections, imported from <span class="citation" data-cites="he2016resnet">He et al. (<a href="#ref-he2016resnet" role="doc-biblioref">2016</a>)</span>, are what let the encoder and decoder stack to depth without the signal degrading; remove them and a deep Transformer does not train. Layer normalization <span class="citation" data-cites="ba2016layernorm">(<a href="#ref-ba2016layernorm" role="doc-biblioref">Ba et al. 2016</a>)</span> stabilizes the scale of activations between sublayers. And the position of that normalization — the paper placed it <em>after</em> each sublayer (Post-LN), whereas later work showed that placing it <em>before</em> (Pre-LN) removes the need for the learning-rate warmup the original recipe required and makes deep Transformers train more reliably <span class="citation" data-cites="xiong2020layernorm">(<a href="#ref-xiong2020layernorm" role="doc-biblioref">Xiong et al. 2020</a>)</span>. That the field quietly switched to Pre-LN is direct evidence that the original arrangement was not optimal, and that the architecture is sensitive to details the slogan ignores.</p>
+<p>So the honest reading is that attention was necessary but not sufficient. The paper’s real achievement was assembling attention, residual connections, normalization, and a position-wise feed-forward network into a block that trains stably when stacked and parallelizes across the sequence. Ablating attention would of course break it; but so would ablating the residuals, and the paper’s own experiments only tested the former.</p>
+</section>
+<section id="limits-and-what-the-paper-did-not-settle" class="level2">
+<h2 class="anchored" data-anchor-id="limits-and-what-the-paper-did-not-settle">Limits and what the paper did not settle</h2>
+<p>Three limitations bound how far the 2017 results generalize. The quadratic cost demonstrated above is a real ceiling: the architecture as published does not scale to very long sequences without modification, and the crossover at <span class="math inline">\(n = d\)</span> shows the problem starts earlier than the “linear enough in practice” framing suggests. The evaluation was narrow — two translation tasks and an English constituency-parsing check — so the paper establishes that the Transformer matches or beats recurrent baselines <em>on those tasks</em>, not the general-purpose dominance the architecture later achieved, which took the scale-up in <span class="citation" data-cites="devlin2019">Devlin et al. (<a href="#ref-devlin2019" role="doc-biblioref">2019</a>)</span> and successors to demonstrate. And the interpretability of attention weights, sometimes advertised as a side benefit, is not supported by the paper’s evidence and has been contested since; the weights are a real intermediate quantity, but their causal relation to the output is not shown by inspecting them.</p>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>Re-read a decade later, “attention is all you need” is best treated as a provocation rather than a finding. The finding is that a specific block — scaled dot-product multi-head attention, wrapped in residual connections, layer normalization, and a feed-forward network — gives a sequence model both full parallelism and a constant-length gradient path, and that this combination scales where recurrence did not. The <span class="math inline">\(1/\sqrt{d_k}\)</span> scale and the multi-head split are the parts of attention that had to be right, and the code here shows why. But the residual and normalization machinery, which the paper mentions almost in passing and never ablates, is doing enough of the load-bearing that later work reorganized it (Pre-LN) for stability. For anyone using or teaching the Transformer, the useful lesson is not the slogan but the decomposition: know which piece supplies parallelism, which supplies trainable depth, and which supplies the positional signal, because the next architecture you read will keep some of them and replace others.</p>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-ba2016layernorm" class="csl-entry" role="listitem">
+Ba, Jimmy Lei, Jamie Ryan Kiros, and Geoffrey E. Hinton. 2016. <span>“Layer Normalization.”</span> <em>arXiv Preprint arXiv:1607.06450</em>.
+</div>
+<div id="ref-bahdanau2015" class="csl-entry" role="listitem">
+Bahdanau, Dzmitry, Kyunghyun Cho, and Yoshua Bengio. 2015. <span>“Neural Machine Translation by Jointly Learning to Align and Translate.”</span> <em>International Conference on Learning Representations (ICLR)</em>.
+</div>
+<div id="ref-devlin2019" class="csl-entry" role="listitem">
+Devlin, Jacob, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. <span>“<span>BERT</span>: Pre-Training of Deep Bidirectional Transformers for Language Understanding.”</span> <em>Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (NAACL-HLT)</em>, 4171–86. <a href="https://doi.org/10.18653/v1/N19-1423">https://doi.org/10.18653/v1/N19-1423</a>.
+</div>
+<div id="ref-he2016resnet" class="csl-entry" role="listitem">
+He, Kaiming, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. <span>“Deep Residual Learning for Image Recognition.”</span> <em>IEEE Conference on Computer Vision and Pattern Recognition (CVPR)</em>, 770–78. <a href="https://doi.org/10.1109/CVPR.2016.90">https://doi.org/10.1109/CVPR.2016.90</a>.
+</div>
+<div id="ref-sutskever2014" class="csl-entry" role="listitem">
+Sutskever, Ilya, Oriol Vinyals, and Quoc V. Le. 2014. <span>“Sequence to Sequence Learning with Neural Networks.”</span> <em>Advances in Neural Information Processing Systems (NeurIPS)</em> 27.
+</div>
+<div id="ref-vaswani2017" class="csl-entry" role="listitem">
+Vaswani, Ashish, Noam Shazeer, Niki Parmar, et al. 2017. <span>“Attention Is All You Need.”</span> <em>Advances in Neural Information Processing Systems (NeurIPS)</em> 30.
+</div>
+<div id="ref-xiong2020layernorm" class="csl-entry" role="listitem">
+Xiong, Ruibin, Yunchang Yang, Di He, et al. 2020. <span>“On Layer Normalization in the Transformer Architecture.”</span> <em>International Conference on Machine Learning (ICML)</em>.
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 2026 Prof.&nbsp;Shin · ForecastAI</p>
+</div>   
+    <div class="nav-footer-center">
+<p><a href="privacy-policy.qmd">Privacy Policy</a></p>
+</div>
+    <div class="nav-footer-right">
+<p>Powered by <a href="https://quarto.org">Quarto</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

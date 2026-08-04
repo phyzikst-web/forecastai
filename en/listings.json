@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/2026-08-04-attention-is-all-you-need-re-read-what-actually-worked/index.html",
       "/posts/2026-08-03-nnmodule-design-patterns-building-reusable-time-series-blocks/index.html",
       "/posts/2026-07-17-writing-custom-losses-in-pytorch-pinball-huber-and-crps-from-scratch/index.html",
       "/posts/2026-07-16-positional-encoding-compared-sinusoidal-vs-rope-vs-alibi/index.html",
@@ -18,6 +19,7 @@
   {
     "listing": "/categories.html",
     "items": [
+      "/posts/2026-08-04-attention-is-all-you-need-re-read-what-actually-worked/index.html",
       "/posts/2026-08-03-nnmodule-design-patterns-building-reusable-time-series-blocks/index.html",
       "/posts/2026-07-17-writing-custom-losses-in-pytorch-pinball-huber-and-crps-from-scratch/index.html",
       "/posts/2026-07-16-positional-encoding-compared-sinusoidal-vs-rope-vs-alibi/index.html",
