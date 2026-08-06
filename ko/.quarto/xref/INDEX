@@ -64,5 +64,11 @@
   },
   "posts/2026-08-04-attention-is-all-you-need-re-read-what-actually-worked/index.qmd": {
     "index.html": "7b1e6383"
+  },
+  "posts/2026-08-06-kv-cache-inference-speed-and-memory-tradeoffs/index.qmd": {
+    "index.html": "d485b8d5"
+  },
+  "posts/2026-08-06-kv-cache-how-it-speeds-up-inference-and-the-memory-trade-off/index.qmd": {
+    "index.html": "94e7172c"
   }
 }
