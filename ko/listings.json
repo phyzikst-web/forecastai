@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html",
       "/posts/2026-08-06-kv-cache-how-it-speeds-up-inference-and-the-memory-trade-off/index.html",
       "/posts/2026-08-04-attention-is-all-you-need-re-read-what-actually-worked/index.html",
       "/posts/2026-08-03-nnmodule-design-patterns-building-reusable-time-series-blocks/index.html",
@@ -20,6 +21,7 @@
   {
     "listing": "/categories.html",
     "items": [
+      "/posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html",
       "/posts/2026-08-06-kv-cache-how-it-speeds-up-inference-and-the-memory-trade-off/index.html",
       "/posts/2026-08-04-attention-is-all-you-need-re-read-what-actually-worked/index.html",
       "/posts/2026-08-03-nnmodule-design-patterns-building-reusable-time-series-blocks/index.html",

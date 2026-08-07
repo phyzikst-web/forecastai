@@ -441,118 +441,6 @@
     "text": "References\n\n\nBaydin, Atilim Gunes, Barak A. Pearlmutter, Alexey Andreyevich Radul, and Jeffrey Mark Siskind. 2018. “Automatic Differentiation in Machine Learning: A Survey.” Journal of Machine Learning Research 18 (153): 1–43. https://jmlr.org/papers/v18/17-468.html.\n\n\nGriewank, Andreas, and Andrea Walther. 2008. Evaluating Derivatives: Principles and Techniques of Algorithmic Differentiation. 2nd ed. SIAM. https://doi.org/10.1137/1.9780898717761.\n\n\nPaszke, Adam, Sam Gross, Francisco Massa, et al. 2019. “PyTorch: An Imperative Style, High-Performance Deep Learning Library.” Advances in Neural Information Processing Systems 32 (NeurIPS 2019), 8024–35."
   },
   {
-    "objectID": "contact.html",
-    "href": "contact.html",
-    "title": "Contact",
-    "section": "",
-    "text": "GitHub: github.com/phyzikst-web\n\nFeel free to reach out via email for any inquiries."
-  },
-  {
-    "objectID": "contact.html#contact",
-    "href": "contact.html#contact",
-    "title": "Contact",
-    "section": "",
-    "text": "GitHub: github.com/phyzikst-web\n\nFeel free to reach out via email for any inquiries."
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "About",
-    "section": "",
-    "text": "ForecastAI is a technical blog sharing core concepts, recent research, and hands-on tutorials in artificial intelligence and data science."
-  },
-  {
-    "objectID": "about.html#forecastai",
-    "href": "about.html#forecastai",
-    "title": "About",
-    "section": "",
-    "text": "ForecastAI is a technical blog sharing core concepts, recent research, and hands-on tutorials in artificial intelligence and data science."
-  },
-  {
-    "objectID": "about.html#topics-we-cover",
-    "href": "about.html#topics-we-cover",
-    "title": "About",
-    "section": "Topics We Cover",
-    "text": "Topics We Cover\n\nTime Series Forecasting — LSTM, Transformer, and statistical model-based analysis and prediction\nCausal Inference — Data-driven causal analysis using Transfer Entropy, Granger Causality, PCMCI, and more\nDeep Learning & Machine Learning — Model architecture, training strategies, and hyperparameter tuning\nExplainable AI (XAI) — Techniques for model interpretability and trustworthiness\nData Analysis — Exploratory data analysis, preprocessing, and visualization"
-  },
-  {
-    "objectID": "about.html#our-goals",
-    "href": "about.html#our-goals",
-    "title": "About",
-    "section": "Our Goals",
-    "text": "Our Goals\n\nExplain papers and theory with executable code.\nProvide practical, actionable content for students and practitioners in data science and AI.\nCover each topic in depth while keeping it concise and to the point."
-  },
-  {
-    "objectID": "about.html#contact",
-    "href": "about.html#contact",
-    "title": "About",
-    "section": "Contact",
-    "text": "Contact\n\nGitHub: github.com/phyzikst-web"
-  },
-  {
-    "objectID": "categories.html",
-    "href": "categories.html",
-    "title": "Categories",
-    "section": "",
-    "text": "KV Cache: How It Speeds Up Inference and the Memory Trade-off\n\n\n\nData Science\n\nArtificial Intelligence\n\nLLM\n\nTransformer\n\nInference\n\n\n\nWhy autoregressive decoding wastes enormous amounts of compute without a KV cache, and how caching keys and values turns per-step work from O(T²) to O(T). We build a toy decoder in NumPy to prove the cache is numerically exact, measure the wall-clock speedup, then model the memory it costs and show how MQA and GQA shrink that cost.\n\n\n\n\n\nAug 6, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nAttention Is All You Need, Re-read: What Actually Worked\n\n\n\nData Science\n\nArtificial Intelligence\n\nLLM\n\nTransformer\n\nPaper Review\n\n\n\nThe 2017 Transformer paper is remembered for one slogan, but its lasting contribution is more specific and more contested than “attention is all you need.” This review separates the paper’s genuine mechanism — a constant-path, fully parallel interaction layer — from the supporting machinery that later work showed was doing much of the load-bearing, with runnable NumPy code that reproduces the scaling argument, the tensor bookkeeping, and the cost model.\n\n\n\n\n\nAug 4, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nnn.Module Design Patterns: Building Reusable Time-Series Blocks\n\n\n\nData Science\n\nArtificial Intelligence\n\nPyTorch\n\n\n\nA practical guide to structuring PyTorch models as reusable, composable nn.Module blocks. We cover what nn.Module actually manages (parameters, buffers, submodules), build a residual temporal block with an explicit shape contract, compose it with ModuleList, and assemble a working multi-step forecaster—then measure whether the abstraction earns its keep.\n\n\n\n\n\nAug 3, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nWriting Custom Losses in PyTorch: Pinball, Huber, and CRPS from Scratch\n\n\n\nData Science\n\nArtificial Intelligence\n\nPyTorch\n\nTime Series\n\nProbabilistic Forecasting\n\nQuantile Regression\n\n\n\nMSE is the default loss because it is convenient, not because it is correct. This post builds three losses that are correct for different problems — pinball for quantile forecasting, Huber for regression with outliers, and CRPS for probabilistic forecasting — as small PyTorch modules, examines their gradients, and demonstrates on synthetic problems where each one behaves differently from MSE.\n\n\n\n\n\nJul 17, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nPositional Encoding, Compared: Sinusoidal vs. RoPE vs. ALiBi\n\n\n\nData Science\n\nArtificial Intelligence\n\nLLM\n\nTransformer\n\nPositional Encoding\n\n\n\nSelf-attention is permutation-invariant, so every Transformer smuggles order back in through a positional encoding. This post derives the sinusoidal scheme, RoPE, and ALiBi from what each is trying to guarantee, implements the three with runnable NumPy code, and visualizes how they shape attention scores — including what happens when a model is asked to run at a sequence length it never saw during training.\n\n\n\n\n\nJul 16, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nTokenization, Unpacked: BPE, WordPiece, and the Number Problem\n\n\n\nData Science\n\nArtificial Intelligence\n\nLLM\n\nTokenization\n\nBPE\n\nWordPiece\n\n\n\nBefore an LLM sees a single vector, tokenization has already made irreversible choices about the input. This article implements BPE from scratch on a tiny corpus, contrasts it with WordPiece, and shows with runnable code why the way numbers get shattered into tokens is a first-order concern for anyone using LLMs on quantitative data.\n\n\n\n\n\nJul 15, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nDataLoader, Unpacked: Building a Sliding-Window Pipeline for Time Series in PyTorch\n\n\n\nData Science\n\nArtificial Intelligence\n\nPyTorch\n\nDataLoader\n\nSliding Window\n\n\n\nIn time-series work, the DataLoader is not glue code — it is where the learning problem is defined. This article implements a leak-free sliding window Dataset, walks through what DataLoader actually does under the hood, and validates the pipeline end-to-end against a persistence baseline with real, executed numbers.\n\n\n\n\n\nJul 15, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nWhat Autograd Actually Does: Tensor Operations and the Backward Pass in PyTorch\n\n\n\nData Science\n\nArtificial Intelligence\n\nPyTorch\n\nAutograd\n\nBackpropagation\n\nTensor\n\n\n\nPyTorch’s .backward() is often treated as a black box that returns the right gradient. This article opens the box: leaf tensors, the dynamic graph built by every tensor operation, and how the chain rule is executed in reverse — verified against analytic and numerical gradients, and used to train a small network with no nn.Module and no optimizer.\n\n\n\n\n\nJul 14, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nBeyond the Point Forecast: Why Quantile Regression Matters for Probabilistic Forecasting\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\n\n\nA single predicted number hides the one thing decisions need most: the range of what could happen. This article builds probabilistic forecasting from the pinball loss up, shows with runnable code why a point forecast plus a constant interval fails on heteroscedastic data, and covers calibration, quantile crossing, and CRPS.\n\n\n\n\n\nJul 10, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nInjecting Domain Knowledge into Deep Time-Series Models with Physical Constraints\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\nScientific Machine Learning\n\nPhysical Constraints\n\nLoss Function\n\nPINN\n\n\n\nA practical guide to adding physical residuals, penalties, and hard parameterizations to deep time-series models without confusing soft regularization with exact constraints.\n\n\n\n\n\nJul 5, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nTaming Non-stationary Time Series: Reversible Normalization against Drift and Exponential Growth\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\nNon-stationary Time Series\n\nReversible Normalization\n\nRevIN\n\n\n\nWhen a series’ mean and variance drift over time, a model trained on the past meets a test set it has never seen the scale of. This article explains non-stationarity and concept drift from the ground up and builds — with runnable code — from naive normalization to Reversible Instance Normalization (RevIN).\n\n\n\n\n\nJul 3, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nHow Informer and PatchTST Broke the Quadratic Attention Bottleneck in Time Series\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\nAttention Bottleneck\n\nInformer\n\nPatchTST\n\n\n\nSelf-attention costs O(L^2) in the sequence length, which is fatal for long time series. This article traces two very different escapes from that cost — Informer’s ProbSparse attention and PatchTST’s patching — with runnable code that measures where the savings actually come from.\n\n\n\n\n\nJul 2, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nRecursive, Direct, or Joint? A Comparison of Multi-Step Forecasting Strategies\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\nMulti-step Forecasting\n\nRecursive\n\nDirect\n\nJoint\n\n\n\nHow you generate an H-step forecast is a modeling decision in its own right. This article compares the recursive, direct, and joint (MIMO) strategies in terms of error propagation, the bias-variance trade-off, computational cost, and the conditions under which each one wins, with runnable code.\n\n\n\n\n\nJun 30, 2026\n\n\nProf. Shin\n\n\n\n\n\nNo matching items"
-  },
-  {
-    "objectID": "privacy-policy.html",
-    "href": "privacy-policy.html",
-    "title": "Privacy Policy",
-    "section": "",
-    "text": "This Privacy Policy describes how ForecastAI (“this site”) collects and uses information."
-  },
-  {
-    "objectID": "privacy-policy.html#information-we-collect",
-    "href": "privacy-policy.html#information-we-collect",
-    "title": "Privacy Policy",
-    "section": "Information We Collect",
-    "text": "Information We Collect\nThis site may collect the following information.\n\nVisitor statistics (anonymous data via Google Analytics)\nEmail address provided when subscribing to newsletters"
-  },
-  {
-    "objectID": "privacy-policy.html#google-analytics",
-    "href": "privacy-policy.html#google-analytics",
-    "title": "Privacy Policy",
-    "section": "Google Analytics",
-    "text": "Google Analytics\nThis site uses Google Analytics to collect visitor statistics. Google Analytics uses cookies, and collected data is processed anonymously. You can review Google’s Privacy Policy here."
-  },
-  {
-    "objectID": "privacy-policy.html#google-adsense",
-    "href": "privacy-policy.html#google-adsense",
-    "title": "Privacy Policy",
-    "section": "Google AdSense",
-    "text": "Google AdSense\nThis site displays advertisements through Google AdSense. Google may use cookies to show ads based on your interests. To opt out of personalized advertising, visit Google Ad Settings."
-  },
-  {
-    "objectID": "privacy-policy.html#cookies",
-    "href": "privacy-policy.html#cookies",
-    "title": "Privacy Policy",
-    "section": "Cookies",
-    "text": "Cookies\nThis site uses cookies to enhance user experience. You may disable cookies in your browser settings, though some features may be limited."
-  },
-  {
-    "objectID": "privacy-policy.html#third-party-links",
-    "href": "privacy-policy.html#third-party-links",
-    "title": "Privacy Policy",
-    "section": "Third-Party Links",
-    "text": "Third-Party Links\nThis site may contain links to external websites. We are not responsible for the privacy practices of those sites."
-  },
-  {
-    "objectID": "privacy-policy.html#changes-to-this-policy",
-    "href": "privacy-policy.html#changes-to-this-policy",
-    "title": "Privacy Policy",
-    "section": "Changes to This Policy",
-    "text": "Changes to This Policy\nThis policy may be updated as needed. Any changes will be reflected on this page."
-  },
-  {
-    "objectID": "privacy-policy.html#contact",
-    "href": "privacy-policy.html#contact",
-    "title": "Privacy Policy",
-    "section": "Contact",
-    "text": "Contact\nLast updated: April 2026"
-  },
-  {
     "objectID": "posts/2026-07-03-non-stationary-time-series-revin/index.html",
     "href": "posts/2026-07-03-non-stationary-time-series-revin/index.html",
     "title": "Taming Non-stationary Time Series: Reversible Normalization against Drift and Exponential Growth",
@@ -614,6 +502,181 @@
     "title": "Taming Non-stationary Time Series: Reversible Normalization against Drift and Exponential Growth",
     "section": "References",
     "text": "References\n\n\nFan, Wei, Pengyang Wang, Dongkun Wang, Dongjie Wang, Yuanchun Zhou, and Yanjie Fu. 2023. “Dish-TS: A General Paradigm for Alleviating Distribution Shift in Time Series Forecasting.” Proceedings of the AAAI Conference on Artificial Intelligence 37: 7522–29. https://doi.org/10.1609/aaai.v37i6.25914.\n\n\nKim, Taesung, Jinhee Kim, Yunwon Tae, Cheonbok Park, Jang-Ho Choi, and Jaegul Choo. 2022. “Reversible Instance Normalization for Accurate Time-Series Forecasting Against Distribution Shift.” International Conference on Learning Representations (ICLR). https://openreview.net/forum?id=cGDAkQo1C0p.\n\n\nLiu, Yong, Haixu Wu, Jianmin Wang, and Mingsheng Long. 2022. “Non-Stationary Transformers: Exploring the Stationarity in Time Series Forecasting.” Advances in Neural Information Processing Systems (NeurIPS) 35: 9881–93."
+  },
+  {
+    "objectID": "privacy-policy.html",
+    "href": "privacy-policy.html",
+    "title": "Privacy Policy",
+    "section": "",
+    "text": "This Privacy Policy describes how ForecastAI (“this site”) collects and uses information."
+  },
+  {
+    "objectID": "privacy-policy.html#information-we-collect",
+    "href": "privacy-policy.html#information-we-collect",
+    "title": "Privacy Policy",
+    "section": "Information We Collect",
+    "text": "Information We Collect\nThis site may collect the following information.\n\nVisitor statistics (anonymous data via Google Analytics)\nEmail address provided when subscribing to newsletters"
+  },
+  {
+    "objectID": "privacy-policy.html#google-analytics",
+    "href": "privacy-policy.html#google-analytics",
+    "title": "Privacy Policy",
+    "section": "Google Analytics",
+    "text": "Google Analytics\nThis site uses Google Analytics to collect visitor statistics. Google Analytics uses cookies, and collected data is processed anonymously. You can review Google’s Privacy Policy here."
+  },
+  {
+    "objectID": "privacy-policy.html#google-adsense",
+    "href": "privacy-policy.html#google-adsense",
+    "title": "Privacy Policy",
+    "section": "Google AdSense",
+    "text": "Google AdSense\nThis site displays advertisements through Google AdSense. Google may use cookies to show ads based on your interests. To opt out of personalized advertising, visit Google Ad Settings."
+  },
+  {
+    "objectID": "privacy-policy.html#cookies",
+    "href": "privacy-policy.html#cookies",
+    "title": "Privacy Policy",
+    "section": "Cookies",
+    "text": "Cookies\nThis site uses cookies to enhance user experience. You may disable cookies in your browser settings, though some features may be limited."
+  },
+  {
+    "objectID": "privacy-policy.html#third-party-links",
+    "href": "privacy-policy.html#third-party-links",
+    "title": "Privacy Policy",
+    "section": "Third-Party Links",
+    "text": "Third-Party Links\nThis site may contain links to external websites. We are not responsible for the privacy practices of those sites."
+  },
+  {
+    "objectID": "privacy-policy.html#changes-to-this-policy",
+    "href": "privacy-policy.html#changes-to-this-policy",
+    "title": "Privacy Policy",
+    "section": "Changes to This Policy",
+    "text": "Changes to This Policy\nThis policy may be updated as needed. Any changes will be reflected on this page."
+  },
+  {
+    "objectID": "privacy-policy.html#contact",
+    "href": "privacy-policy.html#contact",
+    "title": "Privacy Policy",
+    "section": "Contact",
+    "text": "Contact\nLast updated: April 2026"
+  },
+  {
+    "objectID": "categories.html",
+    "href": "categories.html",
+    "title": "Categories",
+    "section": "",
+    "text": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau\n\n\n\nData Science\n\nArtificial Intelligence\n\nPyTorch\n\nOptimization\n\n\n\nThe learning rate is the single most important optimization hyperparameter, and holding it fixed is almost always a compromise. We reimplement PyTorch’s three most common schedulers—CosineAnnealingLR, OneCycleLR, and ReduceLROnPlateau—from their exact formulas, verify the reimplementations numerically, visualize how each shapes the training run, then measure whether the choice actually changes the final loss.\n\n\n\n\n\nAug 7, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nKV Cache: How It Speeds Up Inference and the Memory Trade-off\n\n\n\nData Science\n\nArtificial Intelligence\n\nLLM\n\nTransformer\n\nInference\n\n\n\nWhy autoregressive decoding wastes enormous amounts of compute without a KV cache, and how caching keys and values turns per-step work from O(T²) to O(T). We build a toy decoder in NumPy to prove the cache is numerically exact, measure the wall-clock speedup, then model the memory it costs and show how MQA and GQA shrink that cost.\n\n\n\n\n\nAug 6, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nAttention Is All You Need, Re-read: What Actually Worked\n\n\n\nData Science\n\nArtificial Intelligence\n\nLLM\n\nTransformer\n\nPaper Review\n\n\n\nThe 2017 Transformer paper is remembered for one slogan, but its lasting contribution is more specific and more contested than “attention is all you need.” This review separates the paper’s genuine mechanism — a constant-path, fully parallel interaction layer — from the supporting machinery that later work showed was doing much of the load-bearing, with runnable NumPy code that reproduces the scaling argument, the tensor bookkeeping, and the cost model.\n\n\n\n\n\nAug 4, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nnn.Module Design Patterns: Building Reusable Time-Series Blocks\n\n\n\nData Science\n\nArtificial Intelligence\n\nPyTorch\n\n\n\nA practical guide to structuring PyTorch models as reusable, composable nn.Module blocks. We cover what nn.Module actually manages (parameters, buffers, submodules), build a residual temporal block with an explicit shape contract, compose it with ModuleList, and assemble a working multi-step forecaster—then measure whether the abstraction earns its keep.\n\n\n\n\n\nAug 3, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nWriting Custom Losses in PyTorch: Pinball, Huber, and CRPS from Scratch\n\n\n\nData Science\n\nArtificial Intelligence\n\nPyTorch\n\nTime Series\n\nProbabilistic Forecasting\n\nQuantile Regression\n\n\n\nMSE is the default loss because it is convenient, not because it is correct. This post builds three losses that are correct for different problems — pinball for quantile forecasting, Huber for regression with outliers, and CRPS for probabilistic forecasting — as small PyTorch modules, examines their gradients, and demonstrates on synthetic problems where each one behaves differently from MSE.\n\n\n\n\n\nJul 17, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nPositional Encoding, Compared: Sinusoidal vs. RoPE vs. ALiBi\n\n\n\nData Science\n\nArtificial Intelligence\n\nLLM\n\nTransformer\n\nPositional Encoding\n\n\n\nSelf-attention is permutation-invariant, so every Transformer smuggles order back in through a positional encoding. This post derives the sinusoidal scheme, RoPE, and ALiBi from what each is trying to guarantee, implements the three with runnable NumPy code, and visualizes how they shape attention scores — including what happens when a model is asked to run at a sequence length it never saw during training.\n\n\n\n\n\nJul 16, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nTokenization, Unpacked: BPE, WordPiece, and the Number Problem\n\n\n\nData Science\n\nArtificial Intelligence\n\nLLM\n\nTokenization\n\nBPE\n\nWordPiece\n\n\n\nBefore an LLM sees a single vector, tokenization has already made irreversible choices about the input. This article implements BPE from scratch on a tiny corpus, contrasts it with WordPiece, and shows with runnable code why the way numbers get shattered into tokens is a first-order concern for anyone using LLMs on quantitative data.\n\n\n\n\n\nJul 15, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nDataLoader, Unpacked: Building a Sliding-Window Pipeline for Time Series in PyTorch\n\n\n\nData Science\n\nArtificial Intelligence\n\nPyTorch\n\nDataLoader\n\nSliding Window\n\n\n\nIn time-series work, the DataLoader is not glue code — it is where the learning problem is defined. This article implements a leak-free sliding window Dataset, walks through what DataLoader actually does under the hood, and validates the pipeline end-to-end against a persistence baseline with real, executed numbers.\n\n\n\n\n\nJul 15, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nWhat Autograd Actually Does: Tensor Operations and the Backward Pass in PyTorch\n\n\n\nData Science\n\nArtificial Intelligence\n\nPyTorch\n\nAutograd\n\nBackpropagation\n\nTensor\n\n\n\nPyTorch’s .backward() is often treated as a black box that returns the right gradient. This article opens the box: leaf tensors, the dynamic graph built by every tensor operation, and how the chain rule is executed in reverse — verified against analytic and numerical gradients, and used to train a small network with no nn.Module and no optimizer.\n\n\n\n\n\nJul 14, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nBeyond the Point Forecast: Why Quantile Regression Matters for Probabilistic Forecasting\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\n\n\nA single predicted number hides the one thing decisions need most: the range of what could happen. This article builds probabilistic forecasting from the pinball loss up, shows with runnable code why a point forecast plus a constant interval fails on heteroscedastic data, and covers calibration, quantile crossing, and CRPS.\n\n\n\n\n\nJul 10, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nInjecting Domain Knowledge into Deep Time-Series Models with Physical Constraints\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\nScientific Machine Learning\n\nPhysical Constraints\n\nLoss Function\n\nPINN\n\n\n\nA practical guide to adding physical residuals, penalties, and hard parameterizations to deep time-series models without confusing soft regularization with exact constraints.\n\n\n\n\n\nJul 5, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nTaming Non-stationary Time Series: Reversible Normalization against Drift and Exponential Growth\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\nNon-stationary Time Series\n\nReversible Normalization\n\nRevIN\n\n\n\nWhen a series’ mean and variance drift over time, a model trained on the past meets a test set it has never seen the scale of. This article explains non-stationarity and concept drift from the ground up and builds — with runnable code — from naive normalization to Reversible Instance Normalization (RevIN).\n\n\n\n\n\nJul 3, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nHow Informer and PatchTST Broke the Quadratic Attention Bottleneck in Time Series\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\nAttention Bottleneck\n\nInformer\n\nPatchTST\n\n\n\nSelf-attention costs O(L^2) in the sequence length, which is fatal for long time series. This article traces two very different escapes from that cost — Informer’s ProbSparse attention and PatchTST’s patching — with runnable code that measures where the savings actually come from.\n\n\n\n\n\nJul 2, 2026\n\n\nProf. Shin\n\n\n\n\n\n\n\n\n\n\n\n\nRecursive, Direct, or Joint? A Comparison of Multi-Step Forecasting Strategies\n\n\n\nData Science\n\nArtificial Intelligence\n\nTime Series\n\nMulti-step Forecasting\n\nRecursive\n\nDirect\n\nJoint\n\n\n\nHow you generate an H-step forecast is a modeling decision in its own right. This article compares the recursive, direct, and joint (MIMO) strategies in terms of error propagation, the bias-variance trade-off, computational cost, and the conditions under which each one wins, with runnable code.\n\n\n\n\n\nJun 30, 2026\n\n\nProf. Shin\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "ForecastAI is a technical blog sharing core concepts, recent research, and hands-on tutorials in artificial intelligence and data science."
+  },
+  {
+    "objectID": "about.html#forecastai",
+    "href": "about.html#forecastai",
+    "title": "About",
+    "section": "",
+    "text": "ForecastAI is a technical blog sharing core concepts, recent research, and hands-on tutorials in artificial intelligence and data science."
+  },
+  {
+    "objectID": "about.html#topics-we-cover",
+    "href": "about.html#topics-we-cover",
+    "title": "About",
+    "section": "Topics We Cover",
+    "text": "Topics We Cover\n\nTime Series Forecasting — LSTM, Transformer, and statistical model-based analysis and prediction\nCausal Inference — Data-driven causal analysis using Transfer Entropy, Granger Causality, PCMCI, and more\nDeep Learning & Machine Learning — Model architecture, training strategies, and hyperparameter tuning\nExplainable AI (XAI) — Techniques for model interpretability and trustworthiness\nData Analysis — Exploratory data analysis, preprocessing, and visualization"
+  },
+  {
+    "objectID": "about.html#our-goals",
+    "href": "about.html#our-goals",
+    "title": "About",
+    "section": "Our Goals",
+    "text": "Our Goals\n\nExplain papers and theory with executable code.\nProvide practical, actionable content for students and practitioners in data science and AI.\nCover each topic in depth while keeping it concise and to the point."
+  },
+  {
+    "objectID": "about.html#contact",
+    "href": "about.html#contact",
+    "title": "About",
+    "section": "Contact",
+    "text": "Contact\n\nGitHub: github.com/phyzikst-web"
+  },
+  {
+    "objectID": "contact.html",
+    "href": "contact.html",
+    "title": "Contact",
+    "section": "",
+    "text": "GitHub: github.com/phyzikst-web\n\nFeel free to reach out via email for any inquiries."
+  },
+  {
+    "objectID": "contact.html#contact",
+    "href": "contact.html#contact",
+    "title": "Contact",
+    "section": "",
+    "text": "GitHub: github.com/phyzikst-web\n\nFeel free to reach out via email for any inquiries."
+  },
+  {
+    "objectID": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html",
+    "href": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html",
+    "title": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
+    "section": "",
+    "text": "[Concept Visualization] The three schedulers shape the same training run differently: cosine anneals smoothly to zero, OneCycle warms up before annealing, and ReduceLROnPlateau cuts the rate in discrete steps whenever the metric stalls.\nThe learning rate decides how far each optimizer step moves the weights, and no other hyperparameter influences training as directly. Set it too high and the loss diverges or bounces around a poor region; set it too low and training crawls, wasting compute and often settling into a worse minimum. A single fixed value has to serve two opposing needs at once: large steps early, when the weights are far from any good solution and coarse progress is cheap, and small steps late, when the model is fine-tuning near a minimum and large moves only add noise. A learning rate schedule resolves that tension by changing the rate over the course of training. This post takes the three schedulers you will reach for most often in PyTorch—CosineAnnealingLR, OneCycleLR, and ReduceLROnPlateau—reimplements each from its exact formula so the mechanics are fully visible, checks the reimplementations against the values PyTorch produces, and then runs a small training comparison to see whether the choice earns its keep.\nThroughout, the executable code uses only NumPy so every number below is reproduced from the underlying formula rather than hidden inside a library call. In real training you would of course use the PyTorch classes directly, which wrap exactly these formulas:"
+  },
+  {
+    "objectID": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#why-schedule-at-all",
+    "href": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#why-schedule-at-all",
+    "title": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
+    "section": "Why Schedule at All",
+    "text": "Why Schedule at All\nThe intuition behind every decay schedule is the same. Early in training the loss surface is steep and the weights are far from a minimum, so a large rate makes rapid, cheap progress. As the weights approach a good region the useful gradient signal shrinks relative to the noise from mini-batch sampling, and a large step now overshoots and jitters instead of settling. Shrinking the rate over time lets the optimizer take the coarse gains first and then quiet down for the fine-tuning phase. The three schedulers below differ only in the shape of that decrease and in what drives it—a fixed clock, a single planned cycle, or the observed loss."
+  },
+  {
+    "objectID": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#cosine-annealing",
+    "href": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#cosine-annealing",
+    "title": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
+    "section": "Cosine Annealing",
+    "text": "Cosine Annealing\nCosine annealing, introduced as part of SGDR (Loshchilov & Hutter, 2017), decays the rate along the first half of a cosine curve: it starts at the base rate, falls slowly at first, drops fastest through the middle, and eases gently into its minimum. For step t out of T_max, the rate is\n\\[\\eta_t = \\eta_{\\min} + (\\eta_{\\max} - \\eta_{\\min})\\,\\frac{1 + \\cos(\\pi\\, t / T_{\\max})}{2}.\\]\nThe gentle tail is the appealing part: unlike a linear decay, the rate lingers near its minimum for many steps, giving the model a long, calm fine-tuning phase. The reimplementation below matches PyTorch’s CosineAnnealingLR exactly at the checkpoints.\n\nimport numpy as np\n\ndef cosine_annealing(base_lr, T_max, eta_min=0.0, steps=None):\n    steps = T_max if steps is None else steps\n    t = np.arange(steps + 1)\n    return eta_min + (base_lr - eta_min) * (1 + np.cos(np.pi * t / T_max)) / 2\n\nca = cosine_annealing(base_lr=0.1, T_max=100, eta_min=0.0)\nprint(f\"lr[0]  = {ca[0]:.5f}\")\nprint(f\"lr[50] = {ca[50]:.5f}\")\nprint(f\"lr[100]= {ca[100]:.5f}\")\nprint(\"matches PyTorch checkpoints (0.1, 0.05, 0.0):\",\n      np.allclose([ca[0], ca[50], ca[100]], [0.1, 0.05, 0.0]))\n\nlr[0]  = 0.10000\nlr[50] = 0.05000\nlr[100]= 0.00000\nmatches PyTorch checkpoints (0.1, 0.05, 0.0): True\n\n\nAt the midpoint the rate is exactly half the base rate, and at T_max it reaches the minimum—here zero. In practice cosine annealing is a strong, low-fuss default: it needs only the total length and a base rate, and its smooth profile works well across a wide range of models."
+  },
+  {
+    "objectID": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#onecycle",
+    "href": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#onecycle",
+    "title": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
+    "section": "OneCycle",
+    "text": "OneCycle\nOneCycle (Smith & Topin, 2019) adds a deliberate warmup. Instead of starting at the peak, it begins low, ramps up to a maximum rate over the first fraction of training (pct_start, default 0.3), then anneals back down—overshooting the starting point to end far below it. The warmup lets the model settle into a stable region before the large rate is applied, which is what makes the subsequently high rate safe; Smith and Topin argue this large-rate phase acts as regularization and can produce “super-convergence,” reaching good accuracy in far fewer epochs. PyTorch’s defaults set the initial rate to max_lr / 25 and the final rate to initial_lr / 1e4.\n\ndef one_cycle(max_lr, total_steps, pct_start=0.3, div_factor=25.0,\n              final_div_factor=1e4, anneal=\"cos\"):\n    initial_lr = max_lr / div_factor\n    min_lr = initial_lr / final_div_factor\n    warmup = int(round(total_steps * pct_start))\n    lrs = np.empty(total_steps)\n    for step in range(total_steps):\n        if step &lt;= warmup:\n            pct, lo, hi = step / max(1, warmup), initial_lr, max_lr      # rising\n        else:\n            pct = (step - warmup) / max(1, (total_steps - 1 - warmup))\n            lo, hi = max_lr, min_lr                                      # falling\n        lrs[step] = hi + (lo - hi) / 2.0 * (np.cos(np.pi * pct) + 1)     # cosine\n    return lrs\n\noc = one_cycle(max_lr=0.1, total_steps=100)\npeak = int(oc.argmax())\nprint(f\"start lr = {oc[0]:.6f}   (= max_lr / 25 = {0.1/25:.6f})\")\nprint(f\"peak  lr = {oc[peak]:.6f} at step {peak}   (= 30% of 100)\")\nprint(f\"final lr = {oc[-1]:.8f}   (= start / 1e4)\")\n\nstart lr = 0.004000   (= max_lr / 25 = 0.004000)\npeak  lr = 0.100000 at step 30   (= 30% of 100)\nfinal lr = 0.00000040   (= start / 1e4)\n\n\nThe rate peaks at step 30—exactly the 30% warmup fraction—then descends well past where it began. Because OneCycle is defined over the total number of optimizer steps, it is stepped once per batch rather than once per epoch, and it needs the total step count up front. When you can afford to tune max_lr, it is often the fastest route to a good model.\nPlotting cosine and OneCycle against a constant baseline makes their shapes concrete.\n\nimport matplotlib.pyplot as plt\n\nN = 100\nconst = np.full(N, 0.05)\ncos_c = cosine_annealing(0.1, T_max=N, steps=N)[:N]\nonec_c = one_cycle(0.1, total_steps=N)\n\nfig, ax = plt.subplots(figsize=(6.6, 3.6))\nax.plot(const, label=\"constant (0.05)\", color=\"#94a3b8\", ls=\"--\")\nax.plot(cos_c, label=\"cosine annealing\", color=\"#2563eb\", lw=2)\nax.plot(onec_c, label=\"one-cycle\", color=\"#db2777\", lw=2)\nax.set_xlabel(\"training step\"); ax.set_ylabel(\"learning rate\")\nax.set_title(\"Cosine vs OneCycle vs constant learning rate\")\nax.legend(fontsize=9); ax.grid(alpha=0.3)\nfig.tight_layout(); plt.show()\n\n\n\n\n\n\n\nFigure 1: Learning-rate profiles over 100 steps: constant, cosine annealing, and OneCycle (with its warmup peak at 30%)."
+  },
+  {
+    "objectID": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#reducelronplateau",
+    "href": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#reducelronplateau",
+    "title": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
+    "section": "ReduceLROnPlateau",
+    "text": "ReduceLROnPlateau\nThe first two schedulers follow a fixed clock: given the step count, their entire trajectory is known in advance. ReduceLROnPlateau is different—it is reactive. It watches a metric (typically validation loss) and cuts the rate only when progress stalls. Concretely, it keeps the best value seen so far; each epoch that fails to improve on it by more than a small threshold counts as “bad,” and once the number of consecutive bad epochs exceeds patience, the rate is multiplied by factor (default 0.1). This makes it the natural choice when you cannot predict how long training will take or when the loss will plateau. The reimplementation below mirrors PyTorch’s default relative-threshold logic.\n\nclass ReduceLROnPlateau:\n    def __init__(self, lr, factor=0.1, patience=10, threshold=1e-4,\n                 threshold_mode=\"rel\", cooldown=0, min_lr=0.0):\n        self.lr = lr; self.factor = factor; self.patience = patience\n        self.threshold = threshold; self.threshold_mode = threshold_mode\n        self.cooldown = cooldown; self.min_lr = min_lr\n        self.best = np.inf; self.num_bad = 0; self.cooldown_counter = 0\n\n    def _is_better(self, metric):\n        if self.threshold_mode == \"rel\":\n            return metric &lt; self.best * (1 - self.threshold)\n        return metric &lt; self.best - self.threshold\n\n    def step(self, metric):\n        if self._is_better(metric):\n            self.best = metric; self.num_bad = 0\n        else:\n            self.num_bad += 1\n        if self.cooldown_counter &gt; 0:\n            self.cooldown_counter -= 1; self.num_bad = 0\n        if self.num_bad &gt; self.patience:\n            new_lr = max(self.lr * self.factor, self.min_lr)\n            if self.lr - new_lr &gt; 1e-12:\n                self.lr = new_lr\n            self.cooldown_counter = self.cooldown; self.num_bad = 0\n        return self.lr\n\nTo see it act, we drive it with a realistic training dynamic: at any given rate the loss decays toward a noise floor that is proportional to the rate—big steps cannot resolve detail below a certain level—so the loss falls, then flattens. When it flattens, the scheduler cuts the rate, the floor drops, and progress resumes. The result is the characteristic staircase.\n\nrng = np.random.default_rng(0)\nsched = ReduceLROnPlateau(lr=0.1, factor=0.5, patience=5, min_lr=1e-4)\nloss = 1.0; lrs = []; losses = []\nfor epoch in range(80):\n    floor = 0.4 * sched.lr                       # lr-dependent loss floor\n    loss = floor + (loss - floor) * 0.7 + 0.0005 * rng.standard_normal()\n    lrs.append(sched.step(loss)); losses.append(loss)\n\ndrops = [i for i in range(1, len(lrs)) if lrs[i] &lt; lrs[i-1]]\nprint(\"epochs where lr dropped:\", drops)\nprint(\"distinct lr levels:\", sorted(set(round(x, 5) for x in lrs), reverse=True))\nprint(f\"final lr = {lrs[-1]:.5f}   final loss = {losses[-1]:.5f}\")\n\nfig, ax1 = plt.subplots(figsize=(6.6, 3.6))\nax1.plot(losses, color=\"#0f766e\", label=\"loss\")\nax1.set_xlabel(\"epoch\"); ax1.set_ylabel(\"loss\", color=\"#0f766e\")\nax2 = ax1.twinx()\nax2.plot(lrs, color=\"#db2777\", drawstyle=\"steps-post\", label=\"lr\")\nax2.set_ylabel(\"learning rate\", color=\"#db2777\")\nax1.set_title(\"ReduceLROnPlateau: loss plateaus trigger LR cuts\")\nfig.tight_layout(); plt.show()\n\nepochs where lr dropped: [36, 67]\ndistinct lr levels: [0.1, 0.05, 0.025]\nfinal lr = 0.02500   final loss = 0.01128\n\n\n\n\n\n\n\n\nFigure 2: ReduceLROnPlateau in action: each time the loss plateaus, the rate is halved and the loss resumes falling.\n\n\n\n\n\nThe rate steps down from 0.1 to 0.05 to 0.025 precisely at the epochs where the loss stopped improving, and each cut buys another leg of progress. The behavior depends heavily on patience and factor: too small a patience reacts to noise and decays too early; too large a factor barely changes anything. Because it responds to what actually happens rather than to a schedule, it pairs naturally with early stopping on the same metric."
+  },
+  {
+    "objectID": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#does-the-choice-change-the-result",
+    "href": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#does-the-choice-change-the-result",
+    "title": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
+    "section": "Does the Choice Change the Result?",
+    "text": "Does the Choice Change the Result?\nShapes are only worth discussing if they affect the outcome. The experiment below trains the same logistic-regression model on the same synthetic data three times—constant rate, cosine annealing, and OneCycle—with everything else held fixed, and reports the final training loss.\n\nrng = np.random.default_rng(42)\nn, d = 2000, 20\nX = rng.standard_normal((n, d))\nw_star = rng.standard_normal(d)\ny = (rng.random(n) &lt; 1 / (1 + np.exp(-(X @ w_star)))).astype(float)\n\ndef sigmoid(z): return 1 / (1 + np.exp(-z))\ndef bce(w):\n    z = X @ w\n    return np.mean(np.logaddexp(0, z) - y * z)\n\ndef train(lr_schedule, steps=300, batch=128, seed=0):\n    r = np.random.default_rng(seed); w = np.zeros(d)\n    for t in range(steps):\n        idx = r.integers(0, n, batch)\n        grad = X[idx].T @ (sigmoid(X[idx] @ w) - y[idx]) / batch\n        w -= lr_schedule[t] * grad\n    return bce(w)\n\nsteps = 300\nresults = {\n    \"constant lr=0.3\":  train(np.full(steps, 0.3)),\n    \"cosine annealing\": train(cosine_annealing(0.6, T_max=steps, steps=steps - 1)[:steps]),\n    \"one-cycle\":        train(one_cycle(0.9, total_steps=steps)),\n}\nprint(f\"initial loss (w=0): {bce(np.zeros(d)):.5f}\")\nfor name, val in results.items():\n    print(f\"  {name:&lt;18} final loss = {val:.5f}\")\n\ninitial loss (w=0): 0.69315\n  constant lr=0.3    final loss = 0.25864\n  cosine annealing   final loss = 0.25797\n  one-cycle          final loss = 0.25600\n\n\nAll three descend from the same starting loss, and the ordering is the one theory predicts: OneCycle finishes lowest, cosine annealing next, and the constant rate last. The gaps here are modest because logistic regression is convex and easy; on deep non-convex networks the differences are usually larger and the warmup in OneCycle matters more, since it stabilizes the early, most fragile phase of training. The point is that the schedule is not cosmetic—holding the rate fixed genuinely leaves performance on the table."
+  },
+  {
+    "objectID": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#how-to-choose",
+    "href": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#how-to-choose",
+    "title": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
+    "section": "How to Choose",
+    "text": "How to Choose\nFor most problems, cosine annealing is the sensible default: it has essentially one knob beyond the base rate, its smooth tail is forgiving, and it rarely does harm. Reach for OneCycle when training time is precious and you are willing to tune max_lr, because its warmup-then-decay profile is often the fastest path to a strong model and provides some regularization for free. Use ReduceLROnPlateau when the training horizon is unknown or the loss curve is unpredictable, especially alongside early stopping, since it adapts to the run instead of committing to a fixed timeline. These are not mutually exclusive philosophies so much as answers to different questions: how long will I train, how much do I want to tune, and do I trust a plan or the measured loss."
+  },
+  {
+    "objectID": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#conclusion",
+    "href": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#conclusion",
+    "title": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
+    "section": "Conclusion",
+    "text": "Conclusion\nA learning rate schedule exists to resolve a single tension—large steps are cheap early and harmful late—and the three PyTorch schedulers here are three answers to it. Cosine annealing follows a smooth clock to a quiet minimum; OneCycle plans a single warmup-and-decay cycle aimed at fast convergence; and ReduceLROnPlateau abandons the clock entirely and reacts to the loss. Reimplementing each from its formula shows there is no magic inside, only a rule for reshaping the rate over time, and the training comparison confirms the reshaping is worth doing. The practical takeaway is to stop treating the learning rate as a constant to be found once: choosing how it should change is part of the model, and the right schedule is a cheap, reliable source of both speed and final accuracy."
+  },
+  {
+    "objectID": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#references",
+    "href": "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.html#references",
+    "title": "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
+    "section": "References",
+    "text": "References\n\n\nLoshchilov, I., & Hutter, F. (2017). SGDR: Stochastic Gradient Descent with Warm Restarts. International Conference on Learning Representations (ICLR). arXiv:1608.03983.\nSmith, L. N. (2017). Cyclical Learning Rates for Training Neural Networks. IEEE Winter Conference on Applications of Computer Vision (WACV), 464–472. arXiv:1506.01186.\nSmith, L. N., & Topin, N. (2019). Super-Convergence: Very Fast Training of Neural Networks Using Large Learning Rates. Proceedings of SPIE, Artificial Intelligence and Machine Learning for Multi-Domain Operations Applications. arXiv:1708.07120.\nPaszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., et al. (2019). PyTorch: An Imperative Style, High-Performance Deep Learning Library. Advances in Neural Information Processing Systems (NeurIPS), 32, 8024–8035."
   },
   {
     "objectID": "posts/2026-07-15-tokenization-unpacked-bpe-wordpiece-and-the-number-problem/index.html",
