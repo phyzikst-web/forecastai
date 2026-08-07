@@ -70,5 +70,8 @@
   },
   "posts/2026-08-06-kv-cache-how-it-speeds-up-inference-and-the-memory-trade-off/index.qmd": {
     "index.html": "94e7172c"
+  },
+  "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.qmd": {
+    "index.html": "359f87c1"
   }
 }

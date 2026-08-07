@@ -1,0 +1,256 @@
+---
+title: "Learning Rate Schedulers, Compared: Cosine Annealing vs OneCycle vs ReduceLROnPlateau"
+date: "2026-08-07"
+categories:
+  - Data Science
+  - Artificial Intelligence
+  - PyTorch
+  - Optimization
+tags:
+  - learning-rate
+  - lr-scheduler
+  - cosine-annealing
+  - onecycle
+  - reducelronplateau
+  - pytorch
+  - training
+  - optimization
+image: "thumbnail.jpg"
+description: |
+  The learning rate is the single most important optimization hyperparameter, and holding it fixed is almost always a compromise. We reimplement PyTorch's three most common schedulers—CosineAnnealingLR, OneCycleLR, and ReduceLROnPlateau—from their exact formulas, verify the reimplementations numerically, visualize how each shapes the training run, then measure whether the choice actually changes the final loss.
+lang: en
+toc: true
+toc-depth: 3
+number-sections: false
+code-fold: false
+code-tools: false
+execute:
+  echo: true
+  output: true
+  eval: true
+  warning: false
+  message: false
+  freeze: true
+format:
+  html:
+    code-copy: true
+    code-overflow: wrap
+---
+
+![[Concept Visualization] The three schedulers shape the same training run differently: cosine anneals smoothly to zero, OneCycle warms up before annealing, and ReduceLROnPlateau cuts the rate in discrete steps whenever the metric stalls.](thumbnail.jpg){fig-align="center" width="90%"}
+
+
+The learning rate decides how far each optimizer step moves the weights, and no other hyperparameter influences training as directly. Set it too high and the loss diverges or bounces around a poor region; set it too low and training crawls, wasting compute and often settling into a worse minimum. A single fixed value has to serve two opposing needs at once: large steps early, when the weights are far from any good solution and coarse progress is cheap, and small steps late, when the model is fine-tuning near a minimum and large moves only add noise. A learning rate *schedule* resolves that tension by changing the rate over the course of training. This post takes the three schedulers you will reach for most often in PyTorch—`CosineAnnealingLR`, `OneCycleLR`, and `ReduceLROnPlateau`—reimplements each from its exact formula so the mechanics are fully visible, checks the reimplementations against the values PyTorch produces, and then runs a small training comparison to see whether the choice earns its keep.
+
+Throughout, the executable code uses only NumPy so every number below is reproduced from the underlying formula rather than hidden inside a library call. In real training you would of course use the PyTorch classes directly, which wrap exactly these formulas:
+
+```python
+import torch
+from torch.optim.lr_scheduler import CosineAnnealingLR, OneCycleLR, ReduceLROnPlateau
+
+optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+scheduler = CosineAnnealingLR(optimizer, T_max=100)   # step once per epoch
+# for OneCycleLR: step once per batch;  for ReduceLROnPlateau: scheduler.step(val_loss)
+```
+
+## Why Schedule at All
+
+The intuition behind every decay schedule is the same. Early in training the loss surface is steep and the weights are far from a minimum, so a large rate makes rapid, cheap progress. As the weights approach a good region the useful gradient signal shrinks relative to the noise from mini-batch sampling, and a large step now overshoots and jitters instead of settling. Shrinking the rate over time lets the optimizer take the coarse gains first and then quiet down for the fine-tuning phase. The three schedulers below differ only in the *shape* of that decrease and in what drives it—a fixed clock, a single planned cycle, or the observed loss.
+
+## Cosine Annealing
+
+Cosine annealing, introduced as part of SGDR (Loshchilov & Hutter, 2017), decays the rate along the first half of a cosine curve: it starts at the base rate, falls slowly at first, drops fastest through the middle, and eases gently into its minimum. For step *t* out of `T_max`, the rate is
+
+$$\eta_t = \eta_{\min} + (\eta_{\max} - \eta_{\min})\,\frac{1 + \cos(\pi\, t / T_{\max})}{2}.$$
+
+The gentle tail is the appealing part: unlike a linear decay, the rate lingers near its minimum for many steps, giving the model a long, calm fine-tuning phase. The reimplementation below matches PyTorch's `CosineAnnealingLR` exactly at the checkpoints.
+
+```{python}
+#| label: schedulers
+import numpy as np
+
+def cosine_annealing(base_lr, T_max, eta_min=0.0, steps=None):
+    steps = T_max if steps is None else steps
+    t = np.arange(steps + 1)
+    return eta_min + (base_lr - eta_min) * (1 + np.cos(np.pi * t / T_max)) / 2
+
+ca = cosine_annealing(base_lr=0.1, T_max=100, eta_min=0.0)
+print(f"lr[0]  = {ca[0]:.5f}")
+print(f"lr[50] = {ca[50]:.5f}")
+print(f"lr[100]= {ca[100]:.5f}")
+print("matches PyTorch checkpoints (0.1, 0.05, 0.0):",
+      np.allclose([ca[0], ca[50], ca[100]], [0.1, 0.05, 0.0]))
+```
+
+At the midpoint the rate is exactly half the base rate, and at `T_max` it reaches the minimum—here zero. In practice cosine annealing is a strong, low-fuss default: it needs only the total length and a base rate, and its smooth profile works well across a wide range of models.
+
+## OneCycle
+
+OneCycle (Smith & Topin, 2019) adds a deliberate *warmup*. Instead of starting at the peak, it begins low, ramps up to a maximum rate over the first fraction of training (`pct_start`, default 0.3), then anneals back down—overshooting the starting point to end far below it. The warmup lets the model settle into a stable region before the large rate is applied, which is what makes the subsequently high rate safe; Smith and Topin argue this large-rate phase acts as regularization and can produce "super-convergence," reaching good accuracy in far fewer epochs. PyTorch's defaults set the initial rate to `max_lr / 25` and the final rate to `initial_lr / 1e4`.
+
+```{python}
+#| label: onecycle
+def one_cycle(max_lr, total_steps, pct_start=0.3, div_factor=25.0,
+              final_div_factor=1e4, anneal="cos"):
+    initial_lr = max_lr / div_factor
+    min_lr = initial_lr / final_div_factor
+    warmup = int(round(total_steps * pct_start))
+    lrs = np.empty(total_steps)
+    for step in range(total_steps):
+        if step <= warmup:
+            pct, lo, hi = step / max(1, warmup), initial_lr, max_lr      # rising
+        else:
+            pct = (step - warmup) / max(1, (total_steps - 1 - warmup))
+            lo, hi = max_lr, min_lr                                      # falling
+        lrs[step] = hi + (lo - hi) / 2.0 * (np.cos(np.pi * pct) + 1)     # cosine
+    return lrs
+
+oc = one_cycle(max_lr=0.1, total_steps=100)
+peak = int(oc.argmax())
+print(f"start lr = {oc[0]:.6f}   (= max_lr / 25 = {0.1/25:.6f})")
+print(f"peak  lr = {oc[peak]:.6f} at step {peak}   (= 30% of 100)")
+print(f"final lr = {oc[-1]:.8f}   (= start / 1e4)")
+```
+
+The rate peaks at step 30—exactly the 30% warmup fraction—then descends well past where it began. Because OneCycle is defined over the *total* number of optimizer steps, it is stepped once per batch rather than once per epoch, and it needs the total step count up front. When you can afford to tune `max_lr`, it is often the fastest route to a good model.
+
+Plotting cosine and OneCycle against a constant baseline makes their shapes concrete.
+
+```{python}
+#| label: fig-curves
+#| fig-cap: "Learning-rate profiles over 100 steps: constant, cosine annealing, and OneCycle (with its warmup peak at 30%)."
+import matplotlib.pyplot as plt
+
+N = 100
+const = np.full(N, 0.05)
+cos_c = cosine_annealing(0.1, T_max=N, steps=N)[:N]
+onec_c = one_cycle(0.1, total_steps=N)
+
+fig, ax = plt.subplots(figsize=(6.6, 3.6))
+ax.plot(const, label="constant (0.05)", color="#94a3b8", ls="--")
+ax.plot(cos_c, label="cosine annealing", color="#2563eb", lw=2)
+ax.plot(onec_c, label="one-cycle", color="#db2777", lw=2)
+ax.set_xlabel("training step"); ax.set_ylabel("learning rate")
+ax.set_title("Cosine vs OneCycle vs constant learning rate")
+ax.legend(fontsize=9); ax.grid(alpha=0.3)
+fig.tight_layout(); plt.show()
+```
+
+## ReduceLROnPlateau
+
+The first two schedulers follow a fixed clock: given the step count, their entire trajectory is known in advance. `ReduceLROnPlateau` is different—it is *reactive*. It watches a metric (typically validation loss) and cuts the rate only when progress stalls. Concretely, it keeps the best value seen so far; each epoch that fails to improve on it by more than a small threshold counts as "bad," and once the number of consecutive bad epochs exceeds `patience`, the rate is multiplied by `factor` (default 0.1). This makes it the natural choice when you cannot predict how long training will take or when the loss will plateau. The reimplementation below mirrors PyTorch's default relative-threshold logic.
+
+```{python}
+#| label: plateau
+class ReduceLROnPlateau:
+    def __init__(self, lr, factor=0.1, patience=10, threshold=1e-4,
+                 threshold_mode="rel", cooldown=0, min_lr=0.0):
+        self.lr = lr; self.factor = factor; self.patience = patience
+        self.threshold = threshold; self.threshold_mode = threshold_mode
+        self.cooldown = cooldown; self.min_lr = min_lr
+        self.best = np.inf; self.num_bad = 0; self.cooldown_counter = 0
+
+    def _is_better(self, metric):
+        if self.threshold_mode == "rel":
+            return metric < self.best * (1 - self.threshold)
+        return metric < self.best - self.threshold
+
+    def step(self, metric):
+        if self._is_better(metric):
+            self.best = metric; self.num_bad = 0
+        else:
+            self.num_bad += 1
+        if self.cooldown_counter > 0:
+            self.cooldown_counter -= 1; self.num_bad = 0
+        if self.num_bad > self.patience:
+            new_lr = max(self.lr * self.factor, self.min_lr)
+            if self.lr - new_lr > 1e-12:
+                self.lr = new_lr
+            self.cooldown_counter = self.cooldown; self.num_bad = 0
+        return self.lr
+```
+
+To see it act, we drive it with a realistic training dynamic: at any given rate the loss decays toward a noise floor that is proportional to the rate—big steps cannot resolve detail below a certain level—so the loss falls, then flattens. When it flattens, the scheduler cuts the rate, the floor drops, and progress resumes. The result is the characteristic staircase.
+
+```{python}
+#| label: fig-plateau
+#| fig-cap: "ReduceLROnPlateau in action: each time the loss plateaus, the rate is halved and the loss resumes falling."
+rng = np.random.default_rng(0)
+sched = ReduceLROnPlateau(lr=0.1, factor=0.5, patience=5, min_lr=1e-4)
+loss = 1.0; lrs = []; losses = []
+for epoch in range(80):
+    floor = 0.4 * sched.lr                       # lr-dependent loss floor
+    loss = floor + (loss - floor) * 0.7 + 0.0005 * rng.standard_normal()
+    lrs.append(sched.step(loss)); losses.append(loss)
+
+drops = [i for i in range(1, len(lrs)) if lrs[i] < lrs[i-1]]
+print("epochs where lr dropped:", drops)
+print("distinct lr levels:", sorted(set(round(x, 5) for x in lrs), reverse=True))
+print(f"final lr = {lrs[-1]:.5f}   final loss = {losses[-1]:.5f}")
+
+fig, ax1 = plt.subplots(figsize=(6.6, 3.6))
+ax1.plot(losses, color="#0f766e", label="loss")
+ax1.set_xlabel("epoch"); ax1.set_ylabel("loss", color="#0f766e")
+ax2 = ax1.twinx()
+ax2.plot(lrs, color="#db2777", drawstyle="steps-post", label="lr")
+ax2.set_ylabel("learning rate", color="#db2777")
+ax1.set_title("ReduceLROnPlateau: loss plateaus trigger LR cuts")
+fig.tight_layout(); plt.show()
+```
+
+The rate steps down from 0.1 to 0.05 to 0.025 precisely at the epochs where the loss stopped improving, and each cut buys another leg of progress. The behavior depends heavily on `patience` and `factor`: too small a patience reacts to noise and decays too early; too large a factor barely changes anything. Because it responds to what actually happens rather than to a schedule, it pairs naturally with early stopping on the same metric.
+
+## Does the Choice Change the Result?
+
+Shapes are only worth discussing if they affect the outcome. The experiment below trains the same logistic-regression model on the same synthetic data three times—constant rate, cosine annealing, and OneCycle—with everything else held fixed, and reports the final training loss.
+
+```{python}
+#| label: experiment
+rng = np.random.default_rng(42)
+n, d = 2000, 20
+X = rng.standard_normal((n, d))
+w_star = rng.standard_normal(d)
+y = (rng.random(n) < 1 / (1 + np.exp(-(X @ w_star)))).astype(float)
+
+def sigmoid(z): return 1 / (1 + np.exp(-z))
+def bce(w):
+    z = X @ w
+    return np.mean(np.logaddexp(0, z) - y * z)
+
+def train(lr_schedule, steps=300, batch=128, seed=0):
+    r = np.random.default_rng(seed); w = np.zeros(d)
+    for t in range(steps):
+        idx = r.integers(0, n, batch)
+        grad = X[idx].T @ (sigmoid(X[idx] @ w) - y[idx]) / batch
+        w -= lr_schedule[t] * grad
+    return bce(w)
+
+steps = 300
+results = {
+    "constant lr=0.3":  train(np.full(steps, 0.3)),
+    "cosine annealing": train(cosine_annealing(0.6, T_max=steps, steps=steps - 1)[:steps]),
+    "one-cycle":        train(one_cycle(0.9, total_steps=steps)),
+}
+print(f"initial loss (w=0): {bce(np.zeros(d)):.5f}")
+for name, val in results.items():
+    print(f"  {name:<18} final loss = {val:.5f}")
+```
+
+All three descend from the same starting loss, and the ordering is the one theory predicts: OneCycle finishes lowest, cosine annealing next, and the constant rate last. The gaps here are modest because logistic regression is convex and easy; on deep non-convex networks the differences are usually larger and the warmup in OneCycle matters more, since it stabilizes the early, most fragile phase of training. The point is that the schedule is not cosmetic—holding the rate fixed genuinely leaves performance on the table.
+
+## How to Choose
+
+For most problems, cosine annealing is the sensible default: it has essentially one knob beyond the base rate, its smooth tail is forgiving, and it rarely does harm. Reach for OneCycle when training time is precious and you are willing to tune `max_lr`, because its warmup-then-decay profile is often the fastest path to a strong model and provides some regularization for free. Use `ReduceLROnPlateau` when the training horizon is unknown or the loss curve is unpredictable, especially alongside early stopping, since it adapts to the run instead of committing to a fixed timeline. These are not mutually exclusive philosophies so much as answers to different questions: how long will I train, how much do I want to tune, and do I trust a plan or the measured loss.
+
+## Conclusion
+
+A learning rate schedule exists to resolve a single tension—large steps are cheap early and harmful late—and the three PyTorch schedulers here are three answers to it. Cosine annealing follows a smooth clock to a quiet minimum; OneCycle plans a single warmup-and-decay cycle aimed at fast convergence; and ReduceLROnPlateau abandons the clock entirely and reacts to the loss. Reimplementing each from its formula shows there is no magic inside, only a rule for reshaping the rate over time, and the training comparison confirms the reshaping is worth doing. The practical takeaway is to stop treating the learning rate as a constant to be found once: choosing how it should *change* is part of the model, and the right schedule is a cheap, reliable source of both speed and final accuracy.
+
+## References
+
+::: {#refs}
+* Loshchilov, I., & Hutter, F. (2017). SGDR: Stochastic Gradient Descent with Warm Restarts. *International Conference on Learning Representations (ICLR)*. arXiv:1608.03983.
+* Smith, L. N. (2017). Cyclical Learning Rates for Training Neural Networks. *IEEE Winter Conference on Applications of Computer Vision (WACV)*, 464–472. arXiv:1506.01186.
+* Smith, L. N., & Topin, N. (2019). Super-Convergence: Very Fast Training of Neural Networks Using Large Learning Rates. *Proceedings of SPIE, Artificial Intelligence and Machine Learning for Multi-Domain Operations Applications*. arXiv:1708.07120.
+* Paszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., et al. (2019). PyTorch: An Imperative Style, High-Performance Deep Learning Library. *Advances in Neural Information Processing Systems (NeurIPS)*, 32, 8024–8035.
+:::

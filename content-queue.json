@@ -90,19 +90,20 @@
       "status": "drafted",
       "drafted_date": "2026-08-06",
       "path_slug": "2026-08-06-kv-cache-how-it-speeds-up-inference-and-the-memory-trade-off"
-    }
-  ],
-  "queue": [
+    },
     {
-      "order": 2,
+      "order": 9,
       "series": "pytorch",
       "series_no": 5,
       "title": "학습률 스케줄러 비교: Cosine Annealing vs OneCycle vs ReduceLROnPlateau",
       "slug": "lr-scheduler-comparison",
       "level": "L2",
-      "status": "pending",
-      "old_order": 9
-    },
+      "status": "drafted",
+      "drafted_date": "2026-08-07",
+      "path_slug": "2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau"
+    }
+  ],
+  "queue": [
     {
       "order": 3,
       "series": "llm",
