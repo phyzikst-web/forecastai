@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Prof.&nbsp;Shin">
+<meta name="dcterms.date" content="2026-08-09">
+<meta name="description" content="Why the loss of a language model falls as a clean power law in parameters, data, and compute, and what that regularity implies for how a fixed training budget should be spent. We reconstruct the parametric loss surface from the Chinchilla fit in NumPy, derive the compute-optimal allocation, recover the published scaling exponents, and measure the loss you pay for building a model that is too big for its data.">
+
+<title>Scaling Laws: How Model Size, Data, and Compute Trade Off – ForecastAI</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-bb62276ab45c84d9efd712f51ff97b5a.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-02d6a4966984111ca0cd601c682d0235.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Forecast<span style="color:#F97316;">AI</span></span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">HOME</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">ABOUT</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../categories.html"> 
+<span class="menu-text">CATEGORIES</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../research.html"> 
+<span class="menu-text">RESEARCH</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../contact.html"> 
+<span class="menu-text">CONTACT</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../ko/"> 
+<span class="menu-text">🇰🇷 한국어</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/phyzikst-web"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#the-empirical-regularity-loss-falls-as-a-power-law" id="toc-the-empirical-regularity-loss-falls-as-a-power-law" class="nav-link active" data-scroll-target="#the-empirical-regularity-loss-falls-as-a-power-law">The Empirical Regularity: Loss Falls as a Power Law</a></li>
+  <li><a href="#a-loss-surface-in-three-variables" id="toc-a-loss-surface-in-three-variables" class="nav-link" data-scroll-target="#a-loss-surface-in-three-variables">A Loss Surface in Three Variables</a></li>
+  <li><a href="#compute-optimal-allocation-the-chinchilla-argument" id="toc-compute-optimal-allocation-the-chinchilla-argument" class="nav-link" data-scroll-target="#compute-optimal-allocation-the-chinchilla-argument">Compute-Optimal Allocation: The Chinchilla Argument</a></li>
+  <li><a href="#the-price-of-misallocation" id="toc-the-price-of-misallocation" class="nav-link" data-scroll-target="#the-price-of-misallocation">The Price of Misallocation</a></li>
+  <li><a href="#what-the-laws-do-and-dont-promise" id="toc-what-the-laws-do-and-dont-promise" class="nav-link" data-scroll-target="#what-the-laws-do-and-dont-promise">What the Laws Do and Don’t Promise</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Scaling Laws: How Model Size, Data, and Compute Trade Off</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Data Science</div>
+    <div class="quarto-category">Artificial Intelligence</div>
+    <div class="quarto-category">LLM</div>
+    <div class="quarto-category">Scaling Laws</div>
+    <div class="quarto-category">Training</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    <p>Why the loss of a language model falls as a clean power law in parameters, data, and compute, and what that regularity implies for how a fixed training budget should be spent. We reconstruct the parametric loss surface from the Chinchilla fit in NumPy, derive the compute-optimal allocation, recover the published scaling exponents, and measure the loss you pay for building a model that is too big for its data.</p>
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Prof.&nbsp;Shin </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">August 9, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="thumbnail.jpg" class="img-fluid figure-img" style="width:90.0%"></p>
+<figcaption>[Concept Visualization] Along the compute-optimal frontier the reducible loss falls as a power law of the compute budget; any fixed allocation that is not compute-optimal (dashed) sits above that line. The three levers—model size N, data D, and compute C ≈ 6ND—are tied together by the loss surface L(N,D).</figcaption>
+</figure>
+</div>
+<p>How large should a language model be? For most of deep learning’s history the answer was cultural rather than quantitative: bigger models were better, so you made the model as large as your hardware and patience allowed and trained it until the loss stopped improving. Scaling laws replaced that instinct with a measured relationship. Across many orders of magnitude, the cross-entropy loss of an autoregressive transformer falls as a smooth power law in the number of parameters, the number of training tokens, and the total compute spent [Kaplan et al., 2020]. Because the relationship is a power law—a straight line on log-log axes—it extrapolates, and extrapolation is what turns an observation into a planning tool: you can predict the loss of a model you have not yet trained and, more usefully, decide how to divide a fixed budget between a larger model and more data. This post reconstructs that reasoning from the parametric loss surface, derives the compute-optimal split, and shows what it costs to get the split wrong.</p>
+<section id="the-empirical-regularity-loss-falls-as-a-power-law" class="level2">
+<h2 class="anchored" data-anchor-id="the-empirical-regularity-loss-falls-as-a-power-law">The Empirical Regularity: Loss Falls as a Power Law</h2>
+<p>The central finding is that test loss <span class="math inline">\(L\)</span> decreases predictably as any one of three quantities grows while the others are held non-limiting: the parameter count <span class="math inline">\(N\)</span>, the training-token count <span class="math inline">\(D\)</span>, and the compute <span class="math inline">\(C\)</span>. Each relationship has the same shape,</p>
+<p><span class="math display">\[L(N) = E + \frac{A}{N^{\alpha}},\]</span></p>
+<p>where <span class="math inline">\(E\)</span> is an irreducible floor—the entropy of the data that no model can beat—and the second term is the <em>reducible</em> loss that shrinks as a power of <span class="math inline">\(N\)</span> with exponent <span class="math inline">\(\alpha\)</span>. The exponent is small (well under one), which is the sober part of the story: halving the loss above the floor requires increasing <span class="math inline">\(N\)</span> by a factor of <span class="math inline">\(2^{1/\alpha}\)</span>, so returns diminish steeply. The value of the power-law form is not that scaling is cheap but that it is <em>predictable</em>.</p>
+<p>To make the shape concrete we use the parametric fit reported for the Chinchilla study, which models the loss jointly in <span class="math inline">\(N\)</span> and <span class="math inline">\(D\)</span> as <span class="math inline">\(L(N,D) = E + A/N^{\alpha} + B/D^{\beta}\)</span> [Hoffmann et al., 2022]. Holding <span class="math inline">\(D\)</span> effectively infinite isolates the <span class="math inline">\(N\)</span> term. On log-log axes the reducible loss must be a straight line whose slope is <span class="math inline">\(-\alpha\)</span>; fitting that slope back out is a check that the code and the math agree.</p>
+<div id="cell-fig-powerlaw" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Chinchilla parametric loss (Hoffmann et al., 2022, "Approach 3"):</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># L(N, D) = E + A / N**alpha + B / D**beta</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>E, A, alpha <span class="op">=</span> <span class="fl">1.69</span>, <span class="fl">406.4</span>, <span class="fl">0.34</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>B, beta     <span class="op">=</span> <span class="fl">410.7</span>, <span class="fl">0.28</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> loss(N, D):</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> E <span class="op">+</span> A <span class="op">/</span> N<span class="op">**</span>alpha <span class="op">+</span> B <span class="op">/</span> D<span class="op">**</span>beta</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Hold data non-limiting so only the N term varies.</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>N_grid <span class="op">=</span> np.logspace(<span class="dv">6</span>, <span class="dv">11</span>, <span class="dv">100</span>)          <span class="co"># 1e6 .. 1e11 parameters</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>D_huge <span class="op">=</span> <span class="fl">1e15</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>floor  <span class="op">=</span> E <span class="op">+</span> B <span class="op">/</span> D_huge<span class="op">**</span>beta              <span class="co"># irreducible + data-limited floor</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>reducible <span class="op">=</span> loss(N_grid, D_huge) <span class="op">-</span> floor   <span class="co"># isolates the A / N**alpha term</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>slope, _ <span class="op">=</span> np.polyfit(np.log10(N_grid), np.log10(reducible), <span class="dv">1</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"fitted log-log slope = </span><span class="sc">{</span>slope<span class="sc">:.4f}</span><span class="ss">   (expected -alpha = </span><span class="sc">{</span><span class="op">-</span>alpha<span class="sc">}</span><span class="ss">)"</span>)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"L at N=1e8 : </span><span class="sc">{</span>loss(<span class="fl">1e8</span>, D_huge)<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"L at N=1e10: </span><span class="sc">{</span>loss(<span class="fl">1e10</span>, D_huge)<span class="sc">:.4f}</span><span class="ss">  (100x params buys ~</span><span class="sc">{</span>loss(<span class="fl">1e8</span>,D_huge)<span class="op">-</span>loss(<span class="fl">1e10</span>,D_huge)<span class="sc">:.2f}</span><span class="ss"> nats)"</span>)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.5</span>, <span class="fl">3.8</span>))</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>ax.loglog(N_grid, reducible, color<span class="op">=</span><span class="st">"C0"</span>)</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"parameters N"</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">"reducible loss  L(N) − floor"</span>)</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Reducible loss follows a power law in N"</span>)</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>, which<span class="op">=</span><span class="st">"both"</span>)</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>fitted log-log slope = -0.3400   (expected -alpha = -0.34)
+L at N=1e8 : 2.4903
+L at N=1e10: 1.8777  (100x params buys ~0.61 nats)</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div id="fig-powerlaw" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-powerlaw-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-powerlaw-output-2.png" width="613" height="353" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-powerlaw-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Reducible loss L(N) − floor versus parameter count on log-log axes. A power law appears as a straight line, and the fitted slope recovers the exponent −α.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The fitted slope comes back at <span class="math inline">\(-0.34\)</span>, exactly the <span class="math inline">\(\alpha\)</span> we put in, confirming the log-log line is a genuine power law rather than an artifact of the plotting range. The printed losses make the diminishing return tangible: multiplying the parameter count by one hundred, from <span class="math inline">\(10^8\)</span> to <span class="math inline">\(10^{10}\)</span>, removes only about six tenths of a nat from the loss. Scaling works, but each additional decade of model size buys less than the last.</p>
+</section>
+<section id="a-loss-surface-in-three-variables" class="level2">
+<h2 class="anchored" data-anchor-id="a-loss-surface-in-three-variables">A Loss Surface in Three Variables</h2>
+<p>Treating <span class="math inline">\(N\)</span> alone is misleading, because a large model trained on too little data stops improving well before it reaches the floor implied by its size—its loss is pinned by the <span class="math inline">\(B/D^{\beta}\)</span> term instead. The honest object is the two-dimensional surface <span class="math inline">\(L(N,D)\)</span>, and the third variable, compute, is not independent of the first two. To leading order, training a dense transformer costs about six floating-point operations per parameter per token, so</p>
+<p><span class="math display">\[C \approx 6\,N\,D.\]</span></p>
+<p>This tie is what makes the problem interesting. You do not choose <span class="math inline">\(N\)</span>, <span class="math inline">\(D\)</span>, and <span class="math inline">\(C\)</span> freely; you choose a compute budget <span class="math inline">\(C\)</span> and then any split of it between model size and data traces a line <span class="math inline">\(D = C/(6N)\)</span> across the loss surface. The next figure draws the surface with three of those iso-compute lines laid on top.</p>
+<div id="cell-fig-surface" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> compute(N, D):</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="fl">6.0</span> <span class="op">*</span> N <span class="op">*</span> D</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>Ns <span class="op">=</span> np.logspace(<span class="dv">7</span>, <span class="dv">11</span>, <span class="dv">60</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>Ds <span class="op">=</span> np.logspace(<span class="dv">8</span>, <span class="dv">12</span>, <span class="dv">60</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>NN, DD <span class="op">=</span> np.meshgrid(Ns, Ds)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>LL <span class="op">=</span> loss(NN, DD)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.6</span>, <span class="fl">4.2</span>))</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>cs <span class="op">=</span> ax.contourf(NN, DD, LL, levels<span class="op">=</span><span class="dv">20</span>, cmap<span class="op">=</span><span class="st">"viridis"</span>)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> Cbud <span class="kw">in</span> [<span class="fl">1e19</span>, <span class="fl">1e21</span>, <span class="fl">1e23</span>]:</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    ax.plot(Ns, Cbud <span class="op">/</span> (<span class="dv">6</span> <span class="op">*</span> Ns), <span class="st">"w--"</span>, lw<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>ax.set_xscale(<span class="st">"log"</span>)<span class="op">;</span> ax.set_yscale(<span class="st">"log"</span>)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"parameters N"</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">"tokens D"</span>)</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Loss surface L(N,D) with iso-compute lines (dashed)"</span>)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>ax.set_ylim(Ds.<span class="bu">min</span>(), Ds.<span class="bu">max</span>())</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>fig.colorbar(cs, ax<span class="op">=</span>ax, label<span class="op">=</span><span class="st">"loss"</span>)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()<span class="op">;</span> plt.show()</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"loss at N=1e9, D=2e10 : </span><span class="sc">{</span>loss(<span class="fl">1e9</span>, <span class="fl">2e10</span>)<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"compute there          : </span><span class="sc">{</span>compute(<span class="fl">1e9</span>, <span class="fl">2e10</span>)<span class="sc">:.2e}</span><span class="ss"> FLOPs"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div id="fig-surface" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-surface-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-surface-output-1.png" width="605" height="391" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-surface-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: The loss surface L(N,D). Dashed white lines are iso-compute contours D = C/(6N); a fixed budget lets you slide along one of them, trading model size against data.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>loss at N=1e9, D=2e10 : 2.5800
+compute there          : 1.20e+20 FLOPs</code></pre>
+</div>
+</div>
+<p>Reading the figure along any dashed line is the whole planning problem in miniature. Move to the lower-right and you have a big model starved of data; move to the upper-left and you have a small model swimming in tokens it cannot absorb. Somewhere in between, the line grazes its lowest loss contour. That tangency point is the compute-optimal allocation, and it is worth finding exactly.</p>
+</section>
+<section id="compute-optimal-allocation-the-chinchilla-argument" class="level2">
+<h2 class="anchored" data-anchor-id="compute-optimal-allocation-the-chinchilla-argument">Compute-Optimal Allocation: The Chinchilla Argument</h2>
+<p>For a fixed budget <span class="math inline">\(C\)</span>, substitute <span class="math inline">\(D = C/(6N)\)</span> into the loss and minimize over <span class="math inline">\(N\)</span>. Setting the derivative to zero gives a closed form in which the optimal model size grows as a power of the budget,</p>
+<p><span class="math display">\[N^{\star}(C) \propto C^{\,\beta/(\alpha+\beta)}, \qquad D^{\star}(C) \propto C^{\,\alpha/(\alpha+\beta)},\]</span></p>
+<p>so the two exponents sum to one, as they must when <span class="math inline">\(C \approx 6ND\)</span>. With the Chinchilla exponents <span class="math inline">\(\alpha=0.34\)</span> and <span class="math inline">\(\beta=0.28\)</span> these evaluate to roughly <span class="math inline">\(0.45\)</span> for <span class="math inline">\(N\)</span> and <span class="math inline">\(0.55\)</span> for <span class="math inline">\(D\)</span>. The practical message is that model size and data should grow at nearly the same rate: when you get ten times the compute, you should make the model about three times bigger <em>and</em> train on about three times as much data, not pour the entire windfall into parameters. This was the correction the Chinchilla work made to the earlier prescription, which had recommended spending most new compute on model size [Kaplan et al., 2020; Hoffmann et al., 2022]. The code below finds the optimum numerically for a sweep of budgets and fits the exponents back out.</p>
+<div id="cell-fig-optimal" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> optimal_alloc(C, n_scan<span class="op">=</span><span class="dv">4000</span>):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    N_scan <span class="op">=</span> np.logspace(<span class="dv">6</span>, <span class="dv">12</span>, n_scan)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    D_scan <span class="op">=</span> C <span class="op">/</span> (<span class="dv">6</span> <span class="op">*</span> N_scan)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    L_scan <span class="op">=</span> loss(N_scan, D_scan)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    i <span class="op">=</span> np.argmin(L_scan)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> N_scan[i], D_scan[i], L_scan[i]</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>Cs <span class="op">=</span> np.logspace(<span class="dv">18</span>, <span class="dv">25</span>, <span class="dv">40</span>)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>Nopt, Dopt, Lopt <span class="op">=</span> np.array([optimal_alloc(C) <span class="cf">for</span> C <span class="kw">in</span> Cs]).T</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>aN, _ <span class="op">=</span> np.polyfit(np.log10(Cs), np.log10(Nopt), <span class="dv">1</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>aD, _ <span class="op">=</span> np.polyfit(np.log10(Cs), np.log10(Dopt), <span class="dv">1</span>)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>a_theory <span class="op">=</span> beta <span class="op">/</span> (alpha <span class="op">+</span> beta)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>b_theory <span class="op">=</span> alpha <span class="op">/</span> (alpha <span class="op">+</span> beta)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"N* ~ C^</span><span class="sc">{</span>aN<span class="sc">:.3f}</span><span class="ss">   (closed form </span><span class="sc">{</span>a_theory<span class="sc">:.3f}</span><span class="ss">)"</span>)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"D* ~ C^</span><span class="sc">{</span>aD<span class="sc">:.3f}</span><span class="ss">   (closed form </span><span class="sc">{</span>b_theory<span class="sc">:.3f}</span><span class="ss">)"</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="fl">9.5</span>, <span class="fl">3.8</span>))</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].loglog(Cs, Nopt, <span class="st">"o-"</span>, ms<span class="op">=</span><span class="dv">3</span>, label<span class="op">=</span><span class="ss">f"N* ∝ C^</span><span class="sc">{</span>aN<span class="sc">:.2f}</span><span class="ss">"</span>)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].loglog(Cs, Dopt, <span class="st">"s-"</span>, ms<span class="op">=</span><span class="dv">3</span>, color<span class="op">=</span><span class="st">"C1"</span>, label<span class="op">=</span><span class="ss">f"D* ∝ C^</span><span class="sc">{</span>aD<span class="sc">:.2f}</span><span class="ss">"</span>)</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_xlabel(<span class="st">"compute C (FLOPs)"</span>)<span class="op">;</span> axes[<span class="dv">0</span>].set_ylabel(<span class="st">"optimal N*, D*"</span>)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_title(<span class="st">"Compute-optimal size and data"</span>)</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> axes[<span class="dv">0</span>].grid(alpha<span class="op">=</span><span class="fl">0.3</span>, which<span class="op">=</span><span class="st">"both"</span>)</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].loglog(Cs, Lopt <span class="op">-</span> E, <span class="st">"o-"</span>, ms<span class="op">=</span><span class="dv">3</span>, color<span class="op">=</span><span class="st">"C2"</span>)</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_xlabel(<span class="st">"compute C (FLOPs)"</span>)<span class="op">;</span> axes[<span class="dv">1</span>].set_ylabel(<span class="st">"reducible loss on frontier"</span>)</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_title(<span class="st">"Loss along the compute-optimal frontier"</span>)</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].grid(alpha<span class="op">=</span><span class="fl">0.3</span>, which<span class="op">=</span><span class="st">"both"</span>)</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>N* ~ C^0.451   (closed form 0.452)
+D* ~ C^0.549   (closed form 0.548)</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div id="fig-optimal" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-optimal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-optimal-output-2.png" width="901" height="353" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-optimal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Left: compute-optimal N* and D* both grow as near-square-root power laws of the budget. Right: the reducible loss on the optimal frontier falls smoothly as compute increases.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The fitted exponents, near <span class="math inline">\(0.45\)</span> and <span class="math inline">\(0.55\)</span>, reproduce the values of <span class="math inline">\(0.46\)</span> and <span class="math inline">\(0.54\)</span> reported from the original fit, which is the reassuring part: the same derivative that the paper solved analytically falls out of a crude grid search over budgets. The right panel shows the payoff of staying on the frontier—the loss above the floor descends as its own power law in compute, so if you always allocate optimally, spending more compute has a predictable, if slowing, return.</p>
+<p>One caveat belongs here rather than buried in the conclusion. The exponents are robust, but the <em>absolute</em> tokens-per-parameter ratio that this parametric surface implies runs higher than the widely quoted “about twenty tokens per parameter” heuristic from the Chinchilla study’s other estimation methods. A later replication found that the published parametric coefficients are difficult to reconcile with the paper’s own iso-FLOP analysis and reported implausibly tight confidence intervals, so the exact ratio should be treated as fit-dependent while the near-equal scaling of <span class="math inline">\(N\)</span> and <span class="math inline">\(D\)</span> is the durable conclusion [Besiroglu et al., 2024]. The lesson to carry forward is the <em>shape</em> of the optimum, not a magic constant.</p>
+</section>
+<section id="the-price-of-misallocation" class="level2">
+<h2 class="anchored" data-anchor-id="the-price-of-misallocation">The Price of Misallocation</h2>
+<p>Knowing the optimum matters only if departing from it is expensive, so the last experiment quantifies the penalty. We fix a budget, compute the optimal split, then deliberately misallocate—eight times too many parameters (and therefore one-eighth the data), and the mirror-image mistake of eight times too much data. Because compute is held constant, both moves slide along the same iso-compute line, and the extra loss is the pure cost of being off the tangency point.</p>
+<div id="cell-fig-misalloc" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>C0 <span class="op">=</span> <span class="fl">1e23</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>Nc, Dc, Lc <span class="op">=</span> optimal_alloc(C0)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>factor <span class="op">=</span> <span class="fl">8.0</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>N_heavy, D_heavy <span class="op">=</span> Nc <span class="op">*</span> factor, Dc <span class="op">/</span> factor   <span class="co"># params-heavy: big model, little data</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>N_data,  D_data  <span class="op">=</span> Nc <span class="op">/</span> factor, Dc <span class="op">*</span> factor   <span class="co"># data-heavy:  small model, lots of data</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>L_heavy <span class="op">=</span> loss(N_heavy, D_heavy)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>L_data  <span class="op">=</span> loss(N_data,  D_data)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"budget C = </span><span class="sc">{</span>C0<span class="sc">:.0e}</span><span class="ss"> FLOPs"</span>)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  optimal      N=</span><span class="sc">{</span>Nc<span class="sc">:.2e}</span><span class="ss">  D=</span><span class="sc">{</span>Dc<span class="sc">:.2e}</span><span class="ss">  L=</span><span class="sc">{</span>Lc<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  params-heavy N=</span><span class="sc">{</span>N_heavy<span class="sc">:.2e}</span><span class="ss">  D=</span><span class="sc">{</span>D_heavy<span class="sc">:.2e}</span><span class="ss">  L=</span><span class="sc">{</span>L_heavy<span class="sc">:.4f}</span><span class="ss">  (+</span><span class="sc">{</span>L_heavy<span class="op">-</span>Lc<span class="sc">:.4f}</span><span class="ss">)"</span>)</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  data-heavy   N=</span><span class="sc">{</span>N_data<span class="sc">:.2e}</span><span class="ss">  D=</span><span class="sc">{</span>D_data<span class="sc">:.2e}</span><span class="ss">  L=</span><span class="sc">{</span>L_data<span class="sc">:.4f}</span><span class="ss">  (+</span><span class="sc">{</span>L_data<span class="op">-</span>Lc<span class="sc">:.4f}</span><span class="ss">)"</span>)</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="co"># The params-heavy model's loss is reachable by an OPTIMAL model on a smaller budget.</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>Cext <span class="op">=</span> np.logspace(<span class="dv">21</span>, <span class="dv">23</span>, <span class="dv">400</span>)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>Lext <span class="op">=</span> np.array([optimal_alloc(C)[<span class="dv">2</span>] <span class="cf">for</span> C <span class="kw">in</span> Cext])</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>C_needed <span class="op">=</span> Cext[np.argmin(np.<span class="bu">abs</span>(Lext <span class="op">-</span> L_heavy))]</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  that loss is optimal at C=</span><span class="sc">{</span>C_needed<span class="sc">:.2e}</span><span class="ss">"</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  -&gt;  the misallocation wastes </span><span class="sc">{</span>C0<span class="op">/</span>C_needed<span class="sc">:.1f}</span><span class="ss">x compute"</span>)</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>ratios <span class="op">=</span> np.logspace(<span class="op">-</span><span class="fl">1.5</span>, <span class="fl">1.5</span>, <span class="dv">60</span>)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>Lr <span class="op">=</span> [loss(Nc <span class="op">*</span> r, Dc <span class="op">/</span> r) <span class="cf">for</span> r <span class="kw">in</span> ratios]</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.5</span>, <span class="fl">3.8</span>))</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>ax.semilogx(ratios, np.array(Lr) <span class="op">-</span> E, color<span class="op">=</span><span class="st">"C3"</span>)</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>ax.axvline(<span class="fl">1.0</span>, color<span class="op">=</span><span class="st">"k"</span>, ls<span class="op">=</span><span class="st">":"</span>, lw<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>ax.scatter([<span class="fl">1.0</span>], [Lc <span class="op">-</span> E], color<span class="op">=</span><span class="st">"C2"</span>, zorder<span class="op">=</span><span class="dv">5</span>, label<span class="op">=</span><span class="st">"compute-optimal"</span>)</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"model-size multiplier at fixed compute  (N×r, D÷r)"</span>)</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"reducible loss"</span>)</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f"Cost of misallocating a fixed budget (C=</span><span class="sc">{</span>C0<span class="sc">:.0e}</span><span class="ss">)"</span>)</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>ax.legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>, which<span class="op">=</span><span class="st">"both"</span>)</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>budget C = 1e+23 FLOPs
+  optimal      N=1.46e+10  D=1.14e+12  L=2.0050
+  params-heavy N=1.17e+11  D=1.42e+11  L=2.0695  (+0.0645)
+  data-heavy   N=1.83e+09  D=9.12e+12  L=2.0749  (+0.0699)
+  that loss is optimal at C=2.98e+22  -&gt;  the misallocation wastes 3.4x compute</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div id="fig-misalloc" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-misalloc-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-misalloc-output-2.png" width="614" height="353" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-misalloc-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Reducible loss as a fixed compute budget is reallocated between model size and data. The minimum at multiplier 1 is the compute-optimal point; both over-sizing and under-sizing the model raise the loss.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The curve is a shallow but real bowl. Making the model eight times too large raises the loss by roughly six hundredths of a nat, and the symmetric data-heavy error costs about the same—confirming that the optimum is a true interior minimum rather than a corner. The more striking number is the compute interpretation: an optimally allocated model reaches the params-heavy model’s loss on roughly a third of the budget, so the oversized model has thrown away most of its compute. This is exactly the argument that reframed a generation of “too big, undertrained” models. The penalty for modest errors is mild, which is why the bowl is shallow, but the penalty compounds into wasted GPU-months once the misallocation is large.</p>
+</section>
+<section id="what-the-laws-do-and-dont-promise" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-laws-do-and-dont-promise">What the Laws Do and Don’t Promise</h2>
+<p>Scaling laws are an empirical regularity fitted over a particular family of dense transformers trained with a particular recipe, and their reach ends where those conditions do. The fitted coefficients <span class="math inline">\(E\)</span>, <span class="math inline">\(A\)</span>, <span class="math inline">\(B\)</span>, <span class="math inline">\(\alpha\)</span>, <span class="math inline">\(\beta\)</span> depend on the architecture, the tokenizer, the data distribution, and the optimizer; change the data quality or add a fundamentally different component and the surface shifts. The curves also say nothing about <em>downstream</em> capability—they predict next-token loss, and the mapping from loss to whether a model can pass an exam or write correct code is neither linear nor guaranteed to be smooth. Extrapolation beyond the fitted range is a genuine leap of faith, since a power law is only known to hold where it has been measured. Finally, the compute-optimal split minimizes <em>training</em> loss for a <em>training</em> budget; if a model will be served to millions of users, the inference cost changes the calculus and can justify training a smaller model on far more data than the Chinchilla point recommends, deliberately trading extra training for cheaper deployment [Sardana et al., 2024]. The laws are a planning instrument, not a law of nature.</p>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>The reason scaling laws matter is that they convert a budgeting question into arithmetic. The loss surface <span class="math inline">\(L(N,D) = E + A/N^{\alpha} + B/D^{\beta}\)</span>, combined with the compute identity <span class="math inline">\(C \approx 6ND\)</span>, yields a compute-optimal allocation in which model size and data grow at nearly equal rates—the exponents near <span class="math inline">\(0.45\)</span> and <span class="math inline">\(0.55\)</span> we recovered by minimizing the surface directly. The practical payoff is negative as much as positive: it tells you not to keep enlarging a model that its data can no longer feed, and our misallocation experiment put a price on ignoring that, with an eight-fold oversized model wasting most of its compute. What the laws do not give is a guarantee that low loss means high capability, or that the fitted exponents survive a change of data, architecture, or deployment regime. Used as a map of the region where they were measured, they are the most reliable planning tool large-model training has; used as a promise about the territory beyond, they are a hypothesis awaiting the next fit.</p>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<div id="refs" role="list">
+<ul>
+<li>Kaplan, J., McCandlish, S., Henighan, T., Brown, T. B., Chess, B., Child, R., Gray, S., Radford, A., Wu, J., &amp; Amodei, D. (2020). Scaling Laws for Neural Language Models. <em>arXiv preprint arXiv:2001.08361</em>.</li>
+<li>Hoffmann, J., Borgeaud, S., Mensch, A., Buchatskaya, E., Cai, T., Rutherford, E., de Las Casas, D., Hendricks, L. A., Welbl, J., Clark, A., Hennigan, T., Noland, E., Millican, K., van den Driessche, G., Damoc, B., Guy, A., Osindero, S., Simonyan, K., Elsen, E., Rae, J. W., Vinyals, O., &amp; Sifre, L. (2022). Training Compute-Optimal Large Language Models. <em>Advances in Neural Information Processing Systems (NeurIPS)</em>. arXiv:2203.15556.</li>
+<li>Besiroglu, T., Erdil, E., Barnett, M., &amp; You, J. (2024). Chinchilla Scaling: A Replication Attempt. <em>arXiv preprint arXiv:2404.10102</em>.</li>
+<li>Sardana, N., Portes, J., Doubov, S., &amp; Frankle, J. (2024). Beyond Chinchilla-Optimal: Accounting for Inference in Language Model Scaling Laws. <em>Proceedings of the 41st International Conference on Machine Learning (ICML)</em>. arXiv:2401.00448.</li>
+</ul>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 2026 Prof.&nbsp;Shin · ForecastAI</p>
+</div>   
+    <div class="nav-footer-center">
+<p><a href="privacy-policy.qmd">Privacy Policy</a></p>
+</div>
+    <div class="nav-footer-right">
+<p>Powered by <a href="https://quarto.org">Quarto</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

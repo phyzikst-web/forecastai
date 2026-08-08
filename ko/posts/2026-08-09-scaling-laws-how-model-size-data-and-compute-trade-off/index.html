@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Prof.&nbsp;Shin">
+<meta name="dcterms.date" content="2026-08-09">
+<meta name="description" content="언어 모델의 손실이 왜 파라미터·데이터·컴퓨트에 대해 깔끔한 거듭제곱 법칙으로 감소하는지, 그리고 그 규칙성이 고정된 학습 예산을 어떻게 나누어 써야 하는지에 대해 무엇을 말해 주는지 살펴봅니다. Chinchilla 적합에서 얻은 파라메트릭 손실 곡면을 NumPy로 재구성하고, 컴퓨트 최적 배분을 유도하며, 발표된 스케일링 지수를 복원하고, 데이터에 비해 지나치게 큰 모델을 만들 때 치르는 손실을 측정합니다.">
+
+<title>스케일링 법칙: 모델 크기·데이터·컴퓨트의 트레이드오프 – ForecastAI</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-bb62276ab45c84d9efd712f51ff97b5a.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-02d6a4966984111ca0cd601c682d0235.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "일치 없음",
+    "search-matching-documents-text": "일치된 문서",
+    "search-copy-link-title": "검색 링크 복사",
+    "search-hide-matches-text": "추가 검색 결과 숨기기",
+    "search-more-match-text": "추가 검색결과",
+    "search-more-matches-text": "추가 검색결과",
+    "search-clear-button-title": "제거",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "취소",
+    "search-submit-button-title": "검색",
+    "search-label": "검색"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Forecast<span style="color:#F97316;">AI</span></span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="검색"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="탐색 전환" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">HOME</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">ABOUT</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../categories.html"> 
+<span class="menu-text">CATEGORIES</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../research.html"> 
+<span class="menu-text">RESEARCH</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../contact.html"> 
+<span class="menu-text">CONTACT</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../en/"> 
+<span class="menu-text">🇺🇸 English</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/phyzikst-web"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">목차</h2>
+   
+  <ul>
+  <li><a href="#경험적-규칙성-손실은-거듭제곱-법칙으로-감소한다" id="toc-경험적-규칙성-손실은-거듭제곱-법칙으로-감소한다" class="nav-link active" data-scroll-target="#경험적-규칙성-손실은-거듭제곱-법칙으로-감소한다">경험적 규칙성: 손실은 거듭제곱 법칙으로 감소한다</a></li>
+  <li><a href="#세-변수의-손실-곡면" id="toc-세-변수의-손실-곡면" class="nav-link" data-scroll-target="#세-변수의-손실-곡면">세 변수의 손실 곡면</a></li>
+  <li><a href="#컴퓨트-최적-배분-chinchilla의-논증" id="toc-컴퓨트-최적-배분-chinchilla의-논증" class="nav-link" data-scroll-target="#컴퓨트-최적-배분-chinchilla의-논증">컴퓨트 최적 배분: Chinchilla의 논증</a></li>
+  <li><a href="#잘못된-배분의-대가" id="toc-잘못된-배분의-대가" class="nav-link" data-scroll-target="#잘못된-배분의-대가">잘못된 배분의 대가</a></li>
+  <li><a href="#법칙이-약속하는-것과-약속하지-않는-것" id="toc-법칙이-약속하는-것과-약속하지-않는-것" class="nav-link" data-scroll-target="#법칙이-약속하는-것과-약속하지-않는-것">법칙이 약속하는 것과 약속하지 않는 것</a></li>
+  <li><a href="#결론" id="toc-결론" class="nav-link" data-scroll-target="#결론">결론</a></li>
+  <li><a href="#참고문헌" id="toc-참고문헌" class="nav-link" data-scroll-target="#참고문헌">참고문헌</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">스케일링 법칙: 모델 크기·데이터·컴퓨트의 트레이드오프</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">데이터과학</div>
+    <div class="quarto-category">인공지능</div>
+    <div class="quarto-category">LLM</div>
+    <div class="quarto-category">스케일링 법칙</div>
+    <div class="quarto-category">학습</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    <p>언어 모델의 손실이 왜 파라미터·데이터·컴퓨트에 대해 깔끔한 거듭제곱 법칙으로 감소하는지, 그리고 그 규칙성이 고정된 학습 예산을 어떻게 나누어 써야 하는지에 대해 무엇을 말해 주는지 살펴봅니다. Chinchilla 적합에서 얻은 파라메트릭 손실 곡면을 NumPy로 재구성하고, 컴퓨트 최적 배분을 유도하며, 발표된 스케일링 지수를 복원하고, 데이터에 비해 지나치게 큰 모델을 만들 때 치르는 손실을 측정합니다.</p>
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">저자</div>
+    <div class="quarto-title-meta-contents">
+             <p>Prof.&nbsp;Shin </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">공개</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">2026-08-09</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="thumbnail.jpg" class="img-fluid figure-img" style="width:90.0%"></p>
+<figcaption>[개념 시각화] 컴퓨트 최적 프런티어 위에서 감소 가능한 손실은 컴퓨트 예산의 거듭제곱으로 줄어듭니다. 컴퓨트 최적이 아닌 고정 배분(점선)은 항상 그 선보다 위에 놓입니다. 세 가지 지렛대, 즉 모델 크기 N, 데이터 D, 컴퓨트 C ≈ 6ND는 손실 곡면 L(N,D)로 서로 묶여 있습니다.</figcaption>
+</figure>
+</div>
+<p>언어 모델은 얼마나 커야 할까요? 딥러닝 역사의 대부분 동안 이 질문에 대한 답은 정량적이라기보다 관습적이었습니다. 큰 모델이 더 좋으니 하드웨어와 인내심이 허락하는 한 모델을 크게 만들고 손실이 더 이상 줄지 않을 때까지 학습시키는 식이었습니다. 스케일링 법칙(scaling laws)은 그 직관을 측정된 관계로 대체했습니다. 여러 자릿수에 걸쳐, 자기회귀 트랜스포머의 교차 엔트로피 손실은 파라미터 수, 학습 토큰 수, 그리고 투입한 총 컴퓨트에 대해 매끄러운 거듭제곱 법칙으로 감소합니다[Kaplan et al., 2020]. 이 관계가 거듭제곱 법칙, 즉 로그-로그 축에서 직선이라는 점이 중요합니다. 직선은 외삽이 가능하고, 외삽이야말로 관찰을 계획 도구로 바꿔 줍니다. 아직 학습하지 않은 모델의 손실을 예측할 수 있고, 더 유용하게는 고정된 예산을 더 큰 모델과 더 많은 데이터 사이에서 어떻게 나눌지 결정할 수 있습니다. 이 글에서는 파라메트릭 손실 곡면에서 그 논리를 재구성하고, 컴퓨트 최적 분할을 유도하며, 분할을 잘못했을 때 치르는 대가가 얼마인지 보입니다.</p>
+<section id="경험적-규칙성-손실은-거듭제곱-법칙으로-감소한다" class="level2">
+<h2 class="anchored" data-anchor-id="경험적-규칙성-손실은-거듭제곱-법칙으로-감소한다">경험적 규칙성: 손실은 거듭제곱 법칙으로 감소한다</h2>
+<p>핵심 발견은, 나머지 두 양을 병목이 되지 않게 유지한 채 세 양 중 하나를 키우면 테스트 손실 <span class="math inline">\(L\)</span>이 예측 가능하게 감소한다는 것입니다. 세 양이란 파라미터 수 <span class="math inline">\(N\)</span>, 학습 토큰 수 <span class="math inline">\(D\)</span>, 컴퓨트 <span class="math inline">\(C\)</span>입니다. 각 관계는 모두 같은 형태를 갖습니다.</p>
+<p><span class="math display">\[L(N) = E + \frac{A}{N^{\alpha}},\]</span></p>
+<p>여기서 <span class="math inline">\(E\)</span>는 어떤 모델도 넘어설 수 없는, 데이터 자체의 엔트로피에 해당하는 축소 불가능한 바닥값이고, 두 번째 항은 지수 <span class="math inline">\(\alpha\)</span>로 <span class="math inline">\(N\)</span>의 거듭제곱에 따라 줄어드는 <em>감소 가능한(reducible)</em> 손실입니다. 이 지수는 1보다 한참 작은데, 이것이 이야기의 냉정한 부분입니다. 바닥값 위 손실을 절반으로 줄이려면 <span class="math inline">\(N\)</span>을 <span class="math inline">\(2^{1/\alpha}\)</span>배 늘려야 하므로 수익은 가파르게 체감합니다. 거듭제곱 형태의 가치는 스케일링이 값싸다는 데 있는 것이 아니라 <em>예측 가능하다</em>는 데 있습니다.</p>
+<p>형태를 구체적으로 보기 위해 Chinchilla 연구에서 보고된 파라메트릭 적합을 사용합니다. 이 적합은 손실을 <span class="math inline">\(N\)</span>과 <span class="math inline">\(D\)</span>에 대해 <span class="math inline">\(L(N,D) = E + A/N^{\alpha} + B/D^{\beta}\)</span>로 함께 모델링합니다[Hoffmann et al., 2022]. <span class="math inline">\(D\)</span>를 사실상 무한으로 두면 <span class="math inline">\(N\)</span> 항만 분리됩니다. 로그-로그 축에서 감소 가능한 손실은 기울기가 <span class="math inline">\(-\alpha\)</span>인 직선이어야 하며, 그 기울기를 다시 적합해 복원하는 것은 코드와 수식이 일치하는지 확인하는 점검입니다.</p>
+<div id="cell-fig-powerlaw" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Chinchilla parametric loss (Hoffmann et al., 2022, "Approach 3"):</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># L(N, D) = E + A / N**alpha + B / D**beta</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>E, A, alpha <span class="op">=</span> <span class="fl">1.69</span>, <span class="fl">406.4</span>, <span class="fl">0.34</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>B, beta     <span class="op">=</span> <span class="fl">410.7</span>, <span class="fl">0.28</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> loss(N, D):</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> E <span class="op">+</span> A <span class="op">/</span> N<span class="op">**</span>alpha <span class="op">+</span> B <span class="op">/</span> D<span class="op">**</span>beta</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Hold data non-limiting so only the N term varies.</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>N_grid <span class="op">=</span> np.logspace(<span class="dv">6</span>, <span class="dv">11</span>, <span class="dv">100</span>)          <span class="co"># 1e6 .. 1e11 parameters</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>D_huge <span class="op">=</span> <span class="fl">1e15</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>floor  <span class="op">=</span> E <span class="op">+</span> B <span class="op">/</span> D_huge<span class="op">**</span>beta              <span class="co"># irreducible + data-limited floor</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>reducible <span class="op">=</span> loss(N_grid, D_huge) <span class="op">-</span> floor   <span class="co"># isolates the A / N**alpha term</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>slope, _ <span class="op">=</span> np.polyfit(np.log10(N_grid), np.log10(reducible), <span class="dv">1</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"fitted log-log slope = </span><span class="sc">{</span>slope<span class="sc">:.4f}</span><span class="ss">   (expected -alpha = </span><span class="sc">{</span><span class="op">-</span>alpha<span class="sc">}</span><span class="ss">)"</span>)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"L at N=1e8 : </span><span class="sc">{</span>loss(<span class="fl">1e8</span>, D_huge)<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"L at N=1e10: </span><span class="sc">{</span>loss(<span class="fl">1e10</span>, D_huge)<span class="sc">:.4f}</span><span class="ss">  (100x params buys ~</span><span class="sc">{</span>loss(<span class="fl">1e8</span>,D_huge)<span class="op">-</span>loss(<span class="fl">1e10</span>,D_huge)<span class="sc">:.2f}</span><span class="ss"> nats)"</span>)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.5</span>, <span class="fl">3.8</span>))</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>ax.loglog(N_grid, reducible, color<span class="op">=</span><span class="st">"C0"</span>)</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"parameters N"</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">"reducible loss  L(N) − floor"</span>)</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Reducible loss follows a power law in N"</span>)</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>, which<span class="op">=</span><span class="st">"both"</span>)</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>fitted log-log slope = -0.3400   (expected -alpha = -0.34)
+L at N=1e8 : 2.4903
+L at N=1e10: 1.8777  (100x params buys ~0.61 nats)</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div id="fig-powerlaw" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-powerlaw-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-powerlaw-output-2.png" width="613" height="353" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-powerlaw-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+그림&nbsp;1: 파라미터 수에 대한 감소 가능한 손실 L(N) − floor을 로그-로그 축에 그린 것. 거듭제곱 법칙은 직선으로 나타나며, 적합한 기울기가 지수 −α를 복원합니다.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>적합한 기울기는 <span class="math inline">\(-0.34\)</span>로, 우리가 넣은 <span class="math inline">\(\alpha\)</span>와 정확히 일치합니다. 이는 로그-로그 직선이 그리는 범위의 인위적 산물이 아니라 진짜 거듭제곱 법칙임을 확인해 줍니다. 출력된 손실값은 수익 체감을 손에 잡히게 보여 줍니다. 파라미터 수를 <span class="math inline">\(10^8\)</span>에서 <span class="math inline">\(10^{10}\)</span>으로 백 배 늘려도 손실은 0.6나트 남짓밖에 줄지 않습니다. 스케일링은 작동하지만, 모델 크기를 한 자릿수 더 키울 때마다 얻는 이득은 직전보다 작아집니다.</p>
+</section>
+<section id="세-변수의-손실-곡면" class="level2">
+<h2 class="anchored" data-anchor-id="세-변수의-손실-곡면">세 변수의 손실 곡면</h2>
+<p><span class="math inline">\(N\)</span>만 따로 다루면 오해를 부릅니다. 데이터가 너무 적은 상태에서 학습한 큰 모델은 자기 크기가 시사하는 바닥값에 도달하기 훨씬 전에 개선이 멈추기 때문입니다. 이때 손실은 <span class="math inline">\(B/D^{\beta}\)</span> 항에 붙들려 있습니다. 정직한 대상은 2차원 곡면 <span class="math inline">\(L(N,D)\)</span>이며, 세 번째 변수인 컴퓨트는 앞의 두 변수와 독립이 아닙니다. 대략적으로, 밀집(dense) 트랜스포머 학습은 파라미터 하나당 토큰 하나당 약 6번의 부동소수점 연산이 드므로</p>
+<p><span class="math display">\[C \approx 6\,N\,D\]</span></p>
+<p>가 됩니다. 이 결합이 문제를 흥미롭게 만듭니다. <span class="math inline">\(N\)</span>, <span class="math inline">\(D\)</span>, <span class="math inline">\(C\)</span>를 자유롭게 고르는 것이 아니라, 컴퓨트 예산 <span class="math inline">\(C\)</span>를 정하고 나면 그것을 모델 크기와 데이터로 나누는 임의의 분할이 손실 곡면 위에 <span class="math inline">\(D = C/(6N)\)</span>이라는 직선을 그립니다. 다음 그림은 그런 등(等)컴퓨트 직선 세 개를 곡면 위에 겹쳐 그립니다.</p>
+<div id="cell-fig-surface" class="cell" data-execution_count="2">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> compute(N, D):</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="fl">6.0</span> <span class="op">*</span> N <span class="op">*</span> D</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>Ns <span class="op">=</span> np.logspace(<span class="dv">7</span>, <span class="dv">11</span>, <span class="dv">60</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>Ds <span class="op">=</span> np.logspace(<span class="dv">8</span>, <span class="dv">12</span>, <span class="dv">60</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>NN, DD <span class="op">=</span> np.meshgrid(Ns, Ds)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>LL <span class="op">=</span> loss(NN, DD)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.6</span>, <span class="fl">4.2</span>))</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>cs <span class="op">=</span> ax.contourf(NN, DD, LL, levels<span class="op">=</span><span class="dv">20</span>, cmap<span class="op">=</span><span class="st">"viridis"</span>)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> Cbud <span class="kw">in</span> [<span class="fl">1e19</span>, <span class="fl">1e21</span>, <span class="fl">1e23</span>]:</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    ax.plot(Ns, Cbud <span class="op">/</span> (<span class="dv">6</span> <span class="op">*</span> Ns), <span class="st">"w--"</span>, lw<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>ax.set_xscale(<span class="st">"log"</span>)<span class="op">;</span> ax.set_yscale(<span class="st">"log"</span>)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"parameters N"</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">"tokens D"</span>)</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Loss surface L(N,D) with iso-compute lines (dashed)"</span>)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>ax.set_ylim(Ds.<span class="bu">min</span>(), Ds.<span class="bu">max</span>())</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>fig.colorbar(cs, ax<span class="op">=</span>ax, label<span class="op">=</span><span class="st">"loss"</span>)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()<span class="op">;</span> plt.show()</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"loss at N=1e9, D=2e10 : </span><span class="sc">{</span>loss(<span class="fl">1e9</span>, <span class="fl">2e10</span>)<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"compute there          : </span><span class="sc">{</span>compute(<span class="fl">1e9</span>, <span class="fl">2e10</span>)<span class="sc">:.2e}</span><span class="ss"> FLOPs"</span>)</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div id="fig-surface" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-surface-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-surface-output-1.png" width="605" height="391" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-surface-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+그림&nbsp;2: 손실 곡면 L(N,D). 흰 점선은 등컴퓨트 등고선 D = C/(6N)입니다. 고정된 예산에서는 이 선을 따라 이동하며 모델 크기와 데이터를 맞바꿀 수 있습니다.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>loss at N=1e9, D=2e10 : 2.5800
+compute there          : 1.20e+20 FLOPs</code></pre>
+</div>
+</div>
+<p>임의의 점선을 따라 그림을 읽는 것이 곧 계획 문제 전체의 축소판입니다. 오른쪽 아래로 가면 데이터가 부족한 큰 모델이고, 왼쪽 위로 가면 흡수하지 못할 만큼 많은 토큰 속에 놓인 작은 모델입니다. 그 사이 어딘가에서 직선은 가장 낮은 손실 등고선에 접합니다. 그 접점이 컴퓨트 최적 배분이며, 정확히 찾아 둘 가치가 있습니다.</p>
+</section>
+<section id="컴퓨트-최적-배분-chinchilla의-논증" class="level2">
+<h2 class="anchored" data-anchor-id="컴퓨트-최적-배분-chinchilla의-논증">컴퓨트 최적 배분: Chinchilla의 논증</h2>
+<p>고정된 예산 <span class="math inline">\(C\)</span>에 대해 <span class="math inline">\(D = C/(6N)\)</span>을 손실에 대입하고 <span class="math inline">\(N\)</span>에 대해 최소화합니다. 도함수를 0으로 놓으면, 최적 모델 크기가 예산의 거듭제곱으로 커지는 닫힌 형태가 나옵니다.</p>
+<p><span class="math display">\[N^{\star}(C) \propto C^{\,\beta/(\alpha+\beta)}, \qquad D^{\star}(C) \propto C^{\,\alpha/(\alpha+\beta)}.\]</span></p>
+<p><span class="math inline">\(C \approx 6ND\)</span>이므로 두 지수의 합은 반드시 1이 됩니다. Chinchilla 지수 <span class="math inline">\(\alpha=0.34\)</span>, <span class="math inline">\(\beta=0.28\)</span>을 넣으면 <span class="math inline">\(N\)</span>은 약 <span class="math inline">\(0.45\)</span>, <span class="math inline">\(D\)</span>는 약 <span class="math inline">\(0.55\)</span>가 됩니다. 실무적 메시지는 모델 크기와 데이터를 거의 같은 속도로 늘려야 한다는 것입니다. 컴퓨트가 열 배로 늘면 모델을 약 세 배 키우는 <em>동시에</em> 약 세 배 많은 데이터로 학습해야지, 늘어난 자원을 전부 파라미터에 쏟아부으면 안 됩니다. 이것이 Chinchilla 연구가 이전 처방을 바로잡은 지점입니다. 이전 처방은 새 컴퓨트의 대부분을 모델 크기에 쓰라고 권했습니다[Kaplan et al., 2020; Hoffmann et al., 2022]. 아래 코드는 여러 예산에 대해 최적점을 수치적으로 찾고 지수를 다시 적합해 복원합니다.</p>
+<div id="cell-fig-optimal" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> optimal_alloc(C, n_scan<span class="op">=</span><span class="dv">4000</span>):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    N_scan <span class="op">=</span> np.logspace(<span class="dv">6</span>, <span class="dv">12</span>, n_scan)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    D_scan <span class="op">=</span> C <span class="op">/</span> (<span class="dv">6</span> <span class="op">*</span> N_scan)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    L_scan <span class="op">=</span> loss(N_scan, D_scan)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    i <span class="op">=</span> np.argmin(L_scan)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> N_scan[i], D_scan[i], L_scan[i]</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>Cs <span class="op">=</span> np.logspace(<span class="dv">18</span>, <span class="dv">25</span>, <span class="dv">40</span>)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>Nopt, Dopt, Lopt <span class="op">=</span> np.array([optimal_alloc(C) <span class="cf">for</span> C <span class="kw">in</span> Cs]).T</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>aN, _ <span class="op">=</span> np.polyfit(np.log10(Cs), np.log10(Nopt), <span class="dv">1</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>aD, _ <span class="op">=</span> np.polyfit(np.log10(Cs), np.log10(Dopt), <span class="dv">1</span>)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>a_theory <span class="op">=</span> beta <span class="op">/</span> (alpha <span class="op">+</span> beta)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>b_theory <span class="op">=</span> alpha <span class="op">/</span> (alpha <span class="op">+</span> beta)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"N* ~ C^</span><span class="sc">{</span>aN<span class="sc">:.3f}</span><span class="ss">   (closed form </span><span class="sc">{</span>a_theory<span class="sc">:.3f}</span><span class="ss">)"</span>)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"D* ~ C^</span><span class="sc">{</span>aD<span class="sc">:.3f}</span><span class="ss">   (closed form </span><span class="sc">{</span>b_theory<span class="sc">:.3f}</span><span class="ss">)"</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="fl">9.5</span>, <span class="fl">3.8</span>))</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].loglog(Cs, Nopt, <span class="st">"o-"</span>, ms<span class="op">=</span><span class="dv">3</span>, label<span class="op">=</span><span class="ss">f"N* ∝ C^</span><span class="sc">{</span>aN<span class="sc">:.2f}</span><span class="ss">"</span>)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].loglog(Cs, Dopt, <span class="st">"s-"</span>, ms<span class="op">=</span><span class="dv">3</span>, color<span class="op">=</span><span class="st">"C1"</span>, label<span class="op">=</span><span class="ss">f"D* ∝ C^</span><span class="sc">{</span>aD<span class="sc">:.2f}</span><span class="ss">"</span>)</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_xlabel(<span class="st">"compute C (FLOPs)"</span>)<span class="op">;</span> axes[<span class="dv">0</span>].set_ylabel(<span class="st">"optimal N*, D*"</span>)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_title(<span class="st">"Compute-optimal size and data"</span>)</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> axes[<span class="dv">0</span>].grid(alpha<span class="op">=</span><span class="fl">0.3</span>, which<span class="op">=</span><span class="st">"both"</span>)</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].loglog(Cs, Lopt <span class="op">-</span> E, <span class="st">"o-"</span>, ms<span class="op">=</span><span class="dv">3</span>, color<span class="op">=</span><span class="st">"C2"</span>)</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_xlabel(<span class="st">"compute C (FLOPs)"</span>)<span class="op">;</span> axes[<span class="dv">1</span>].set_ylabel(<span class="st">"reducible loss on frontier"</span>)</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_title(<span class="st">"Loss along the compute-optimal frontier"</span>)</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].grid(alpha<span class="op">=</span><span class="fl">0.3</span>, which<span class="op">=</span><span class="st">"both"</span>)</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>N* ~ C^0.451   (closed form 0.452)
+D* ~ C^0.549   (closed form 0.548)</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div id="fig-optimal" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-optimal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-optimal-output-2.png" width="901" height="353" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-optimal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+그림&nbsp;3: 왼쪽: 컴퓨트 최적 N<em>와 D</em>는 모두 예산의 제곱근에 가까운 거듭제곱 법칙으로 커집니다. 오른쪽: 최적 프런티어 위의 감소 가능한 손실은 컴퓨트가 늘수록 매끄럽게 감소합니다.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>적합된 지수는 <span class="math inline">\(0.45\)</span>와 <span class="math inline">\(0.55\)</span> 부근으로, 원 논문의 적합에서 보고된 <span class="math inline">\(0.46\)</span>과 <span class="math inline">\(0.54\)</span>를 재현합니다. 논문이 해석적으로 푼 바로 그 도함수가 예산에 대한 거친 격자 탐색만으로도 그대로 나온다는 점이 안심되는 부분입니다. 오른쪽 패널은 프런티어 위에 머무를 때의 보상을 보여 줍니다. 바닥값 위 손실이 컴퓨트에 대한 또 하나의 거듭제곱 법칙으로 내려가므로, 항상 최적으로 배분한다면 컴퓨트를 더 쓸 때 예측 가능한, 다만 점점 둔화되는 수익을 얻습니다.</p>
+<p>여기서 한 가지 단서는 결론에 묻어 두기보다 짚고 넘어가는 편이 낫습니다. 지수는 견고하지만, 이 파라메트릭 곡면이 함의하는 <em>절대적인</em> 파라미터당 토큰 비율은 Chinchilla 연구의 다른 추정 방법에서 널리 인용되는 “파라미터당 약 20토큰” 경험칙보다 높게 나옵니다. 후속 재현 연구는 발표된 파라메트릭 계수가 같은 논문의 iso-FLOP 분석과 조화시키기 어렵고 신뢰구간이 비현실적으로 좁게 보고되었다고 지적했습니다. 따라서 정확한 비율은 적합에 의존하는 값으로 다루고, <span class="math inline">\(N\)</span>과 <span class="math inline">\(D\)</span>가 거의 같은 속도로 커진다는 사실을 지속적인 결론으로 받아들이는 편이 타당합니다[Besiroglu et al., 2024]. 앞으로 가져갈 교훈은 어떤 마법의 상수가 아니라 최적점의 <em>형태</em>입니다.</p>
+</section>
+<section id="잘못된-배분의-대가" class="level2">
+<h2 class="anchored" data-anchor-id="잘못된-배분의-대가">잘못된 배분의 대가</h2>
+<p>최적점을 아는 것은 그것에서 벗어날 때 비용이 클 때에만 의미가 있으므로, 마지막 실험은 그 벌점을 정량화합니다. 예산을 고정하고 최적 분할을 구한 다음, 일부러 잘못 배분합니다. 파라미터를 여덟 배 늘리고(그래서 데이터는 8분의 1로), 그리고 그 거울상인 실수로 데이터를 여덟 배 늘리는 경우입니다. 컴퓨트를 일정하게 유지하므로 두 이동 모두 같은 등컴퓨트 직선을 따라 미끄러지며, 추가 손실은 접점에서 벗어난 순수한 대가입니다.</p>
+<div id="cell-fig-misalloc" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>C0 <span class="op">=</span> <span class="fl">1e23</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>Nc, Dc, Lc <span class="op">=</span> optimal_alloc(C0)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>factor <span class="op">=</span> <span class="fl">8.0</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>N_heavy, D_heavy <span class="op">=</span> Nc <span class="op">*</span> factor, Dc <span class="op">/</span> factor   <span class="co"># params-heavy: big model, little data</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>N_data,  D_data  <span class="op">=</span> Nc <span class="op">/</span> factor, Dc <span class="op">*</span> factor   <span class="co"># data-heavy:  small model, lots of data</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>L_heavy <span class="op">=</span> loss(N_heavy, D_heavy)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>L_data  <span class="op">=</span> loss(N_data,  D_data)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"budget C = </span><span class="sc">{</span>C0<span class="sc">:.0e}</span><span class="ss"> FLOPs"</span>)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  optimal      N=</span><span class="sc">{</span>Nc<span class="sc">:.2e}</span><span class="ss">  D=</span><span class="sc">{</span>Dc<span class="sc">:.2e}</span><span class="ss">  L=</span><span class="sc">{</span>Lc<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  params-heavy N=</span><span class="sc">{</span>N_heavy<span class="sc">:.2e}</span><span class="ss">  D=</span><span class="sc">{</span>D_heavy<span class="sc">:.2e}</span><span class="ss">  L=</span><span class="sc">{</span>L_heavy<span class="sc">:.4f}</span><span class="ss">  (+</span><span class="sc">{</span>L_heavy<span class="op">-</span>Lc<span class="sc">:.4f}</span><span class="ss">)"</span>)</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  data-heavy   N=</span><span class="sc">{</span>N_data<span class="sc">:.2e}</span><span class="ss">  D=</span><span class="sc">{</span>D_data<span class="sc">:.2e}</span><span class="ss">  L=</span><span class="sc">{</span>L_data<span class="sc">:.4f}</span><span class="ss">  (+</span><span class="sc">{</span>L_data<span class="op">-</span>Lc<span class="sc">:.4f}</span><span class="ss">)"</span>)</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="co"># The params-heavy model's loss is reachable by an OPTIMAL model on a smaller budget.</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>Cext <span class="op">=</span> np.logspace(<span class="dv">21</span>, <span class="dv">23</span>, <span class="dv">400</span>)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>Lext <span class="op">=</span> np.array([optimal_alloc(C)[<span class="dv">2</span>] <span class="cf">for</span> C <span class="kw">in</span> Cext])</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>C_needed <span class="op">=</span> Cext[np.argmin(np.<span class="bu">abs</span>(Lext <span class="op">-</span> L_heavy))]</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  that loss is optimal at C=</span><span class="sc">{</span>C_needed<span class="sc">:.2e}</span><span class="ss">"</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  -&gt;  the misallocation wastes </span><span class="sc">{</span>C0<span class="op">/</span>C_needed<span class="sc">:.1f}</span><span class="ss">x compute"</span>)</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>ratios <span class="op">=</span> np.logspace(<span class="op">-</span><span class="fl">1.5</span>, <span class="fl">1.5</span>, <span class="dv">60</span>)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>Lr <span class="op">=</span> [loss(Nc <span class="op">*</span> r, Dc <span class="op">/</span> r) <span class="cf">for</span> r <span class="kw">in</span> ratios]</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">6.5</span>, <span class="fl">3.8</span>))</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>ax.semilogx(ratios, np.array(Lr) <span class="op">-</span> E, color<span class="op">=</span><span class="st">"C3"</span>)</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>ax.axvline(<span class="fl">1.0</span>, color<span class="op">=</span><span class="st">"k"</span>, ls<span class="op">=</span><span class="st">":"</span>, lw<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>ax.scatter([<span class="fl">1.0</span>], [Lc <span class="op">-</span> E], color<span class="op">=</span><span class="st">"C2"</span>, zorder<span class="op">=</span><span class="dv">5</span>, label<span class="op">=</span><span class="st">"compute-optimal"</span>)</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"model-size multiplier at fixed compute  (N×r, D÷r)"</span>)</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"reducible loss"</span>)</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f"Cost of misallocating a fixed budget (C=</span><span class="sc">{</span>C0<span class="sc">:.0e}</span><span class="ss">)"</span>)</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>ax.legend(fontsize<span class="op">=</span><span class="dv">8</span>)<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>, which<span class="op">=</span><span class="st">"both"</span>)</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()<span class="op">;</span> plt.show()</span></code></pre></div><button title="클립보드 복사" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>budget C = 1e+23 FLOPs
+  optimal      N=1.46e+10  D=1.14e+12  L=2.0050
+  params-heavy N=1.17e+11  D=1.42e+11  L=2.0695  (+0.0645)
+  data-heavy   N=1.83e+09  D=9.12e+12  L=2.0749  (+0.0699)
+  that loss is optimal at C=2.98e+22  -&gt;  the misallocation wastes 3.4x compute</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div id="fig-misalloc" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-misalloc-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-misalloc-output-2.png" width="614" height="353" class="figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-misalloc-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+그림&nbsp;4: 고정된 컴퓨트 예산을 모델 크기와 데이터 사이에서 재배분할 때의 감소 가능한 손실. 배수 1에서의 최솟값이 컴퓨트 최적점이며, 모델을 너무 크게 하거나 너무 작게 해도 손실은 올라갑니다.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>이 곡선은 얕지만 분명한 그릇 모양입니다. 모델을 여덟 배 크게 만들면 손실이 약 0.06나트 올라가고, 대칭인 데이터 과다 실수도 거의 같은 비용을 치릅니다. 이는 최적점이 모서리가 아니라 진짜 내부 최솟값임을 확인해 줍니다. 더 인상적인 수치는 컴퓨트 관점의 해석입니다. 최적으로 배분한 모델은 파라미터 과다 모델의 손실에 예산의 약 3분의 1만으로 도달하므로, 지나치게 큰 모델은 컴퓨트의 대부분을 버린 셈입니다. 이것이 바로 한 세대의 “너무 크고 덜 학습된” 모델들을 다시 보게 만든 논증입니다. 작은 오차의 벌점은 가벼워서 그릇이 얕지만, 배분이 크게 어긋나면 그 벌점은 낭비된 GPU-월(月)로 누적됩니다.</p>
+</section>
+<section id="법칙이-약속하는-것과-약속하지-않는-것" class="level2">
+<h2 class="anchored" data-anchor-id="법칙이-약속하는-것과-약속하지-않는-것">법칙이 약속하는 것과 약속하지 않는 것</h2>
+<p>스케일링 법칙은 특정한 밀집 트랜스포머 계열을 특정한 학습 레시피로 훈련해 적합한 경험적 규칙성이며, 그 조건이 끝나는 곳에서 법칙의 사정거리도 끝납니다. 적합된 계수 <span class="math inline">\(E\)</span>, <span class="math inline">\(A\)</span>, <span class="math inline">\(B\)</span>, <span class="math inline">\(\alpha\)</span>, <span class="math inline">\(\beta\)</span>는 아키텍처, 토크나이저, 데이터 분포, 옵티마이저에 의존합니다. 데이터 품질을 바꾸거나 근본적으로 다른 구성 요소를 더하면 곡면이 이동합니다. 또한 이 곡선들은 <em>다운스트림</em> 능력에 대해서는 아무 말도 하지 않습니다. 다음 토큰 손실을 예측할 뿐이며, 손실에서 시험 통과나 올바른 코드 작성 여부로 이어지는 대응은 선형이지도, 매끄럽다는 보장이 있지도 않습니다. 적합 범위를 벗어난 외삽은 진짜 믿음의 도약입니다. 거듭제곱 법칙은 측정된 곳에서만 성립한다고 알려져 있기 때문입니다. 끝으로, 컴퓨트 최적 분할은 <em>학습</em> 예산에 대해 <em>학습</em> 손실을 최소화합니다. 모델이 수백만 사용자에게 서빙될 예정이라면 추론 비용이 계산을 바꾸며, Chinchilla 최적점이 권하는 것보다 훨씬 많은 데이터로 더 작은 모델을 학습해 추가 학습을 값싼 배포와 맞바꾸는 편이 정당화될 수 있습니다[Sardana et al., 2024]. 법칙은 계획 도구이지 자연 법칙이 아닙니다.</p>
+</section>
+<section id="결론" class="level2">
+<h2 class="anchored" data-anchor-id="결론">결론</h2>
+<p>스케일링 법칙이 중요한 이유는 예산 배분 문제를 산수로 바꿔 주기 때문입니다. 손실 곡면 <span class="math inline">\(L(N,D) = E + A/N^{\alpha} + B/D^{\beta}\)</span>를 컴퓨트 항등식 <span class="math inline">\(C \approx 6ND\)</span>와 결합하면, 모델 크기와 데이터가 거의 같은 속도로 커지는 컴퓨트 최적 배분이 나옵니다. 곡면을 직접 최소화해 복원한 <span class="math inline">\(0.45\)</span>와 <span class="math inline">\(0.55\)</span> 부근의 지수가 그것입니다. 실무적 이득은 긍정적인 만큼 부정적이기도 합니다. 데이터가 더는 감당하지 못하는 모델을 계속 키우지 말라고 알려 주며, 잘못된 배분 실험은 이를 무시하는 대가를 값으로 매겨, 여덟 배 지나치게 큰 모델이 컴퓨트의 대부분을 낭비함을 보였습니다. 법칙이 주지 않는 것은 낮은 손실이 높은 능력을 뜻한다는 보장, 그리고 적합된 지수가 데이터·아키텍처·배포 환경의 변화를 견딘다는 보장입니다. 측정된 영역의 지도로 쓰면 이 법칙들은 대규모 모델 학습이 가진 가장 신뢰할 만한 계획 도구이지만, 그 너머 영토에 대한 약속으로 쓰면 다음 적합을 기다리는 하나의 가설일 뿐입니다.</p>
+</section>
+<section id="참고문헌" class="level2">
+<h2 class="anchored" data-anchor-id="참고문헌">참고문헌</h2>
+<div id="refs" role="list">
+<ul>
+<li>Kaplan, J., McCandlish, S., Henighan, T., Brown, T. B., Chess, B., Child, R., Gray, S., Radford, A., Wu, J., &amp; Amodei, D. (2020). Scaling Laws for Neural Language Models. <em>arXiv preprint arXiv:2001.08361</em>.</li>
+<li>Hoffmann, J., Borgeaud, S., Mensch, A., Buchatskaya, E., Cai, T., Rutherford, E., de Las Casas, D., Hendricks, L. A., Welbl, J., Clark, A., Hennigan, T., Noland, E., Millican, K., van den Driessche, G., Damoc, B., Guy, A., Osindero, S., Simonyan, K., Elsen, E., Rae, J. W., Vinyals, O., &amp; Sifre, L. (2022). Training Compute-Optimal Large Language Models. <em>Advances in Neural Information Processing Systems (NeurIPS)</em>. arXiv:2203.15556.</li>
+<li>Besiroglu, T., Erdil, E., Barnett, M., &amp; You, J. (2024). Chinchilla Scaling: A Replication Attempt. <em>arXiv preprint arXiv:2404.10102</em>.</li>
+<li>Sardana, N., Portes, J., Doubov, S., &amp; Frankle, J. (2024). Beyond Chinchilla-Optimal: Accounting for Inference in Language Model Scaling Laws. <em>Proceedings of the 41st International Conference on Machine Learning (ICML)</em>. arXiv:2401.00448.</li>
+</ul>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "복사완료!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "복사완료!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 2026 Prof.&nbsp;Shin · ForecastAI</p>
+</div>   
+    <div class="nav-footer-center">
+<p><a href="privacy-policy.qmd">개인정보처리방침</a></p>
+</div>
+    <div class="nav-footer-right">
+<p>Powered by <a href="https://quarto.org">Quarto</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
