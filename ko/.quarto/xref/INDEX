@@ -73,5 +73,8 @@
   },
   "posts/2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau/index.qmd": {
     "index.html": "359f87c1"
+  },
+  "posts/2026-08-09-scaling-laws-how-model-size-data-and-compute-trade-off/index.qmd": {
+    "index.html": "d7dacd66"
   }
 }

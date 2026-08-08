@@ -101,19 +101,20 @@
       "status": "drafted",
       "drafted_date": "2026-08-07",
       "path_slug": "2026-08-07-learning-rate-schedulers-compared-cosine-annealing-vs-onecycle-vs-reducelronplateau"
-    }
-  ],
-  "queue": [
+    },
     {
-      "order": 3,
+      "order": 10,
       "series": "llm",
       "series_no": 5,
       "title": "Scaling Law: 모델·데이터·컴퓨트의 관계",
       "slug": "scaling-laws-model-data-compute",
       "level": "L2",
-      "status": "pending",
-      "old_order": 10
-    },
+      "status": "drafted",
+      "drafted_date": "2026-08-09",
+      "path_slug": "2026-08-09-scaling-laws-how-model-size-data-and-compute-trade-off"
+    }
+  ],
+  "queue": [
     {
       "order": 4,
       "series": "pytorch",
